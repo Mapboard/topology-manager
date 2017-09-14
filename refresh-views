@@ -2,10 +2,7 @@
 
 cd "$REPO_DIR/map-display"
 dbname="syrtis"
-
 dn="procedures"
 
-for fn in fixtures/*; do
-  psql $dbname -f $fn
-done
+psql $dbname -f $dn/update-views.sql
 
