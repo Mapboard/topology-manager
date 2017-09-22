@@ -25,7 +25,6 @@ JOIN polygon p
     ON ST_Contains(face.geometry, p.geometry)
 JOIN mapping.unit unit ON p.type = unit.id
 WHERE face.geometry IS NOT NULL
-  AND unit.id NOT IN ('basement','highlands')
 ORDER BY ST_Area(face.geometry);
 
 CREATE INDEX map_face_gix ON mapping.map_face USING GIST (geometry);
