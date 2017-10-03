@@ -9,23 +9,30 @@ WITH face AS (
 ),
 polygon AS (
   SELECT
+    p.id,
     p.type,
     p.geometry
   FROM map_digitizer.polygon p
   JOIN mapping.unit unit ON p.type = unit.id
-  ORDER BY p.id
-)
+),
+pf AS (
 SELECT
-  row_number() OVER () face_id,
-  face.geometry,
-  unit.id AS unit_id,
-  coalesce(unit.color, '#000000') color
+  p.id,
+  p.type,
+  face.geometry
 FROM face
-JOIN polygon p
+LEFT JOIN polygon p
     ON ST_Contains(face.geometry, p.geometry)
-JOIN mapping.unit unit ON p.type = unit.id
 WHERE face.geometry IS NOT NULL
-ORDER BY ST_Area(face.geometry);
+)
+SELECT DISTINCT ON (geometry)
+ row_number() OVER () AS id,
+ type,
+ geometry,
+ u.color
+FROM pf
+LEFT JOIN mapping.unit u ON type = u.id
+ORDER BY geometry, type
 
 CREATE INDEX map_face_gix ON mapping.map_face USING GIST (geometry);
 
