@@ -4,5 +4,6 @@ cd "$REPO_DIR/map-display"
 dbname="syrtis"
 dn="procedures"
 
+update-colors
 psql $dbname -f $dn/update-views.sql
 

@@ -1,0 +1,41 @@
+#!/usr/bin/env coffee
+chroma = require "chroma-js"
+chalk = require 'chalk'
+{db, sql} = require 'syrtis-database'
+
+pad = (val, length) ->
+  val += ''
+  numPads = length - val.length
+  if (numPads > 0) then new Array(numPads + 1).join(' ') + val else val
+
+# Map characters to color values
+# based on FGDC standard
+map = {
+ '0': 0
+ 'A': .08
+ '1': .1
+ '2': .2
+ '3': .3
+ '4': .4
+ '5': .5
+ '6': .6
+ '7': .7
+ 'X': 1.0
+}
+c__ = sql("colors")
+u__ = sql('update-colors')
+
+do ->
+  schema = 'mapping'
+  table = 'unit'
+  colors = await db.query c__, {schema, table}
+
+  for {id, fgdc_color} in colors
+    vals = fgdc_color.split('').map (c)->map[c]
+    vals.push 0 # K = 0
+    c = chroma.cmyk vals...
+    color = c.hex()
+    await db.none u__, {schema,table,id,color}
+    console.log  pad(id,20)+"  "+chalk.bgHex(color)(" #{fgdc_color} ")
+
+  process.exit(0)

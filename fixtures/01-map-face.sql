@@ -27,12 +27,12 @@ WHERE face.geometry IS NOT NULL
 )
 SELECT DISTINCT ON (geometry)
  row_number() OVER () AS id,
- type,
+ type unit_id,
  geometry,
  u.color
 FROM pf
-LEFT JOIN mapping.unit u ON type = u.id
-ORDER BY geometry, type
+JOIN mapping.unit u ON type = u.id
+ORDER BY geometry, type;
 
 CREATE INDEX map_face_gix ON mapping.map_face USING GIST (geometry);
 

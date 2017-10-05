@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+"""
+Update colors for units in the database
+"""
+from os import path, environ
+from subprocess import run
+from sqlalchemy import create_engine, MetaData, Table
+
+__dir__ = path.join(environ["PROJECT_DIR"],"versioned","map-display")
+
+engine = create_engine(
+        "postgresql://localhost/syrtis")
+meta = MetaData(engine)
+
+unit = Table('unit', meta,
+        schema='mapping',
+        autoload=True)
+
+def get_data():
+    fn = path.join(__dir__,'map-colors.txt')
+    with open(fn) as f:
+        lines = list(f)
+
+    for line in lines:
+        _ = line.strip()
+        if _.startswith('#'):
+            continue
+        _ = _.split()
+        try:
+            uid = _[0]
+            color = _[1]
+        except IndexError:
+            continue
+        yield uid,color
+
+conn = engine.connect()
+
+with conn.begin() as trans:
+    for uid,color in get_data():
+        stmt = (unit.update()
+                .where(unit.c.id==uid)
+                .values(color=color))
+        conn.execute(stmt)
+    trans.commit()
+
+script = path.join(__dir__,"fgdc-colors")
+run(script)

@@ -1,0 +1,25 @@
+noachian
+  basement  #70b78b
+  highlands #c2e2b9
+  infill-surface #5ea479
+sulfate #6e97e7
+  sulfate-altered   #3078e4
+  sulfate-mantled 	#9baad1
+cap-unit
+  smooth-cap	#170d6b
+  hummocky-cap	#2d1fa1
+  draping-cap	#2d1fa1
+
+
+syrtis-major #442444
+  syrtis-draping 	#463946
+  syrtis-highly-dissected #665a69
+
+draping-valley-fill #f9b46c
+
+late-surface 	#cdaa76
+colluvium  #e7c89b
+
+
+unknown 	Unknown	#888888
+#0d0930
