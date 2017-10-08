@@ -43,5 +43,5 @@ with conn.begin() as trans:
         conn.execute(stmt)
     trans.commit()
 
-script = path.join(__dir__,"fgdc-colors")
-run(script)
+#script = path.join(__dir__,"fgdc-colors")
+#run(script)
