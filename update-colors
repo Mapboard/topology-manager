@@ -26,20 +26,30 @@ def get_data():
         if _.startswith('#'):
             continue
         _ = _.split()
+        color = None
+        symbol = None
+        symbol_color = None
         try:
             uid = _[0]
-            color = _[1]
         except IndexError:
             continue
-        yield uid,color
+        try:
+            color = _[1]
+            symbol = _[2]
+            symbol_color = _[3]
+        except IndexError:
+            pass
+        if color == 'transparent':
+            color = None
+        yield uid, color, symbol, symbol_color
 
 conn = engine.connect()
 
 with conn.begin() as trans:
-    for uid,color in get_data():
+    for uid,color,symbol,symbol_color in get_data():
         stmt = (unit.update()
                 .where(unit.c.id==uid)
-                .values(color=color))
+                .values(color=color, fgdc_symbol=symbol, symbol_color=symbol_color))
         conn.execute(stmt)
     trans.commit()
 
