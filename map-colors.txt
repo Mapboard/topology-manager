@@ -1,25 +1,30 @@
 noachian
   basement  #70b78b
   highlands #c2e2b9
-  infill-surface transparent 217-K #70b78b
 sulfate #6e97e7
   sulfate-altered   #3078e4
-  sulfate-mantled 	#6e97e7 119-K #9baad1
+  sulfate-mantled 	#6e97e7 431-K #455d7c
+  uncertain-sulfate transparent 215-K #6e97e7
 cap-unit #04244e
   smooth-cap	#04244e
-  hummocky-cap	#04244e  522-K  #405a9d
+  hummocky-cap	#04244e  431-K  rgba(110,151,231,0.2)
   draping-cap	#04244e
 
 
 syrtis-major #442444
-  syrtis-draping 	#463946  207-K #442444
-  syrtis-dissected #463946  216-K #442444
+  syrtis-draping 	#5e585e  215-K #442444
+  syrtis-dissected #463946  215-K #442444
 
-draping-valley-fill #6e97e7 204-K #cdb797
+draping-valley-fill #6e97e7 215-K #c1ad90
 
-late-surface #cdb797 232-K #cdaa76
+lake-sediments #e0d4c1
+channel-fill #cdb797 232-K #cdaa76
 colluvium  transparent  132-K  #cdaa76
+infill-surface transparent 215-K rgba(205,183,151,0.6) 90
+
 
 
 unknown 	Unknown	#888888
 #0d0930
+
+#3b5a80

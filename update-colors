@@ -29,6 +29,7 @@ def get_data():
         color = None
         symbol = None
         symbol_color = None
+        symbol_rotation = None
         try:
             uid = _[0]
         except IndexError:
@@ -37,19 +38,22 @@ def get_data():
             color = _[1]
             symbol = _[2]
             symbol_color = _[3]
+            symbol_rotation = _[4]
         except IndexError:
             pass
         if color == 'transparent':
             color = None
-        yield uid, color, symbol, symbol_color
+        yield uid, color, symbol, symbol_color, symbol_rotation
 
 conn = engine.connect()
 
 with conn.begin() as trans:
-    for uid,color,symbol,symbol_color in get_data():
+    for uid,color,symbol,symbol_color,symbol_rotation in get_data():
         stmt = (unit.update()
                 .where(unit.c.id==uid)
-                .values(color=color, fgdc_symbol=symbol, symbol_color=symbol_color))
+                .values(color=color, fgdc_symbol=symbol,
+                        symbol_color=symbol_color,
+                        symbol_rotation=symbol_rotation))
         conn.execute(stmt)
     trans.commit()
 
