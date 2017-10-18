@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+cd "$REPO_DIR/map-topology"
+dbname="syrtis"
+
+dn="procedures"
+
+for fn in fixtures/*; do
+  psql $dbname -f $fn
+done
+
+psql $dbname -f "$dn/delete-changed.sql"
+
+#psql -P pager=off $dbname -f "$dn/clean-topology.sql"
+
+### Rebuild topology, updating contacts as needed
+./update-contacts
+
+psql $dbname -f "$dn/update-contact-data.sql"
+
+#update-colors
+
+if [ "$1" = '--refresh' ]; then
+psql $dbname -c "REFRESH MATERIALIZED VIEW map_topology.topology_edges;"
+fi

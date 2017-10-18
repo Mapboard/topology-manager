@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+
+from pathlib import Path
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError, InternalError
+
+engine = create_engine("postgresql:///syrtis")
+
+def sql(fn):
+    _ = Path(__file__).with_name('procedures')/(fn+'.sql')
+    with _.open('r') as f:
+        return text(f.read())
+
+res = engine.execute(sql('get-contacts-to-update'))
+
+failures = []
+for id, in list(res):
+    print(id)
+    try:
+        res = engine.execute(sql('update-contact'),id=id)
+    except Exception as err:
+        failures.append(id)
+        print(err)
+
+s = sql('linework-failures')
+engine.execute(s, values=failures)
+
+
