@@ -1,2 +1,2 @@
-redo-ifchange display/fixtures/*.sql topology/fixtures/*.sql
+redo-ifchange topology/fixtures/*.sql display/fixtures/*.sql
 

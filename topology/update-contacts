@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError, InternalError
 
-engine = create_engine("postgresql:///syrtis")
+engine = create_engine("postgresql:///Naukluft")
 
 def sql(fn):
     _ = Path(__file__).with_name('procedures')/(fn+'.sql')

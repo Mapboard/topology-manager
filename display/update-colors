@@ -5,11 +5,9 @@ Update colors for units in the database
 from os import path, environ
 from subprocess import run
 from sqlalchemy import create_engine, MetaData, Table
+from sys import argv
 
-__dir__ = path.join(environ["PROJECT_DIR"],"versioned","map-display")
-
-engine = create_engine(
-        "postgresql://localhost/syrtis")
+engine = create_engine("postgresql:///Naukluft")
 meta = MetaData(engine)
 
 unit = Table('unit', meta,
@@ -17,7 +15,7 @@ unit = Table('unit', meta,
         autoload=True)
 
 def get_data():
-    fn = path.join(__dir__,'map-colors.txt')
+    fn = argv[1]
     with open(fn) as f:
         lines = list(f)
 
