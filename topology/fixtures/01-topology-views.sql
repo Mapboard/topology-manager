@@ -82,6 +82,8 @@ WHERE face_id <> 0
 SELECT * FROM fg
 WHERE NOT ST_IsEmpty(geometry);
 
+-- Can be reworked with create table and triggers
+-- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
 CREATE MATERIALIZED VIEW IF NOT EXISTS map_topology.topology_edges AS
 SELECT
   topology,

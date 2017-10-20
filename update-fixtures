@@ -1,5 +1,0 @@
-#!/usr/bin/env zsh
-
-cat topology/fixtures/*.sql \
-    display/fixtures/*.sql \
-| psql Naukluft

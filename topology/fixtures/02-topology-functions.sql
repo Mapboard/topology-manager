@@ -3,13 +3,20 @@ Functions allowing changes to topological relations
 // Should merge with similar functions for Naukluft
 */
 
-CREATE OR REPLACE FUNCTION map_topology.topologizeGeometry(geom geometry)
+CREATE OR REPLACE FUNCTION map_topology.topologizeGeometry(geom geometry, tolerance numeric = 1)
 RETURNS topogeometry AS
 $$
 DECLARE
 topo topogeometry;
+layer_id integer;
 BEGIN
-  topo := topology.toTopoGeom(geom, 'map_topology', 1, 0.02); -- 10 cm tolerance
+  SELECT layer_id
+      INTO layer_id
+      FROM topology.layer
+      WHERE schema_name='map_topology'
+      AND table_name='contact';
+
+  topo := topology.toTopoGeom(geom, 'map_topology', layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added geometry';
   RETURN topo;
 EXCEPTION WHEN others THEN
