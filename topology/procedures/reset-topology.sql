@@ -1,5 +1,5 @@
 
-TRUNCATE TABLE mapping.contact;
+TRUNCATE TABLE map_topology.contact;
 TRUNCATE TABLE map_topology.face CASCADE;
 TRUNCATE TABLE map_topology.relation CASCADE;
 
