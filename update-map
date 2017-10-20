@@ -21,5 +21,5 @@ psql $dbname -f "$topo/procedures/delete-changed.sql"
 $topo/update-contacts
 psql $dbname -f "$topo/procedures/update-contact-data.sql"
 
-#psql $dbname -c "REFRESH MATERIALIZED VIEW map_topology.topology_edges;"
+psql $dbname -c "REFRESH MATERIALIZED VIEW map_topology.topology_edges;"
 psql $dbname -c "REFRESH MATERIALIZED VIEW mapping.map_face"
