@@ -27,6 +27,30 @@ END;
 $$
 LANGUAGE 'plpgsql' IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION map_topology.addMapFace(geom geometry, tolerance numeric = 1)
+RETURNS topogeometry AS
+$$
+DECLARE
+topo topogeometry;
+layer_id integer;
+BEGIN
+  SELECT layer_id
+      INTO layer_id
+      FROM topology.layer
+      WHERE schema_name='mapping'
+      AND table_name='map_face';
+
+  topo := topology.toTopoGeom(geom, 'map_topology', layer_id, tolerance); -- 10 cm tolerance
+  RAISE NOTICE 'Added geometry';
+  RETURN topo;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Error code: %', SQLSTATE;
+  RAISE NOTICE 'Error message: %', SQLERRM;
+  RETURN null;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION map_topology.removeNodeMaybe(node_id integer)
 RETURNS boolean AS
 $$

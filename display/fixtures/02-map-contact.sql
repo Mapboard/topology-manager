@@ -26,6 +26,7 @@ SELECT
   c.id AS contact_id,
   c.map_width,
   c.certainty,
+  c.hidden,
   t.color,
   t.id AS type,
   e.geom geometry,
