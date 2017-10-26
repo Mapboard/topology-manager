@@ -54,7 +54,7 @@ SELECT
   v.*,
   l.name AS commonality_desc
 FROM vals v
-JOIN mapping.unit_level l
+LEFT JOIN mapping.unit_level l
   ON commonality = l.id;
 
 CREATE INDEX mapping_contact_gix ON mapping.contact USING GIST (geometry);
