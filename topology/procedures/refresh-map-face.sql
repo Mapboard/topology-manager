@@ -1,17 +1,10 @@
--- Map face
-CREATE TABLE mapping.map_face (
-  id SERIAL PRIMARY KEY,
-  unit_id text REFERENCES mapping.unit (id),
-  topology text REFERENCES map_topology.sub_topology (id)
-);
-
-SELECT topology.AddTopoGeometryColumn('map_topology',
-  'mapping', 'map_face', 'geometry', 'MULTIPOLYGON');
-
-TRUNCATE TABLE mapping.map_face;
-SELECT pg_catalog.setval(pg_get_serial_sequence('mapping.map_face', 'id'),
+/*
+Procedure to create map faces in bulk after deleting all of them.
+*/
+TRUNCATE TABLE topology.map_face;
+SELECT pg_catalog.setval(pg_get_serial_sequence('map_topology.map_face', 'id'),
   MAX(id))
-  FROM mapping.map_face;
+  FROM map_topology.map_face;
 
 WITH face AS (
   SELECT
@@ -52,11 +45,12 @@ FROM pf
 GROUP BY geometry, type
 ORDER BY geometry, ST_Area(ST_Union(poly)) DESC
 )
-INSERT INTO mapping.map_face (unit_id,geometry,topology)
+INSERT INTO map_topology.map_face (unit_id,topo,topology, geometry)
 SELECT
   type AS unit_id,
   map_topology.addMapFace(geometry, 1),
-  t.topology
+  t.topology,
+  geometry
 FROM with_greatest_area f
 JOIN map_digitizer.polygon_type t
   ON type = t.id;

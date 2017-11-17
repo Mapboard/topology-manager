@@ -34,14 +34,14 @@ DECLARE
 topo topogeometry;
 layer_id integer;
 BEGIN
-  SELECT layer_id
+  SELECT l.layer_id
       INTO layer_id
-      FROM topology.layer
-      WHERE schema_name='mapping'
+      FROM topology.layer l
+      WHERE schema_name='map_topology'
       AND table_name='map_face';
 
   topo := topology.toTopoGeom(geom, 'map_topology', layer_id, tolerance); -- 10 cm tolerance
-  RAISE NOTICE 'Added geometry';
+  RAISE NOTICE 'Added map face';
   RETURN topo;
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;

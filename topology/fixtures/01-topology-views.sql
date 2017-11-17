@@ -84,13 +84,14 @@ WHERE NOT ST_IsEmpty(geometry);
 
 -- Can be reworked with create table and triggers
 -- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
-CREATE MATERIALIZED VIEW IF NOT EXISTS map_topology.topology_edges AS
+-- https://hashrocket.com/blog/posts/materialized-view-strategies-using-postgresql
+CREATE OR REPLACE VIEW map_topology.topology_edges AS
 SELECT
+  e.edge_id,
   topology,
-  ST_Union(geom) geometry
+  geometry
 FROM map_topology.edge_contact ec
 JOIN map_topology.contact c ON ec.contact_id = c.id
 JOIN map_topology.edge e ON ec.edge_id = e.edge_id
 JOIN map_digitizer.linework_type t ON c.type = t.id
-WHERE t.topology IS NOT null
-GROUP BY t.topology;
+WHERE t.topology IS NOT null;
