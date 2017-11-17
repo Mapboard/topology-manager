@@ -85,7 +85,7 @@ WHERE NOT ST_IsEmpty(geometry);
 -- Can be reworked with create table and triggers
 -- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
 -- https://hashrocket.com/blog/posts/materialized-view-strategies-using-postgresql
-CREATE OR REPLACE VIEW map_topology.topology_edges AS
+CREATE OR REPLACE VIEW map_topology.edge_topology AS
 SELECT
   e.edge_id,
   topology,
