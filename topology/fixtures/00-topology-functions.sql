@@ -98,4 +98,36 @@ END
 $$
 LANGUAGE 'plpgsql';
 
+/*
+Get the map face that defines a polygon for a specific topology
+*/
+CREATE OR REPLACE FUNCTION map_topology.unitForArea(in_face geometry, in_topology text)
+RETURNS text AS $$
+DECLARE result text;
+BEGIN
+-- Get polygons in requisite topology
+WITH polygon AS (
+SELECT
+  p.id,
+  p.type,
+  p.geometry
+FROM map_digitizer.polygon p
+JOIN map_digitizer.polygon_type t
+  ON p.type = t.id
+WHERE t.topology = in_topology
+  AND ST_Contains(in_face, p.geometry)
+)
+-- Assign face that has the greatest area of polygons
+-- assigned to it within the feature
+SELECT
+  type
+INTO result
+FROM polygon
+GROUP BY type
+ORDER BY ST_Area(ST_Union(geometry)) DESC
+LIMIT 1;
+
+RETURN result;
+END
+$$ LANGUAGE plpgsql;
 
