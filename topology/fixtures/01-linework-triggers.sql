@@ -75,4 +75,38 @@ FOR EACH ROW
 EXECUTE PROCEDURE map_topology.linework_update_trigger();
 
 
+/*
+Trigger to update polygon faces when added
+*/
+CREATE OR REPLACE FUNCTION map_topology.polygon_update_trigger()
+/*
+Procedure to keep contact table in sync with linework table
+*/
+RETURNS trigger AS $$
+DECLARE
+  geom geometry;
+BEGIN
 
+IF (TG_OP = 'DELETE') THEN
+  geom := OLD.geometry;
+ELSE
+  geom := NEW.geometry;
+END IF;
+
+UPDATE map_topology.map_face
+SET unit_id = map_topology.unitForArea(geometry, topology)
+WHERE ST_Within(geom, geometry);
+
+RETURN null;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to create a non-topogeometry representation for
+-- storage on each row (for speed of lookup)
+DROP TRIGGER IF EXISTS map_digitizer_polygon_update_trigger
+  ON map_topology.contact;
+CREATE TRIGGER map_digitizer_polygon_update_trigger
+AFTER INSERT OR UPDATE OR DELETE ON map_digitizer.polygon
+FOR EACH ROW
+EXECUTE PROCEDURE map_topology.polygon_update_trigger();
