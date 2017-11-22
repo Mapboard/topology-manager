@@ -1,0 +1,24 @@
+#!/usr/bin/env zsh
+
+here="$(dirname "$(readlink -f "$0")")"
+base="${here:h}"
+source "$base/defs.sh"
+
+topo="$base/topology"
+
+dn="$topo/procedures"
+
+for fn in "$topo/fixtures"/*; do
+  psql $dbname -f "$fn"
+done
+
+psql $dbname -f "$dn/delete-changed.sql"
+
+#psql -P pager=off $dbname -f "$dn/clean-topology.sql"
+
+### Rebuild topology, updating contacts as needed
+$topo/update-contacts
+
+psql $dbname -f "$dn/update-contact-data.sql"
+
+

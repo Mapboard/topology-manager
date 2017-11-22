@@ -14,6 +14,9 @@ DECLARE
   EDGE_AGG geometry;
 BEGIN
 
+-- DISABLE THIS TRIGGER FOR NOW ---
+RETURN NULL;
+
 -- set the feature depending on type of operation
 IF (TG_OP = 'DELETE') THEN
   CURRENT_TOPOGEOM := OLD.geometry;
@@ -60,8 +63,7 @@ JOIN map_topology.edge_data d
 DELETE
 FROM map_topology.map_face f
 WHERE topology = CURRENT_TOPOLOGY
-  AND ST_Intersects(CURRENT_TOPOGEOM, f.geometry)
-  AND NOT ST_Within(CURRENT_TOPOGEOM, f.geometry);
+  AND ST_Intersects(CURRENT_TOPOGEOM, f.geometry);
 
 -- Polygonize the new edges into faces
 WITH face AS (
@@ -73,10 +75,9 @@ SELECT
   map_topology.unitForArea(f.geometry, CURRENT_TOPOLOGY),
   map_topology.addMapFace(f.geometry, 1),
   CURRENT_TOPOLOGY,
-  f.geometry
-FROM face f
-JOIN map_digitizer.polygon_type t
-  ON GEOM_TYPE = t.id;
+  ST_Multi(f.geometry)
+FROM face f;
+RAISE NOTICE 'Created new faces';
 
 RETURN null;
 

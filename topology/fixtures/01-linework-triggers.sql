@@ -10,6 +10,7 @@ Procedure to keep contact table in sync with linework table
 RETURNS trigger AS $$
 DECLARE
   layerID integer;
+  CURRENT_TOPOLOGY text;
 BEGIN
 
   SELECT layer_id
@@ -23,7 +24,19 @@ BEGIN
     FROM map_topology.contact c
     WHERE OLD.id = c.id;
     RETURN OLD;
-  ELSIF (TG_OP = 'UPDATE') THEN
+  END IF;
+
+  -- We don't insert into the contacts table if
+  -- the topology is null (this is mostly for speed
+  -- with large topologies).
+  SELECT topology INTO CURRENT_TOPOLOGY
+  FROM map_digitizer.linework_type t
+  WHERE t.id = GEOM_TYPE;
+  IF (CURRENT_TOPOLOGY IS NULL) THEN
+    RETURN NEW;
+  END IF:
+
+  IF (TG_OP = 'UPDATE') THEN
     -- Set the geometry first, but only if it is changed
     UPDATE map_topology.contact c
     SET

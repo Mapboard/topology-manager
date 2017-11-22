@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS map_topology.map_face (
 SELECT topology.AddTopoGeometryColumn('map_topology',
   'map_topology', 'map_face', 'topo', 'MULTIPOLYGON');
 
+CREATE INDEX map_face_gix ON map_topology.map_face USING GIST (geometry);
+
