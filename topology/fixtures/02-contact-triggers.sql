@@ -3,37 +3,44 @@ When `map_topology.contact` table is updated, changes should propagate
 to `map_topology.map_face`
 */
 
-/* on CREATE */
+/*
+A table to hold dirty faces
+*/
+CREATE TABLE IF NOT EXISTS map_topology.__dirty_face (
+  id integer REFERENCES map_topology.face ON DELETE CASCADE,
+  topology text references map_topology.subtopology ON DELETE CASCADE,
+  PRIMARY KEY(id, topology)
+);
 
 CREATE OR REPLACE FUNCTION map_topology.contact_geometry_changed()
 RETURNS trigger AS $$
 DECLARE
   CURRENT_TOPOGEOM topogeometry;
   CURRENT_TOPOLOGY text;
-  GEOM_TYPE text;
-  EDGE_AGG geometry;
 BEGIN
 
 -- DISABLE THIS TRIGGER FOR NOW ---
-RETURN NULL;
 
 -- set the feature depending on type of operation
 IF (TG_OP = 'DELETE') THEN
   CURRENT_TOPOGEOM := OLD.geometry;
-  GEOM_TYPE := OLD.type;
+  CURRENT_TOPOLOGY := OLD.topology;
 ELSE
   CURRENT_TOPOGEOM := NEW.geometry;
-  GEOM_TYPE := NEW.type;
+  CURRENT_TOPOLOGY := NEW.topology;
 END IF;
 
--- Get the active topology
-SELECT topology INTO CURRENT_TOPOLOGY
-FROM map_digitizer.linework_type t
-WHERE t.id = GEOM_TYPE;
+INSERT INTO map_topology.__dirty_face (face_id, topology)
+SELECT face_id, CURRENT_TOPOLOGY
+FROM map_topology.edge_face ef
+WHERE ef.edge_id IN (SELECT
+  (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1]);
 
--- Get the edges surrounding these faces
--- and the edges defining our geometry
+RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
+/*
 WITH edges AS (
 SELECT
   abs(
@@ -43,7 +50,7 @@ SELECT
   ) edge_id
 FROM map_topology.map_face f
 WHERE f.topology = CURRENT_TOPOLOGY
-  AND ST_Touches(f.geometry, CURRENT_TOPOGEOM)
+  AND ST_Intersects(f.geometry, CURRENT_TOPOGEOM)
 UNION ALL
 SELECT
   (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1] edge_id
@@ -80,11 +87,7 @@ FROM face f;
 RAISE NOTICE 'Created new faces';
 
 RETURN null;
-
-END;
-
-$$ LANGUAGE plpgsql;
-
+*/
 
 /* on UPDATE */
 
