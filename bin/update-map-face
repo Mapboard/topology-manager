@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+
+here=$(dirname "$(readlink -f "$0")")
+base=${here:h}
+
+source "$base/defs.sh"
+
+if [ "$1" = '--reset' ]; then
+  echo "Resetting map faces"
+  psql $dbname -f "$base/topology/procedures/reset-map-face.sql"
+fi
+
+psql $dbname -c "SELECT map_topology.update_map_face()"
+

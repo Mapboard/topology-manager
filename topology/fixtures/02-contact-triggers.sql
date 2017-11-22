@@ -45,6 +45,7 @@ DECLARE
   __face map_topology.__dirty_face;
   __dissolved_faces integer[];
   __n_updated integer;
+  __new_geometry geometry;
 BEGIN
 
 CREATE TEMPORARY TABLE face_relation ON COMMIT DROP AS
@@ -106,8 +107,42 @@ FROM faces;
 
 RAISE NOTICE '% for %', __dissolved_faces, __face.topology;
 
---- Update the actual geometry
+--- Update the geometry
 
+--- Create geometry
+SELECT ST_Union(
+  ST_GetFaceGeometry('map_topology',face_id)) geom
+FROM map_topology.face
+INTO __new_geometry
+WHERE face_id = ANY(__dissolved_faces);
+--- Get overlapping topogeometries
+
+
+--- Delete overlapping topogeometries and insert all of their
+--- constituent faces into the dirty linework channel (if not
+--- already there)
+WITH del AS (
+DELETE FROM map_topology.map_face mf
+WHERE ST_Overlaps(__new_geometry, mf.topo)
+RETURNING topology.GetTopoGeomElements(mf.topo))[1] face)
+INSERT INTO map_topology.__dirty_face (id, topology)
+SELECT
+  face,
+  __face.topology
+FROM del
+ON CONFLICT DO NOTHING;
+
+--- Insert new topogeometry
+INSERT INTO map_topology.map_face
+  (unit_id,topo,topology, geometry)
+SELECT
+  map_topology.unitForArea(__new_geometry, __face.topology),
+  map_topology.addMapFace(__new_geometry, 1),
+  __face_topology,
+  ST_Multi(__new_geometry)
+FROM face f;
+
+-- Delete from dirty faces where we just created a face
 WITH a AS (
 DELETE
 FROM map_topology.__dirty_face df
