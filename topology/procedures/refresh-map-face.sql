@@ -1,8 +1,16 @@
 /*
 Procedure to create map faces in bulk after deleting all of them.
 */
-TRUNCATE TABLE topology.map_face;
-SELECT pg_catalog.setval(pg_get_serial_sequence('map_topology.map_face', 'id'),
+-- Every topology face is dirty
+INSERT INTO map_topology.__dirty_face
+SELECT face_id face, st.id topology
+FROM map_topology.face
+CROSS JOIN map_topology.subtopology st
+ON CONFLICT DO NOTHING;
+
+TRUNCATE TABLE map_topology.map_face;
+SELECT pg_catalog.setval(
+  pg_get_serial_sequence('map_topology.map_face', 'id'),
   MAX(id))
   FROM map_topology.map_face;
 

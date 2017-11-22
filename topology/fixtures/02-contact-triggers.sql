@@ -30,13 +30,98 @@ ELSE
   CURRENT_TOPOLOGY := NEW.topology;
 END IF;
 
-INSERT INTO map_topology.__dirty_face (face_id, topology)
+INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT face_id, CURRENT_TOPOLOGY
 FROM map_topology.edge_face ef
 WHERE ef.edge_id IN (SELECT
   (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1]);
-
 RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION map_topology.update_map_face()
+RETURNS void AS $$
+DECLARE
+  __face map_topology.__dirty_face;
+  __dissolved_faces integer[];
+  __n_updated integer;
+BEGIN
+
+CREATE TEMPORARY TABLE face_relation ON COMMIT DROP AS
+WITH ec AS (
+SELECT
+c.id contact_id,
+c.topology,
+(topology.GetTopoGeomElements(c.geometry))[1] edge_id
+FROM map_topology.contact c
+)
+SELECT
+  f1.edge_id,
+  f1.face_id f1,
+  f2.face_id f2,
+  ec.topology
+FROM map_topology.edge_face f1
+JOIN map_topology.edge_face f2
+  ON f1.edge_id = f2.edge_id
+ AND f1.face_id != f2.face_id
+LEFT JOIN ec
+  ON ec.edge_id = f1.edge_id;
+
+-- Loop throug table of dirty linework
+WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
+LOOP
+
+SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
+
+RAISE NOTICE '%', __face.id;
+
+WITH RECURSIVE joinable_face AS (
+SELECT DISTINCT ON (topology, f1, f2)
+  f1, f2, topology
+FROM face_relation
+WHERE coalesce(topology,'none') != __face.topology
+),
+r(faces,adjacent,cycle) AS (
+SELECT
+  ARRAY[f.f1, f.f2] faces,
+  f.f2 adjacent,
+  false
+FROM joinable_face f
+WHERE f1 = __face.id
+UNION
+SELECT DISTINCT ON (f2)
+  r1.faces || j.f2 faces,
+  j.f2 adjacent,
+  (j.f2 = ANY(r1.faces)) AS cycle
+FROM joinable_face j, r r1
+WHERE r1.adjacent = j.f1
+  AND NOT cycle
+),
+faces AS (
+SELECT DISTINCT unnest(faces) face FROM r
+)
+SELECT coalesce(array_agg(face),ARRAY[__face.id])
+INTO __dissolved_faces
+FROM faces;
+
+RAISE NOTICE '% for %', __dissolved_faces, __face.topology;
+
+--- Update the actual geometry
+
+WITH a AS (
+DELETE
+FROM map_topology.__dirty_face df
+WHERE topology = __face.topology
+  AND id = ANY(__dissolved_faces)
+RETURNING id
+)
+SELECT count(id)
+INTO __n_updated FROM a;
+
+RAISE NOTICE 'FIXED % FACES', __n_updated;
+
+END LOOP;
+
 END;
 $$ LANGUAGE plpgsql;
 
