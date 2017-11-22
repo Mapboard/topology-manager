@@ -74,7 +74,7 @@ LOOP
 
 SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
 
-RAISE NOTICE '%', __face.id;
+RAISE NOTICE '% for %', __face.id, __face.topology;
 
 WITH RECURSIVE joinable_face AS (
 SELECT DISTINCT ON (topology, f1, f2)
@@ -105,10 +105,8 @@ SELECT coalesce(array_agg(face),ARRAY[__face.id])
 INTO __dissolved_faces
 FROM faces;
 
-RAISE NOTICE '% for %', __dissolved_faces, __face.topology;
-
 --- Update the geometry
-
+IF (NOT 0 = ANY(__dissolved_faces)) THEN
 --- Create geometry
 SELECT ST_Union(
   ST_GetFaceGeometry('map_topology',face_id)) geom
@@ -124,10 +122,11 @@ WHERE face_id = ANY(__dissolved_faces);
 WITH del AS (
 DELETE FROM map_topology.map_face mf
 WHERE ST_Overlaps(__new_geometry, mf.topo)
-RETURNING topology.GetTopoGeomElements(mf.topo))[1] face)
+RETURNING topo
+)
 INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT
-  face,
+  (topology.GetTopoGeomElements(topo))[1],
   __face.topology
 FROM del
 ON CONFLICT DO NOTHING;
@@ -138,9 +137,10 @@ INSERT INTO map_topology.map_face
 SELECT
   map_topology.unitForArea(__new_geometry, __face.topology),
   map_topology.addMapFace(__new_geometry, 1),
-  __face_topology,
-  ST_Multi(__new_geometry)
-FROM face f;
+  __face.topology,
+  ST_Multi(__new_geometry);
+
+END IF;
 
 -- Delete from dirty faces where we just created a face
 WITH a AS (
