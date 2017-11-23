@@ -129,7 +129,8 @@ WITH a AS (
   SELECT ARRAY[unnest(__dissolved_faces),3]::topology.topoelement vals
 ),
 b AS (
-SELECT CreateTopoGeom('map_topology', 3, __layer_id, TopoElementArray_Agg(a.vals)) topo
+SELECT CreateTopoGeom('map_topology', 3, __layer_id,
+  TopoElementArray_Agg(a.vals)) topo
 FROM a
 ),
 g AS (
