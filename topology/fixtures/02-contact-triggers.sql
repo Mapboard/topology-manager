@@ -119,6 +119,8 @@ SELECT coalesce(array_agg(face),ARRAY[__face.id])
 INTO __dissolved_faces
 FROM faces;
 
+RAISE NOTICE 'Faces: %', __dissolved_faces;
+
 --- Update the geometry
 IF (NOT 0 = ANY(__dissolved_faces)) THEN
 
@@ -130,15 +132,22 @@ b AS (
 SELECT CreateTopoGeom('map_topology', 3, __layer_id, TopoElementArray_Agg(a.vals)) topo
 FROM a
 ),
+g AS (
+SELECT
+  topo,
+  topo::geometry geometry,
+  __face.topology
+FROM b
+),
 ins AS (
 INSERT INTO map_topology.map_face
   (unit_id, topo, topology, geometry)
 SELECT
-map_topology.unitForArea(b.topo::geometry, __face.topology) unit_id,
-b.topo,
-__face.topology,
-b.topo::geometry
-FROM b
+map_topology.unitForArea(g.geometry, g.topology) unit_id,
+g.topo,
+g.topology,
+g.geometry
+FROM g
 RETURNING *
 ),
 del AS (
@@ -171,12 +180,10 @@ RETURNING id
 SELECT count(id)
 INTO __n_updated FROM a;
 
---RAISE NOTICE 'FIXED % FACES', __n_updated;
-
 RETURN __face;
 
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION map_topology.update_all_map_faces()
 RETURNS void AS $$
