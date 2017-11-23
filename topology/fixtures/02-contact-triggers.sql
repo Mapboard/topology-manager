@@ -157,8 +157,7 @@ del AS (
 --- already there)
 DELETE FROM map_topology.map_face mf
 USING ins
-WHERE ST_Overlaps(ins.topo, mf.topo)
-  AND NOT ST_Equals(ins.topo, mf.topo)
+WHERE ST_Overlaps(ins.geometry, mf.geometry)
 RETURNING mf.topo
 )
 INSERT INTO map_topology.__dirty_face (id, topology)
