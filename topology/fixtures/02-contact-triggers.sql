@@ -74,17 +74,21 @@ RETURNS map_topology.__dirty_face AS $$
 DECLARE
   __face map_topology.__dirty_face;
   __dissolved_faces integer[];
+  __layer_id integer;
   __n_updated integer;
-  __new_geometry geometry;
 BEGIN
+
+SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
+
+SELECT l.layer_id
+INTO __layer_id
+FROM topology.layer l
+WHERE schema_name='map_topology'
+AND table_name='map_face';
 
 IF refresh THEN
   EXECUTE 'REFRESH MATERIALIZED VIEW map_topology.__face_relation';
 END IF;
-
-SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
-
---RAISE NOTICE '% for %', __face.id, __face.topology;
 
 WITH RECURSIVE joinable_face AS (
 SELECT DISTINCT ON (topology, f1, f2)
@@ -117,22 +121,35 @@ FROM faces;
 
 --- Update the geometry
 IF (NOT 0 = ANY(__dissolved_faces)) THEN
---- Create geometry
-SELECT ST_Union(
-  ST_GetFaceGeometry('map_topology',face_id)) geom
-FROM map_topology.face
-INTO __new_geometry
-WHERE face_id = ANY(__dissolved_faces);
---- Get overlapping topogeometries
 
-
+--- Insert new topogeometry and recover ID
+WITH a AS (
+  SELECT ARRAY[unnest(__dissolved_faces),3]::topology.topoelement vals
+),
+b AS (
+SELECT CreateTopoGeom('map_topology', 3, __layer_id, TopoElementArray_Agg(a.vals)) topo
+FROM a
+),
+ins AS (
+INSERT INTO map_topology.map_face
+  (unit_id, topo, topology, geometry)
+SELECT
+map_topology.unitForArea(b.topo::geometry, __face.topology) unit_id,
+b.topo,
+__face.topology,
+b.topo::geometry
+FROM b
+RETURNING *
+),
+del AS (
 --- Delete overlapping topogeometries and insert all of their
 --- constituent faces into the dirty linework channel (if not
 --- already there)
-WITH del AS (
 DELETE FROM map_topology.map_face mf
-WHERE ST_Overlaps(__new_geometry, mf.topo)
-RETURNING topo
+USING ins
+WHERE ST_Overlaps(ins.topo, mf.topo)
+  AND NOT ST_Equals(ins.topo, mf.topo)
+RETURNING mf.topo
 )
 INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT
@@ -140,15 +157,6 @@ SELECT
   __face.topology
 FROM del
 ON CONFLICT DO NOTHING;
-
---- Insert new topogeometry
-INSERT INTO map_topology.map_face
-  (unit_id,topo,topology, geometry)
-SELECT
-  map_topology.unitForArea(__new_geometry, __face.topology),
-  map_topology.addMapFace(__new_geometry, 1),
-  __face.topology,
-  ST_Multi(__new_geometry);
 
 END IF;
 
