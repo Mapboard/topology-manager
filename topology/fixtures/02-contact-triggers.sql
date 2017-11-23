@@ -39,16 +39,13 @@ RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION map_topology.update_map_face()
-RETURNS void AS $$
-DECLARE
-  __face map_topology.__dirty_face;
-  __dissolved_faces integer[];
-  __n_updated integer;
-  __new_geometry geometry;
-BEGIN
-
-CREATE TEMPORARY TABLE face_relation ON COMMIT DROP AS
+/*
+A materialized view to store relationships between faces,
+which saves ~0.5s per query. This is updated by default
+but this can be disabled for speed.
+*/
+DROP MATERIALIZED VIEW IF EXISTS map_topology.__face_relation;
+CREATE MATERIALIZED VIEW map_topology.__face_relation AS
 WITH ec AS (
 SELECT
 c.id contact_id,
@@ -67,19 +64,32 @@ JOIN map_topology.edge_face f2
  AND f1.face_id != f2.face_id
 LEFT JOIN ec
   ON ec.edge_id = f1.edge_id;
+-- Indexes to speed things up
+CREATE INDEX map_topology__face_relation_face_index
+  ON map_topology.__face_relation (f1);
 
--- Loop throug table of dirty linework
-WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
-LOOP
+CREATE OR REPLACE FUNCTION map_topology.update_map_face(
+  refresh boolean DEFAULT true)
+RETURNS map_topology.__dirty_face AS $$
+DECLARE
+  __face map_topology.__dirty_face;
+  __dissolved_faces integer[];
+  __n_updated integer;
+  __new_geometry geometry;
+BEGIN
+
+IF refresh THEN
+  EXECUTE 'REFRESH MATERIALIZED VIEW map_topology.__face_relation';
+END IF;
 
 SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
 
-RAISE NOTICE '% for %', __face.id, __face.topology;
+--RAISE NOTICE '% for %', __face.id, __face.topology;
 
 WITH RECURSIVE joinable_face AS (
 SELECT DISTINCT ON (topology, f1, f2)
   f1, f2, topology
-FROM face_relation
+FROM map_topology.__face_relation
 WHERE coalesce(topology,'none') != __face.topology
 ),
 r(faces,adjacent,cycle) AS (
@@ -153,67 +163,28 @@ RETURNING id
 SELECT count(id)
 INTO __n_updated FROM a;
 
-RAISE NOTICE 'FIXED % FACES', __n_updated;
+--RAISE NOTICE 'FIXED % FACES', __n_updated;
 
+RETURN __face;
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION map_topology.update_all_map_faces()
+RETURNS void AS $$
+BEGIN
+
+EXECUTE 'REFRESH MATERIALIZED VIEW map_topology.__face_relation';
+-- Loop throug table of dirty linework
+WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
+LOOP
+  PERFORM map_topology.update_map_face(false);
 END LOOP;
 
 END;
 $$ LANGUAGE plpgsql;
 
-/*
-WITH edges AS (
-SELECT
-  abs(
-    (ST_GetFaceEdges('map_topology',
-     (topology.GetTopoGeomElements(f.topo))[1])
-    ).edge
-  ) edge_id
-FROM map_topology.map_face f
-WHERE f.topology = CURRENT_TOPOLOGY
-  AND ST_Intersects(f.geometry, CURRENT_TOPOGEOM)
-UNION ALL
-SELECT
-  (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1] edge_id
-)
-SELECT
-  ST_Union(d.geom) geometry
-INTO EDGE_AGG
-FROM edges e
-JOIN map_topology.edge_topology t
-  ON e.edge_id = t.edge_id
- AND t.topology = CURRENT_TOPOLOGY
-JOIN map_topology.edge_data d
-  ON e.edge_id = d.edge_id;
 
-
--- Delete the old faces
-DELETE
-FROM map_topology.map_face f
-WHERE topology = CURRENT_TOPOLOGY
-  AND ST_Intersects(CURRENT_TOPOGEOM, f.geometry);
-
--- Polygonize the new edges into faces
-WITH face AS (
-  SELECT (ST_Dump(ST_Polygonize(EDGE_AGG))).geom geometry
-)
-INSERT INTO map_topology.map_face
-  (unit_id,topo,topology, geometry)
-SELECT
-  map_topology.unitForArea(f.geometry, CURRENT_TOPOLOGY),
-  map_topology.addMapFace(f.geometry, 1),
-  CURRENT_TOPOLOGY,
-  ST_Multi(f.geometry)
-FROM face f;
-RAISE NOTICE 'Created new faces';
-
-RETURN null;
-*/
-
-/* on UPDATE */
-
-/* on DELETE
-
-*/
 
 -- Trigger to create a non-topogeometry representation for
 -- storage on each row (for speed of lookup)
