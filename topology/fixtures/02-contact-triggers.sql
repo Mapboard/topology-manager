@@ -10,6 +10,8 @@ DECLARE
   CURRENT_TOPOLOGY text;
 BEGIN
 
+/* Set adjacent faces to dirty */
+
 -- set the feature depending on type of operation
 IF (TG_OP = 'DELETE') THEN
   CURRENT_TOPOGEOM := OLD.geometry;

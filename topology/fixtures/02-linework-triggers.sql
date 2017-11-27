@@ -11,6 +11,7 @@ RETURNS trigger AS $$
 DECLARE
   layerID integer;
   CURRENT_TOPOLOGY text;
+  __precision integer;
 BEGIN
 
   SELECT layer_id
@@ -18,6 +19,11 @@ BEGIN
   FROM topology.layer
   WHERE schema_name='map_topology'
     AND table_name='contact';
+
+  SELECT precision
+  INTO __precision
+  FROM topology.topology
+  WHERE name='map_topology';
 
   IF (TG_OP = 'DELETE') THEN
     DELETE
@@ -40,7 +46,7 @@ BEGIN
     -- Set the geometry first, but only if it is changed
     UPDATE map_topology.contact c
     SET
-      geometry = topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, 1),
+      geometry = topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
       hash = md5(ST_AsBinary(NEW.geometry))::uuid
     WHERE NEW.id = c.id
       AND md5(ST_AsBinary(NEW.geometry))::uuid != c.hash
@@ -62,7 +68,7 @@ BEGIN
       (id, geometry, hash, type, certainty, map_width, hidden)
     SELECT
       NEW.id,
-      topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, 1),
+      topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
       md5(ST_AsBinary(NEW.geometry))::uuid,
       NEW.type,
       NEW.certainty,
