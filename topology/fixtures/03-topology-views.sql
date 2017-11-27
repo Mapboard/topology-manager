@@ -4,9 +4,9 @@ CREATE OR REPLACE VIEW map_topology.edge_contact AS
   	r.element_id edge_id
 	FROM map_topology.contact
   JOIN map_topology.relation r
-	  ON (geometry).id = r.topogeo_id
-	  AND (geometry).layer_id = r.layer_id
-	  AND (geometry).type = r.element_type;
+	  ON (topo).id = r.topogeo_id
+	  AND (topo).layer_id = r.layer_id
+	  AND (topo).type = r.element_type;
 
 CREATE OR REPLACE VIEW map_topology.node_edge AS
   WITH node_edge AS (
@@ -105,4 +105,16 @@ SELECT
   c.type
 FROM map_topology.__linework_failures f
 JOIN map_topology.contact c ON c.id = f.id;
+
+CREATE OR REPLACE VIEW map_topology.face_display AS
+SELECT
+  f.id,
+  f.unit_id,
+  f.geometry,
+  f.topology,
+  t.color,
+  t.name
+FROM map_face f
+JOIN map_digitizer.polygon_type t
+  ON f.unit_id = t.id;
 

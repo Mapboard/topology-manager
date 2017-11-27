@@ -1,5 +1,8 @@
+UPDATE map_topology.contact
+SET
+  topo = null,
+  hash = null;
 
-TRUNCATE TABLE map_topology.contact;
 TRUNCATE TABLE map_topology.face CASCADE;
 TRUNCATE TABLE map_topology.relation CASCADE;
 TRUNCATE TABLE map_topology.map_face CASCADE;

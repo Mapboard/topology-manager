@@ -18,7 +18,8 @@ BEGIN
   INTO layerID
   FROM topology.layer
   WHERE schema_name='map_topology'
-    AND table_name='contact';
+    AND table_name='contact'
+    AND feature_column='topo';
 
   SELECT precision
   INTO __precision
