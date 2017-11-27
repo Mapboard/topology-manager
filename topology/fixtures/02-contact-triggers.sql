@@ -14,10 +14,10 @@ BEGIN
 
 -- set the feature depending on type of operation
 IF (TG_OP = 'DELETE') THEN
-  CURRENT_TOPOGEOM := OLD.geometry;
+  CURRENT_TOPOGEOM := OLD.topo;
   CURRENT_TOPOLOGY := OLD.topology;
 ELSE
-  CURRENT_TOPOGEOM := NEW.geometry;
+  CURRENT_TOPOGEOM := NEW.topo;
   CURRENT_TOPOLOGY := NEW.topology;
 END IF;
 
@@ -44,7 +44,7 @@ WITH ec AS (
 SELECT
 c.id contact_id,
 c.topology,
-(topology.GetTopoGeomElements(c.geometry))[1] edge_id
+(topology.GetTopoGeomElements(c.topo))[1] edge_id
 FROM map_topology.contact c
 )
 SELECT

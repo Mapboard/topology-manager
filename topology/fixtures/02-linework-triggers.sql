@@ -46,7 +46,9 @@ BEGIN
     -- Set the geometry first, but only if it is changed
     UPDATE map_topology.contact c
     SET
-      geometry = topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
+      geometry = NEW.geometry,
+      -- Doing two things at once, could split out the below
+      topo = topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
       hash = md5(ST_AsBinary(NEW.geometry))::uuid
     WHERE NEW.id = c.id
       AND md5(ST_AsBinary(NEW.geometry))::uuid != c.hash
@@ -65,9 +67,10 @@ BEGIN
   ELSIF (TG_OP = 'INSERT') THEN
     -- Insert the row
     INSERT INTO map_topology.contact
-      (id, geometry, hash, type, certainty, map_width, hidden)
+      (id, geometry, topo, hash, type, certainty, map_width, hidden)
     SELECT
       NEW.id,
+      NEW.geometry,
       topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
       md5(ST_AsBinary(NEW.geometry))::uuid,
       NEW.type,
@@ -87,7 +90,7 @@ $$ LANGUAGE plpgsql;
 -- Trigger to create a non-topogeometry representation for
 -- storage on each row (for speed of lookup)
 DROP TRIGGER IF EXISTS map_digitizer_linework_update_trigger
-  ON map_topology.contact;
+  ON map_digitizer.linework;
 CREATE TRIGGER map_digitizer_linework_update_trigger
 AFTER INSERT OR UPDATE OR DELETE ON map_digitizer.linework
 FOR EACH ROW

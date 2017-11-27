@@ -82,6 +82,7 @@ WHERE face_id <> 0
 SELECT * FROM fg
 WHERE NOT ST_IsEmpty(geometry);
 
+
 -- Can be reworked with create table and triggers
 -- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
 -- https://hashrocket.com/blog/posts/materialized-view-strategies-using-postgresql
@@ -95,3 +96,13 @@ JOIN map_topology.contact c ON ec.contact_id = c.id
 JOIN map_topology.edge e ON ec.edge_id = e.edge_id
 JOIN map_digitizer.linework_type t ON c.type = t.id
 WHERE t.topology IS NOT null;
+
+/* View for invalid linework */
+CREATE OR REPLACE VIEW map_topology.invalid_linework AS
+SELECT
+  f.id,
+  c.geometry,
+  c.type
+FROM map_topology.__linework_failures f
+JOIN map_topology.contact c ON c.id = f.id;
+

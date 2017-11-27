@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS map_topology.subtopology (
 CREATE TABLE IF NOT EXISTS map_topology.contact (
     id SERIAL PRIMARY KEY,
     certainty integer,
+    geometry geometry(MultiLineString, :srid),
     type text DEFAULT 'bedrock'::text,
     hash uuid,
     map_width numeric,
@@ -13,7 +14,13 @@ CREATE TABLE IF NOT EXISTS map_topology.contact (
 );
 
 SELECT topology.AddTopoGeometryColumn('map_topology',
-  'map_topology','contact', 'geometry','LINE');
+  'map_topology','contact', 'topo','LINE');
+
+/* Table to hold invalid linework */
+
+CREATE TABLE IF NOT EXISTS map_topology.__linework_failures (
+  id integer REFERENCES map_digitizer.linework (id) ON DELETE CASCADE
+);
 
 /*
 Map Face
