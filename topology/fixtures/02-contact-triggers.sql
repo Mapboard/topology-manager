@@ -74,6 +74,7 @@ RETURNS map_topology.__dirty_face AS $$
 DECLARE
   __face map_topology.__dirty_face;
   __dissolved_faces integer[];
+  __deleted_face integer;
   __layer_id integer;
   __n_updated integer;
 BEGIN
@@ -158,15 +159,17 @@ del AS (
 DELETE FROM map_topology.map_face mf
 USING ins
 WHERE ST_Overlaps(ins.geometry, mf.geometry)
-RETURNING mf.topo
+RETURNING mf.id
 )
+SELECT id FROM del INTO __deleted_face;
+/*
 INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT
   (topology.GetTopoGeomElements(topo))[1],
   __face.topology
 FROM del
 ON CONFLICT DO NOTHING;
-
+*/
 END IF;
 
 -- Delete from dirty faces where we just created a face
