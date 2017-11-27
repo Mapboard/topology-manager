@@ -1,11 +1,7 @@
 #!/usr/bin/env zsh
 # Arguments: dbname, map-colors file
 
-#!/usr/bin/env zsh
-here=$(dirname "$(readlink -f "$0")")
-base=${here:h}
-
-dbname="Naukluft"
+source "$here/defs.sh"
 
 topo="$here/topology"
 
