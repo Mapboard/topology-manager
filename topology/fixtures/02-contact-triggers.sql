@@ -3,23 +3,12 @@ When `map_topology.contact` table is updated, changes should propagate
 to `map_topology.map_face`
 */
 
-/*
-A table to hold dirty faces
-*/
-CREATE TABLE IF NOT EXISTS map_topology.__dirty_face (
-  id integer REFERENCES map_topology.face ON DELETE CASCADE,
-  topology text references map_topology.subtopology ON DELETE CASCADE,
-  PRIMARY KEY(id, topology)
-);
-
 CREATE OR REPLACE FUNCTION map_topology.contact_geometry_changed()
 RETURNS trigger AS $$
 DECLARE
   CURRENT_TOPOGEOM topogeometry;
   CURRENT_TOPOLOGY text;
 BEGIN
-
--- DISABLE THIS TRIGGER FOR NOW ---
 
 -- set the feature depending on type of operation
 IF (TG_OP = 'DELETE') THEN
@@ -34,8 +23,11 @@ INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT face_id, CURRENT_TOPOLOGY
 FROM map_topology.edge_face ef
 WHERE ef.edge_id IN (SELECT
-  (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1]);
+  (topology.GetTopoGeomElements(CURRENT_TOPOGEOM))[1])
+ON CONFLICT DO NOTHING;
+
 RETURN NULL;
+
 END;
 $$ LANGUAGE plpgsql;
 
@@ -77,9 +69,15 @@ DECLARE
   __deleted_face integer;
   __layer_id integer;
   __n_updated integer;
+  __srid integer;
 BEGIN
 
 SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
+
+SELECT srid
+INTO __srid
+FROM topology.topology
+WHERE name='map_topology';
 
 SELECT l.layer_id
 INTO __layer_id
@@ -137,7 +135,7 @@ FROM a
 g AS (
 SELECT
   topo,
-  topo::geometry geometry,
+  ST_SetSRID(topo::geometry,__srid) geometry,
   __face.topology
 FROM b
 ),

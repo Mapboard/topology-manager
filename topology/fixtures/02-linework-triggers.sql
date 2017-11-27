@@ -31,10 +31,10 @@ BEGIN
   -- with large topologies).
   SELECT topology INTO CURRENT_TOPOLOGY
   FROM map_digitizer.linework_type t
-  WHERE t.id = GEOM_TYPE;
+  WHERE t.id = NEW.type;
   IF (CURRENT_TOPOLOGY IS NULL) THEN
     RETURN NEW;
-  END IF:
+  END IF;
 
   IF (TG_OP = 'UPDATE') THEN
     -- Set the geometry first, but only if it is changed

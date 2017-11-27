@@ -1,13 +1,16 @@
 #!/usr/bin/env zsh
 # Arguments: dbname, map-colors file
 
+#!/usr/bin/env zsh
+here=$(dirname "$(readlink -f "$0")")
+base=${here:h}
+
 source "$here/defs.sh"
 
 topo="$here/topology"
 
-cat $topo/fixtures/*.sql \
-    $here/display/fixtures/*.sql \
-| psql $dbname
+cat "$topo/fixtures"/*.sql \
+  | psql $dbname -v srid=$srid
 
 ### Rebuild topology, updating contacts as needed
 
@@ -15,12 +18,6 @@ cat $topo/fixtures/*.sql \
 psql $dbname -f "$topo/procedures/delete-changed.sql"
 
 ### Rebuild topology, updating contacts as needed
-$topo/update-contacts
+$topo/update-contacts $dbname
 psql $dbname -f "$topo/procedures/update-contact-data.sql"
-
-#psql $dbname -c "REFRESH MATERIALIZED VIEW map_topology.topology_edges;"
-#psql $dbname -f "display/fixtures/01-map-face.sql"
-
-#psql $dbname -c "REFRESH MATERIALIZED VIEW mapping.map_face"
-#psql $dbname -c "REFRESH MATERIALIZED VIEW mapping.contact"
 

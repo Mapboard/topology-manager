@@ -88,7 +88,7 @@ WHERE NOT ST_IsEmpty(geometry);
 CREATE OR REPLACE VIEW map_topology.edge_topology AS
 SELECT
   e.edge_id,
-  topology,
+  c.topology,
   geometry
 FROM map_topology.edge_contact ec
 JOIN map_topology.contact c ON ec.contact_id = c.id

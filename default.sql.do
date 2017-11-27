@@ -1,3 +1,3 @@
 source defs.sh
-cat $1 | psql $dbname >&2
+cat $1 | psql $dbname -v srid=$srid >&2
 
