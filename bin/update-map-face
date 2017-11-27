@@ -16,8 +16,8 @@ sql="SELECT count(*) FROM map_topology.__dirty_face"
 nfaces=$(psql Naukluft -tA -c $sql)
 echo "$nfaces dirty faces"
 while [[ $nfaces -ge 0 ]]; do
-  psql $dbname -tA -c "SELECT map_topology.update_map_face(false)"
-  nfaces=$(psql Naukluft -tA -c $sql)
+  psql $dbname -tA -c "SELECT map_topology.update_map_face(false)" > /dev/null
+  nfaces=$(psql $dbname -tA -c $sql)
   echo "$nfaces remaining\n"
 done
 
