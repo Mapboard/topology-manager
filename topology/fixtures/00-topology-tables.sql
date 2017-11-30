@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS map_topology.subtopology (
 CREATE TABLE IF NOT EXISTS map_topology.contact (
     id SERIAL PRIMARY KEY,
     certainty integer,
-    geometry geometry(MultiLineString, :srid),
+    geometry geometry(MultiLineString, ${srid}),
     type text DEFAULT 'bedrock'::text,
     hash uuid,
     map_width numeric,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS map_topology.map_face (
   id SERIAL PRIMARY KEY,
   unit_id text REFERENCES mapping.unit (id),
   topology text REFERENCES map_topology.subtopology (id),
-  geometry geometry(MultiPolygon, :srid)
+  geometry geometry(MultiPolygon, ${srid})
 );
 
 SELECT topology.AddTopoGeometryColumn('map_topology',

@@ -1,0 +1,13 @@
+{
+  "name": "postgis-geologic-map",
+  "version": "0.1.0",
+  "description": "A PostGIS helper library to manage a geologic map",
+  "author": "Daven Quinn",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.12.2",
+    "glob": "^7.1.2",
+    "glob-promise": "^3.3.0",
+    "pg-promise": "^7.3.2"
+  }
+}
