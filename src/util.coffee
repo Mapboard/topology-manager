@@ -28,7 +28,8 @@ sql = (fn)->
   try
     res = await db.multi procedure
   catch err
-    console.error fn
     console.error err.toString().red
+    console.error "   in: ".grey+fn
+
 
 module.exports = {db,sql}
