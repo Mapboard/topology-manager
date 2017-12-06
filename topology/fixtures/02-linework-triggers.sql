@@ -50,7 +50,8 @@ BEGIN
       geometry = NEW.geometry,
       -- Doing two things at once, could split out the below
       topo = topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
-      hash = md5(ST_AsBinary(NEW.geometry))::uuid
+      hash = md5(ST_AsBinary(NEW.geometry))::uuid,
+      topology = CURRENT_TOPOLOGY
     WHERE NEW.id = c.id
       AND md5(ST_AsBinary(NEW.geometry))::uuid != c.hash
       OR c.hash IS null;
@@ -68,12 +69,13 @@ BEGIN
   ELSIF (TG_OP = 'INSERT') THEN
     -- Insert the row
     INSERT INTO map_topology.contact
-      (id, geometry, topo, hash, type, certainty, map_width, hidden)
+      (id, geometry, topo, hash, topology, type, certainty, map_width, hidden)
     SELECT
       NEW.id,
       NEW.geometry,
       topology.toTopoGeom(NEW.geometry, 'map_topology',layerID, __precision),
       md5(ST_AsBinary(NEW.geometry))::uuid,
+      CURRENT_TOPOLOGY,
       NEW.type,
       NEW.certainty,
       NEW.map_width,
@@ -128,7 +130,7 @@ $$ LANGUAGE plpgsql;
 -- Trigger to create a non-topogeometry representation for
 -- storage on each row (for speed of lookup)
 DROP TRIGGER IF EXISTS map_digitizer_polygon_update_trigger
-  ON map_topology.contact;
+  ON map_digitizer.polygon;
 CREATE TRIGGER map_digitizer_polygon_update_trigger
 AFTER INSERT OR UPDATE OR DELETE ON map_digitizer.polygon
 FOR EACH ROW

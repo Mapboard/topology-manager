@@ -13,6 +13,7 @@ do ->
   await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
 
   {nfaces} = await db.one count
+  console.log "#{nfaces} remaining"
   while nfaces > 0
     await db.query "SELECT map_topology.update_map_face(false)"
     {nfaces} = await db.one count
