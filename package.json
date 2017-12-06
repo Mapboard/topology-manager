@@ -5,6 +5,7 @@
   "author": "Daven Quinn",
   "license": "MIT",
   "dependencies": {
+    "bluebird": "^3.5.1",
     "colors": "^1.1.2",
     "commander": "^2.12.2",
     "glob": "^7.1.2",

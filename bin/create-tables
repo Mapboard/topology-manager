@@ -1,14 +1,14 @@
 #!/usr/bin/env coffee
 glob = require 'glob-promise'
 {resolve} = require 'path'
-{db,sql} = require '../src/util'
+{proc} = require '../src/util'
 __base = resolve __dirname, '..'
 
 do ->
   try
     for fn in await glob('topology/fixtures/*.sql', cwd: __base)
-      await sql(fn)
-    await sql('extensions/map-digitizer')
+      await proc(fn)
+    await proc('extensions/map-digitizer')
   catch
     process.exit()
   process.exit()

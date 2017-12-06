@@ -12,6 +12,6 @@ SELECT
 FROM map_digitizer.linework l
 JOIN map_digitizer.linework_type t
   ON l.type = t.id
-WHERE l.id = :id
+WHERE l.id = ${id}
   AND t.topology IS NOT null
 RETURNING (topo IS null);
