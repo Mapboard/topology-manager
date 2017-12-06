@@ -2,7 +2,6 @@
 
 here=$(dirname "$(readlink -f "$0")")
 base=${here:h}
-
 source "$base/defs.sh"
 
 if [ "$1" = '--reset' ]; then

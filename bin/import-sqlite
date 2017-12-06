@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+
+here=$(dirname "$(readlink -f "$0")")
+base=${here:h}
+source "$base/defs.sh"
+
+sqlite3 -csv $1 "SELECT * FROM linework_type" \
+| sed "s/\"//g" \
+| sql -c "COPY map_digitizer.linework_type(id,name,color) FROM STDIN DELIMITER ','"
+
+sqlite3 -csv $1 "SELECT * FROM polygon_type" \
+| sed "s/\"//g" \
+| sql -c "COPY map_digitizer.polygon_type(id,name,color) FROM STDIN DELIMITER ','"
+
+ogr2ogr -f "PostgreSQL" \
+  -lco SCHEMA="map_digitizer" \
+  -nln linework_import \
+  -skipfailures \
+  $db_connection $1 "linework"
+
+ogr2ogr -f "PostgreSQL" \
+  -lco SCHEMA="map_digitizer" \
+  -nln polygon_import \
+  -skipfailures \
+  $db_connection $1 "polygon"
