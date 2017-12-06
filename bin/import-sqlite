@@ -23,3 +23,5 @@ ogr2ogr -f "PostgreSQL" \
   -nln polygon_import \
   -skipfailures \
   $db_connection $1 "polygon"
+
+sql -f "$base/sql/cleanup-sqlite-import.sql"
