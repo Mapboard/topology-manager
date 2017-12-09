@@ -1,23 +1,24 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env coffee
+{argv} = require 'yargs'
+{db,sql, proc} = require '../src/util'
 
-here=$(dirname "$(readlink -f "$0")")
-base=${here:h}
+count = "SELECT count(*) nfaces FROM map_topology.__dirty_face"
 
-source "$base/defs.sh"
+do ->
 
-if [ "$1" = '--reset' ]; then
-  echo "Resetting map faces"
-  psql $dbname -f "$base/topology/procedures/reset-map-face.sql"
-fi
+  if argv.reset?
+    console.log "Resetting map faces"
+    await proc "topology/procedures/reset-map-face"
 
-psql $dbname -c "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
+  await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
 
-sql="SELECT count(*) FROM map_topology.__dirty_face"
-nfaces=$(psql $dbname -tA -c $sql)
-echo "$nfaces dirty faces"
-while (( $nfaces > 0 )); do
-  psql $dbname -tA -c "SELECT map_topology.update_map_face(false)" > /dev/null
-  nfaces=$(psql $dbname -tA -c $sql)
-  echo "$nfaces remaining\n"
-done
+  {nfaces} = await db.one count
+  console.log "#{nfaces} remaining"
+  while nfaces > 0
+    await db.query "SELECT map_topology.update_map_face(false)"
+    {nfaces} = await db.one count
+    console.log "#{nfaces} remaining"
+
+  await db.none "REFRESH MATERIALIZED VIEW map_topology.contact_display"
+  process.exit()
 

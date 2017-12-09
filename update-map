@@ -10,14 +10,14 @@ source "$here/defs.sh"
 topo="$here/topology"
 
 cat "$topo/fixtures"/*.sql \
-  | psql $dbname -v srid=$srid
+  | psql $dbname -h $host -v srid=$srid
 
 ### Rebuild topology, updating contacts as needed
 
 ### Updating topology ###
-psql $dbname -f "$topo/procedures/delete-changed.sql"
+psql $dbname -h $host -f "$topo/procedures/delete-changed.sql"
 
 ### Rebuild topology, updating contacts as needed
 $topo/update-contacts $dbname
-psql $dbname -f "$topo/procedures/update-contact-data.sql"
+psql $dbname -h $host -f "$topo/procedures/update-contact-data.sql"
 

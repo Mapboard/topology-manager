@@ -19,7 +19,7 @@ SELECT topology.AddTopoGeometryColumn('map_topology',
 /* Table to hold invalid linework */
 
 CREATE TABLE IF NOT EXISTS map_topology.__linework_failures (
-  id integer REFERENCES map_digitizer.linework (id) ON DELETE CASCADE
+  id integer REFERENCES map_topology.contact (id) ON DELETE CASCADE
 );
 
 /*
@@ -27,7 +27,7 @@ Map Face
 */
 CREATE TABLE IF NOT EXISTS map_topology.map_face (
   id SERIAL PRIMARY KEY,
-  unit_id text REFERENCES mapping.unit (id),
+  unit_id text,
   topology text REFERENCES map_topology.subtopology (id),
   geometry geometry(MultiPolygon, ${srid})
 );

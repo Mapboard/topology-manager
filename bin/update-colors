@@ -1,0 +1,17 @@
+#!/usr/bin/env coffee
+
+{readFileSync} = require 'fs'
+{db} = require '../src/util'
+
+do ->
+  csv = readFileSync process.argv[2], 'utf-8'
+
+  for ln in csv.split(/\r?\n/)
+    continue if ln == ''
+    [id,color] = ln.split(',')
+    console.log id,color
+    await db.query "UPDATE map_digitizer.polygon_type
+                    SET color = ${color}
+                    WHERE id = ${id}", {id,color}
+  process.exit()
+

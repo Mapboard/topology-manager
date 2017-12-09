@@ -1,40 +1,16 @@
 #!/usr/bin/env coffee
 glob = require 'glob-promise'
-repl = require 'repl'
-_ = require 'pg-promise'
-query = null#(e)->console.log e.query
-pgp = _ {query}
-{join, resolve} = require 'path'
-
-{database, srid, topo_schema,
- data_schema, host, port, connection} = require '../config.json'
-
-{QueryFile} = pgp
-{readFileSync} = require 'fs'
-
-host ?= 'localhost'
-port ?= 5432
-connection ?= { host, port, database}
-
-db = pgp(connection)
-
+{resolve} = require 'path'
+{proc} = require '../src/util'
 __base = resolve __dirname, '..'
 
-sql = (fn)->
-  params = {topo_schema, data_schema, srid}
-  if not fn.endsWith('.sql')
-    fn += '.sql'
-  p = join __base, fn
-  procedure = QueryFile p, {params}
-  try
-    res = await db.query procedure
-  catch err
-    console.error fn
-    console.error err
-
 do ->
-  for fn in await glob('topology/fixtures/*.sql', cwd: __base)
-    await sql(fn)
-  await sql('extensions/map-digitizer')
+  try
+    for fn in await glob('topology/fixtures/*.sql', cwd: __base)
+      await proc(fn)
+    await proc('extensions/map-digitizer')
+    await proc('extensions/unit-hierarchy')
+  catch
+    process.exit()
   process.exit()
 
