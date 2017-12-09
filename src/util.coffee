@@ -2,9 +2,11 @@ PGPromise = require 'pg-promise'
 {join, resolve} = require 'path'
 colors = require 'colors'
 Promise = require 'bluebird'
+{TSParser} = require 'tsparser'
+{readFileSync} = require 'fs'
 
-{database, srid, topo_schema,
- data_schema, host, port, connection, tolerance} = require '../config.json'
+{srid, topo_schema,
+ data_schema, connection, tolerance} = require './config'
 
 logFunc = (e)->
   console.log colors.grey(e.query)
@@ -17,32 +19,49 @@ pgp = PGPromise(promiseLib: Promise, query: logFunc)
 {QueryFile} = pgp
 {readFileSync} = require 'fs'
 
-host ?= 'localhost'
-port ?= 5432
-connection ?= { host, port, database, user, password}
-tolerance ?= 1
-
 db = pgp(connection)
 
 __base = resolve __dirname, '..'
 
-qfileIndex = {}
+queryIndex = {}
 
 sql = (fn)->
+  # Function to get sql queries from a file
   params = {topo_schema, data_schema, srid, tolerance}
   if not fn.endsWith('.sql')
     fn += '.sql'
   p = join __base, fn
-  unless qfileIndex[p]?
-    qfileIndex[p] = QueryFile p, {params}
-  return qfileIndex[p]
+  unless queryIndex[p]?
+    # Using queryFile because it is best-documented
+    # way to pre-format SQL. We could probably use
+    # its internal interface
+    _ = readFileSync p, 'utf8'
+    _ = pgp.as.format(_, params, {partial: true})
+    queryIndex[p] = _
+    return queryIndex[p]
+
+queryInfo = (queryText)->
+  s = queryText
+       .replace /\/\*[\s\S]*?\*\/|--.*?$/, ''
+       .replace /\s*\n/, ''
+       .replace /"/,''
+  arr = /^\s*[A-Z\s]+[a-zA-Z_.]*/
+    .exec(s)
+  console.log arr[0].gray
+
 
 proc = (fn)->
-  procedure = sql(fn)
-  try
-    res = await db.multi procedure
-  catch err
-    console.error err.toString().red
-    console.error "   in: ".grey+fn
+  ## Execute a (likely multi-transaction) stored procedure
+  _ = sql(fn)
+  procedures = TSParser.parse _,'pg',';'
+  console.log fn.green
+  db.tx (ctx)->
+    for q in procedures
+      queryInfo(q)
+      try
+        res = await db.query q
+      catch err
+        console.error err.toString().red
+    console.log ""
 
 module.exports = {db,sql,proc}
