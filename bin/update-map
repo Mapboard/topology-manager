@@ -5,9 +5,9 @@
 here=$(dirname "$(readlink -f "$0")")
 base=${here:h}
 
-source "$here/defs.sh"
+source "$base/defs.sh"
 
-topo="$here/topology"
+topo="$base/topology"
 
 cat "$topo/fixtures"/*.sql \
   | psql $dbname -h $host -v srid=$srid

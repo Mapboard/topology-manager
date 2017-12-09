@@ -9,7 +9,7 @@ do ->
     for fn in await glob('topology/fixtures/*.sql', cwd: __base)
       await proc(fn)
     await proc('extensions/map-digitizer')
-    await proc('extensions/unit-hierarchy')
+    #await proc('extensions/unit-hierarchy')
   catch
     process.exit()
   process.exit()
