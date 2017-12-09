@@ -90,6 +90,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+-- Row function to set topogeometry
+-- If geometry
+
 -- Trigger to create a non-topogeometry representation for
 -- storage on each row (for speed of lookup)
 DROP TRIGGER IF EXISTS map_digitizer_linework_update_trigger
