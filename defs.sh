@@ -1,11 +1,11 @@
 here="$(dirname "$(readlink -f "$0")")"
 
 base=${here}
-dbname="little_ambergris_post_hurricane"
-host="131.215.67.27"
+dbname="Naukluft"
+host="localhost"
 srid=32619
 
-db_connection=PG:"dbname='$dbname' host='$host' user='Daven' password='Daven'"
+db_connection=PG:"dbname='$dbname' host='$host'"
 
 function sql {
   psql $dbname -h $host $@

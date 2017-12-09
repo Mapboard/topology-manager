@@ -1,12 +1,7 @@
 {
-  "connection": {
-    "database": "little_ambergris_post_hurricane",
-    "host": "131.215.67.27",
-    "user": "Daven",
-    "password": "Daven"
-  },
+  "dbname": "Naukluft",
   "topo_schema": "map_topology",
   "data_schema": "map_digitizer",
-  "srid": 32619,
-  "tolerance": 0.1
+  "srid": 32733,
+  "tolerance": 1
 }
