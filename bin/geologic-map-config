@@ -1,4 +1,6 @@
 #!/usr/bin/env coffee
+# A script to get config values for the map
+# for use in shell scripts
 {argv} = require 'yargs'
 config = require '../src/config'
 
@@ -10,6 +12,5 @@ if argv._.length == 1
   console.log v
 else
   console.log JSON.stringify(config)
-
 
 
