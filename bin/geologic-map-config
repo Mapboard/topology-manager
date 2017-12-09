@@ -1,0 +1,15 @@
+#!/usr/bin/env coffee
+{argv} = require 'yargs'
+config = require '../src/config'
+
+if argv._.length == 1
+  args = argv._[0].split('.')
+  v = config
+  for _ in args
+    v = v[_]
+  console.log v
+else
+  console.log JSON.stringify(config)
+
+
+

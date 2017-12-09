@@ -1,9 +1,13 @@
-here="$(dirname "$(readlink -f "$0")")"
 
-base=${here}
-dbname="Naukluft"
-host="localhost"
-srid=32619
+function cfg {
+  here="$(dirname "$(readlink -f "$0")")"
+  $here/bin/geologic-map-config $1
+}
+
+base=$(cfg basedir)
+dbname=$(cfg connection.database)
+host=$(cfg connection.host)
+srid=$(cfg srid)
 
 db_connection=PG:"dbname='$dbname' host='$host'"
 

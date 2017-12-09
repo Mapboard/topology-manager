@@ -3,8 +3,8 @@ PGPromise = require 'pg-promise'
 colors = require 'colors'
 Promise = require 'bluebird'
 
-{database, srid, topo_schema,
- data_schema, host, port, connection, tolerance} = require '../config.json'
+{srid, topo_schema,
+ data_schema, connection, tolerance} = require './config'
 
 logFunc = (e)->
   console.log colors.grey(e.query)
@@ -16,11 +16,6 @@ pgp = PGPromise(promiseLib: Promise, query: logFunc)
 
 {QueryFile} = pgp
 {readFileSync} = require 'fs'
-
-host ?= 'localhost'
-port ?= 5432
-connection ?= { host, port, database, user, password}
-tolerance ?= 1
 
 db = pgp(connection)
 
