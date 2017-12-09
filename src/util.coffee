@@ -62,6 +62,6 @@ proc = (fn)->
         res = await db.query q
       catch err
         console.error err.toString().red
-        console.error "   in: ".grey+fn
+    console.log ""
 
 module.exports = {db,sql,proc}
