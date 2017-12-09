@@ -11,6 +11,7 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "pg-promise": "^7.3.2",
+    "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
   }
 }
