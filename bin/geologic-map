@@ -1,0 +1,13 @@
+#!/usr/bin/env coffee
+
+program = require 'commander'
+
+program
+  .option '-c, --config','A configuration file'
+  .action ->
+    console.log arguments
+
+program
+  .command 'create-tables', 'Create database tables and fixtures'
+  .command 'set-colors [file]', 'Set colors from csv file (id,color)'
+  .parse process.argv
