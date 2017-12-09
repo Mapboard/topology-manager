@@ -104,7 +104,7 @@ SELECT
   c.geometry,
   c.type
 FROM map_topology.__linework_failures f
-JOIN map_topology.contact c ON c.id = f.id;
+JOIN map_digitizer.linework c ON c.id = f.id;
 
 CREATE OR REPLACE VIEW map_topology.face_display AS
 SELECT
