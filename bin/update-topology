@@ -9,16 +9,16 @@ topo="$base/topology"
 dn="$topo/procedures"
 
 for fn in "$topo/fixtures"/*; do
-  psql $dbname -f "$fn"
+  sql -f "$fn"
 done
 
-psql $dbname -f "$dn/delete-changed.sql"
+sql -f "$dn/delete-changed.sql"
 
 #psql -P pager=off $dbname -f "$dn/clean-topology.sql"
 
 ### Rebuild topology, updating contacts as needed
 $topo/update-contacts
 
-psql $dbname -f "$dn/update-contact-data.sql"
+sql -f "$dn/update-contact-data.sql"
 
 

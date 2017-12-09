@@ -1,0 +1,18 @@
+#!/usr/bin/env coffee
+{argv} = require 'yargs'
+{db,sql, proc} = require '../src/util'
+
+do ->
+  # Get stray edges
+  edges = await db.query "SELECT e.edge_id
+    FROM map_topology.edge_data e
+    WHERE edge_id NOT IN (SELECT edge_id FROM map_topology.edge_contact)"
+
+  for {edge_id} in edges
+    try
+      await db.query "SELECT ST_RemEdgeModFace('map_topology',${id})", {id: edge_id}
+    catch
+      
+    console.log edge_id
+  process.exit()
+

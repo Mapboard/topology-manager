@@ -18,5 +18,7 @@ do ->
     await db.query "SELECT map_topology.update_map_face(false)"
     {nfaces} = await db.one count
     console.log "#{nfaces} remaining"
+
+  await db.none "REFRESH MATERIALIZED VIEW map_topology.contact_display"
   process.exit()
 
