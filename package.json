@@ -7,9 +7,9 @@
   "dependencies": {
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
-    "commander": "^2.12.2",
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
+    "inquirer": "^4.0.1",
     "pg-promise": "^7.3.2",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"

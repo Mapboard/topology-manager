@@ -1,47 +1,42 @@
-CREATE TABLE IF NOT EXISTS map_topology.subtopology (
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
     id text PRIMARY KEY
 );
+-- Refer to this on our linework tables
+ALTER TABLE ${data_schema~}.linework_type ADD CONSTRAINT
+FOREIGN KEY (topology)
+REFERENCES ${topo_schema~}.subtopology(id) ON UPDATE CASCADE
 
-CREATE TABLE IF NOT EXISTS map_topology.contact (
-    id SERIAL PRIMARY KEY,
-    certainty integer,
-    geometry geometry(MultiLineString, ${srid}),
-    type text DEFAULT 'bedrock'::text,
-    hash uuid,
-    map_width numeric,
-    hidden boolean,
-    topology text REFERENCES map_topology.subtopology (id)
-);
-
-SELECT topology.AddTopoGeometryColumn('map_topology',
-  'map_topology','contact', 'topo','LINE');
+/* Add topology columns to table */
+SELECT topology.AddTopoGeometryColumn(${topo_schema},
+  ${data_schema},'linework', 'topo','LINE');
+ALTER TABLE ${data_schema~}.linework
+  ADD COLUMN geometry_hash uuid,
+  ADD COLUMN topology_error text;
 
 /* Table to hold invalid linework */
 
-CREATE TABLE IF NOT EXISTS map_topology.__linework_failures (
-  id integer REFERENCES map_topology.contact (id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.__linework_failures (
+  id integer REFERENCES ${topo_schema~}.contact (id) ON DELETE CASCADE
 );
 
-/*
-Map Face
-*/
-CREATE TABLE IF NOT EXISTS map_topology.map_face (
+/* Map Face */
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face (
   id SERIAL PRIMARY KEY,
   unit_id text,
-  topology text REFERENCES map_topology.subtopology (id),
+  topology text REFERENCES ${topo_schema~}.subtopology (id),
   geometry geometry(MultiPolygon, ${srid})
 );
 
-SELECT topology.AddTopoGeometryColumn('map_topology',
-  'map_topology', 'map_face', 'topo', 'MULTIPOLYGON');
+SELECT topology.AddTopoGeometryColumn(${topo_schema},
+  ${topo_schema}, 'map_face', 'topo', 'MULTIPOLYGON');
 
-CREATE INDEX map_face_gix ON map_topology.map_face USING GIST (geometry);
+CREATE INDEX map_face_gix ON ${topo_schema~}.map_face USING GIST (geometry);
 
 /*
 A table to hold dirty faces
 */
-CREATE TABLE IF NOT EXISTS map_topology.__dirty_face (
-  id integer REFERENCES map_topology.face ON DELETE CASCADE,
-  topology text references map_topology.subtopology ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
+  id integer REFERENCES ${topo_schema~}.face ON DELETE CASCADE,
+  topology text references ${topo_schema~}.subtopology ON DELETE CASCADE,
   PRIMARY KEY(id, topology)
 );

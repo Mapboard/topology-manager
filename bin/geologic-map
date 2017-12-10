@@ -1,9 +1,21 @@
 #!/usr/bin/env coffee
 yargs = require 'yargs'
-{spawn} = require 'child_process'
+{spawnSync} = require 'child_process'
 {join} = require 'path'
 {existsSync} = require 'fs'
 colors = require 'colors'
+
+external = (cmd, describe="")->
+  prefixedCommand = "geologic-map-#{cmd}"
+  command = cmd
+
+  handler = (argv)->
+    # See if this is available locally, if not, search
+    # on path.
+    fp = join __dirname, prefixedCommand
+    prefixedCommand = fp if existsSync fp
+    spawnSync prefixedCommand, argv._.slice(1), {stdio: 'inherit'}
+  return {command, describe, handler}
 
 argv = yargs
   .usage '$0 <command>'
@@ -11,28 +23,11 @@ argv = yargs
     alias: 'config',
     description: "JSON config file. Used in lieu of the
                   GEOLOGIC_MAP_CONFIG environment variable"}
-  .command 'create-tables', 'Create database tables and fixtures'
-  .command 'set-colors [file]', 'Set colors from csv file (id,color)'
-  .command 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
+  .command external 'create-tables', 'Create database tables and fixtures'
+  .command external 'set-colors [file]', 'Set colors from csv file (id,color)'
+  .command external 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
+  .command require '../src/commands/delete'
+  .command require '../src/commands/reset'
+  .demandCommand()
   .argv
 
-cmd = argv._[0]
-
-if not cmd?
-  console.log "Please provide a subcommand".red
-  process.exit(0)
-
-i = process.argv.indexOf cmd
-args = process.argv.slice i+1
-prefixedCommand = "geologic-map-#{cmd}"
-
-# See if this is available locally, if not, search
-# on path.
-fp = join __dirname, prefixedCommand
-prefixedCommand = fp if existsSync fp
-
-child = spawn prefixedCommand, args, {stdio: 'inherit'}
-child.on 'error', (err)->
-  return unless err.code == 'ENOENT'
-  console.log "Subcommand ".red+cmd+" not found.
-              Is ".red+prefixedCommand+" on your path?".red
