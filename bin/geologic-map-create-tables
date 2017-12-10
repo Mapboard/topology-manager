@@ -9,10 +9,9 @@ do ->
   try
     for fn in await glob('topology/fixtures/*.sql', cwd: __base)
       await proc(fn)
+    await proc('extensions/map-digitizer.sql')
   catch err
     console.log "Exiting on #{err}".red
     process.exit()
-      #await proc('extensions/map-digitizer.sql')
-      #await proc('extensions/unit-hierarchy')
   process.exit()
 

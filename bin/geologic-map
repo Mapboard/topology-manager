@@ -1,13 +1,32 @@
 #!/usr/bin/env coffee
+yargs = require 'yargs'
+{spawn} = require 'child_process'
+{join} = require 'path'
+{existsSync} = require 'fs'
+colors = require 'colors'
 
-program = require 'commander'
-
-program
-  .option '-c, --config','A configuration file'
-  .action ->
-    console.log arguments
-
-program
+argv = yargs
+  .usage '$0 <command>'
+  .option 'c', {
+    alias: 'config',
+    description: "JSON config file. Used in lieu of the
+                  GEOLOGIC_MAP_CONFIG environment variable"}
   .command 'create-tables', 'Create database tables and fixtures'
   .command 'set-colors [file]', 'Set colors from csv file (id,color)'
-  .parse process.argv
+  .argv
+
+cmd = argv._[0]
+i = process.argv.indexOf cmd
+args = process.argv.slice i+1
+prefixedCommand = "geologic-map-#{cmd}"
+
+# See if this is available locally, if not, search
+# on path.
+fp = join __dirname, prefixedCommand
+prefixedCommand = fp if existsSync fp
+
+child = spawn prefixedCommand, args, {stdio: 'inherit'}
+child.on 'error', (err)->
+  return unless err.code == 'ENOENT'
+  console.log "Subcommand ".red+cmd+" not found.
+              Is ".red+prefixedCommand+" on your path?".red
