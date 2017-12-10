@@ -15,9 +15,9 @@ cat "$topo/fixtures"/*.sql \
 ### Rebuild topology, updating contacts as needed
 
 ### Updating topology ###
-psql $dbname -h $host -f "$topo/procedures/delete-changed.sql"
+psql $dbname -h $host -f "$base/procedures/delete-changed.sql"
 
 ### Rebuild topology, updating contacts as needed
 $topo/update-contacts $dbname
-psql $dbname -h $host -f "$topo/procedures/update-contact-data.sql"
+psql $dbname -h $host -f "$base/procedures/update-contact-data.sql"
 

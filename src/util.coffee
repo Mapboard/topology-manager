@@ -61,7 +61,11 @@ proc = (fn)->
       try
         await db.query q
       catch err
-        console.error err.toString().red
+        ste = err.toString()
+        if ste.endsWith "already exists"
+          console.error ste.dim.red
+        else
+          console.error ste.red
     console.log ""
 
 module.exports = {db,sql,proc}

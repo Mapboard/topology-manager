@@ -2,7 +2,7 @@ CREATE OR REPLACE VIEW map_topology.edge_contact AS
   SELECT
   	id contact_id,
   	r.element_id edge_id
-	FROM map_topology.contact
+	FROM map_digitizer.linework
   JOIN map_topology.relation r
 	  ON (topo).id = r.topogeo_id
 	  AND (topo).layer_id = r.layer_id
@@ -89,11 +89,11 @@ WHERE NOT ST_IsEmpty(geometry);
 CREATE OR REPLACE VIEW map_topology.edge_topology AS
 SELECT
   e.edge_id,
-  c.topology,
+  t.topology,
   geometry
 FROM map_topology.edge_contact ec
-JOIN map_topology.contact c ON ec.contact_id = c.id
 JOIN map_topology.edge e ON ec.edge_id = e.edge_id
+JOIN map_digitizer.linework c ON ec.contact_id = c.id
 JOIN map_digitizer.linework_type t ON c.type = t.id
 WHERE t.topology IS NOT null;
 
@@ -103,8 +103,10 @@ SELECT
   f.id,
   c.geometry,
   c.type
-FROM map_topology.__linework_failures f
-JOIN map_digitizer.linework c ON c.id = f.id;
+JOIN map_digitizer.linework c
+  ON c.id = f.id
+WHERE c.topology_error NOT NULL;
+
 
 CREATE OR REPLACE VIEW map_topology.face_display AS
 SELECT

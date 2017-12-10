@@ -1,9 +1,0 @@
-#!/usr/bin/env zsh
-
-here=$(dirname "$(readlink -f "$0")")
-base=${here}
-
-cd "$here"
-source "${here:h}/defs.sh"
-
-sql -f "$base/topology/procedures/reset-topology.sql"

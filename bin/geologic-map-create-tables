@@ -7,7 +7,7 @@ colors = require 'colors'
 
 do ->
   try
-    for fn in await glob('topology/fixtures/*.sql', cwd: __base)
+    for fn in await glob('fixtures/*.sql', cwd: __base)
       await proc(fn)
     await proc('extensions/map-digitizer.sql')
   catch err

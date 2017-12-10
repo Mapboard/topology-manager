@@ -4,23 +4,23 @@ colors = require 'colors'
 
 do ->
   await db.none "SET session_replication_role = replica;"
-  res = await db.query sql("topology/procedures/get-contacts-to-update")
+  res = await db.query sql("procedures/get-contacts-to-update")
   await db.none "TRUNCATE TABLE map_topology.__linework_failures"
   i = 1
   total = res.length
   for {id} in res
     i += 1
     try
-      await db.query sql('topology/procedures/update-contact'), {id}
+      await db.query sql('procedures/update-contact'), {id}
       process.stdout.clearLine()
       process.stdout.cursorTo(0)
       process.stdout.write("#{id} (#{i} of #{total})")
     catch err
-      await db.none sql('topology/procedures/linework-failures'), {id}
+      await db.none sql('procedures/linework-failures'), {id}
       process.stdout.clearLine()
       process.stdout.cursorTo(0)
       console.error id+"  "+colors.red(err)
-  await db.none sql('topology/procedures/update-contact-data')
+  await db.none sql('procedures/update-contact-data')
   await db.none "SET session_replication_role = DEFAULT;"
   process.exit()
 

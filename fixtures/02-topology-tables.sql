@@ -1,10 +1,19 @@
 CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
     id text PRIMARY KEY
 );
+
+-- Insert initial values into subtopology column
+INSERT INTO ${topo_schema~}.subtopology (id)
+SELECT DISTINCT ON (topology)
+  topology
+FROM ${data_schema~}.linework_type
+WHERE topology IS NOT NULL;
+
 -- Refer to this on our linework tables
-ALTER TABLE ${data_schema~}.linework_type ADD CONSTRAINT
+ALTER TABLE ${data_schema~}.linework_type
+ADD CONSTRAINT ${topo_schema^}_linework_topology
 FOREIGN KEY (topology)
-REFERENCES ${topo_schema~}.subtopology(id) ON UPDATE CASCADE
+  REFERENCES ${topo_schema~}.subtopology(id) ON UPDATE CASCADE;
 
 /* Add topology columns to table */
 SELECT topology.AddTopoGeometryColumn(${topo_schema},
