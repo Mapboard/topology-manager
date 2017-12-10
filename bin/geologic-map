@@ -13,9 +13,15 @@ argv = yargs
                   GEOLOGIC_MAP_CONFIG environment variable"}
   .command 'create-tables', 'Create database tables and fixtures'
   .command 'set-colors [file]', 'Set colors from csv file (id,color)'
+  .command 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
   .argv
 
 cmd = argv._[0]
+
+if not cmd?
+  console.log "Please provide a subcommand".red
+  process.exit(0)
+
 i = process.argv.indexOf cmd
 args = process.argv.slice i+1
 prefixedCommand = "geologic-map-#{cmd}"
