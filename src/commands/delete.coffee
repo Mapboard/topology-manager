@@ -1,4 +1,5 @@
 {prompt} = require 'inquirer'
+{proc} = require '../util'
 
 command = 'delete'
 describe = 'Delete the map topology'
