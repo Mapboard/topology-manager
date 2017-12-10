@@ -42,12 +42,12 @@ sql = (fn)->
 
 queryInfo = (queryText)->
   s = queryText
-       .replace /\/\*[\s\S]*?\*\/|--.*?$/, ''
-       .replace /\s*\n/, ''
-       .replace /"/,''
-  arr = /^\s*[A-Z\s]+[a-zA-Z_.]*/
+       .replace /\/\*[\s\S]*?\*\/|--.*?$/gm, ''
+  arr = /^[\s\n]*([A-Z\s]+[a-zA-Z_."]*)/g
     .exec(s)
-  console.log arr[0].gray
+  if arr? and arr[1]?
+    s = arr[1]
+  console.log s.replace(/"/g,'').gray
 
 
 proc = (fn)->
@@ -59,7 +59,7 @@ proc = (fn)->
     for q in procedures
       queryInfo(q)
       try
-        res = await db.query q
+        await db.query q
       catch err
         console.error err.toString().red
     console.log ""
