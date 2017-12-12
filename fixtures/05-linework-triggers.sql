@@ -3,8 +3,6 @@ When `map_topology.contact` table is updated, changes should propagate
 to `map_topology.map_face`
 */
 
-SET search_path=map_topology,map_digitizer,topology,public;
-
 /* Util functions */
 
 CREATE OR REPLACE FUNCTION map_topology.line_topology(type_id text)
@@ -44,7 +42,7 @@ BEGIN
     RETURN;
   END IF;
 
-  IF (hash_geometry(line) = line.geometry_hash) THEN
+  IF (map_topology.hash_geometry(line) = line.geometry_hash) THEN
     -- We already have a valid topogeometry representation
     RETURN;
   END IF;
@@ -87,13 +85,10 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION map_topology.linework_changed()
 RETURNS trigger AS $$
-DECLARE
-  CURRENT_TOPOGEOM topogeometry;
-  CURRENT_TOPOLOGY text;
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
-  PERFORM mark_surrounding_faces(OLD);
+  PERFORM map_topology.mark_surrounding_faces(OLD);
   RETURN OLD;
 END IF;
 
@@ -102,7 +97,7 @@ IF (TG_OP = 'INSERT') THEN
   We will probably not have topo set on inserts most of the time, but we might
   on programmatic or eagerly-managed insertions, so it's worth a try.
   */
-  PERFORM mark_surrounding_faces(NEW);
+  PERFORM map_topology.mark_surrounding_faces(NEW);
   RETURN NEW;
 END IF;
 
@@ -122,8 +117,8 @@ IF (OLD.topo = NEW.topo AND
   RETURN NEW;
 END IF;
 
-PERFORM mark_surrounding_faces(OLD);
-PERFORM mark_surrounding_faces(NEW);
+PERFORM map_topology.mark_surrounding_faces(OLD);
+PERFORM map_topology.mark_surrounding_faces(NEW);
 RETURN NEW;
 
 END;
