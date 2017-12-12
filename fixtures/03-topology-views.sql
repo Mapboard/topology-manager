@@ -102,10 +102,10 @@ SELECT
   f.id,
   f.unit_id,
   f.geometry,
-  f.topology,
+  t.topology,
   t.color,
   t.name
 FROM map_topology.map_face f
-JOIN map_digitizer.polygon_type t
+LEFT JOIN map_digitizer.polygon_type t
   ON f.unit_id = t.id;
 

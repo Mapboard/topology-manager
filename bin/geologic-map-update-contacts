@@ -3,7 +3,7 @@
 {db,sql, proc} = require '../src/util'
 colors = require 'colors'
 
-count = "SELECT count(*) nlines 
+count = "SELECT count(*) nlines
          FROM map_digitizer.linework
          WHERE geometry_hash IS null"
 

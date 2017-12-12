@@ -79,9 +79,9 @@ END IF;
 
 /* Wipe hash if we know we have geometry changes.
    We may put in a dirty marker here instead of hashing if it seems better */
-IF (NOT OLD.geometry = NEW.geometry AND
-    (OLD.topo).id = (NEW.topo).id) THEN
-  NEW.geometry_hash = null;
+IF (NOT OLD.geometry = NEW.geometry) THEN
+  NEW.geometry_hash := null;
+  RETURN NEW;
 END IF;
 
 
@@ -134,6 +134,6 @@ $$ LANGUAGE plpgsql;
 -- storage on each row (for speed of lookup)
 DROP TRIGGER IF EXISTS map_topology_linework_trigger ON map_digitizer.linework;
 CREATE TRIGGER map_topology_linework_trigger
-AFTER INSERT OR UPDATE OR DELETE ON map_digitizer.linework
+BEFORE INSERT OR UPDATE OR DELETE ON map_digitizer.linework
 FOR EACH ROW EXECUTE PROCEDURE map_topology.linework_changed();
 
