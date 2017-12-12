@@ -1,0 +1,25 @@
+#!/usr/bin/env coffee
+{argv} = require 'yargs'
+{db,sql, proc} = require '../src/util'
+
+count = "SELECT count(*) FROM map_digitizer.linework WHERE geometry_hash IS null"
+
+do ->
+
+  if argv.reset?
+    console.log "Resetting map faces"
+    await proc "topology/procedures/reset-map-face"
+
+  await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
+
+  {nlines} = await db.one count
+  console.log "#{nlines} remaining"
+  while nfaces > 0
+    await db.query "SELECT map_topology.update_map_face(false)"
+    {nfaces} = await db.one count
+    console.log "#{nlines} remaining"
+
+  await db.none "REFRESH MATERIALIZED VIEW map_topology.contact_display"
+  process.exit()
+
+
