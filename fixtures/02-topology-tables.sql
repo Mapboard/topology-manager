@@ -7,7 +7,8 @@ INSERT INTO ${topo_schema~}.subtopology (id)
 SELECT DISTINCT ON (topology)
   topology
 FROM ${data_schema~}.linework_type
-WHERE topology IS NOT NULL;
+WHERE topology IS NOT NULL
+ON CONFLICT DO NOTHING;
 
 -- Refer to this on our linework tables
 ALTER TABLE ${data_schema~}.linework_type
@@ -21,12 +22,6 @@ SELECT topology.AddTopoGeometryColumn(${topo_schema},
 ALTER TABLE ${data_schema~}.linework
   ADD COLUMN geometry_hash uuid,
   ADD COLUMN topology_error text;
-
-/* Table to hold invalid linework */
-
-CREATE TABLE IF NOT EXISTS ${topo_schema~}.__linework_failures (
-  id integer REFERENCES ${topo_schema~}.contact (id) ON DELETE CASCADE
-);
 
 /* Map Face */
 CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face (

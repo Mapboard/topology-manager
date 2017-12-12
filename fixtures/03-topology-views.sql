@@ -69,7 +69,7 @@ CREATE OR REPLACE VIEW map_topology.edge_type AS
     c.type contact_type
   FROM map_topology.edge e
   JOIN map_topology.edge_contact ec ON e.edge_id = ec.edge_id
-  JOIN map_topology.contact c ON c.id = ec.contact_id;
+  JOIN map_digitizer.linework c ON c.id = ec.contact_id;
 
 CREATE OR REPLACE VIEW map_topology.face_data AS
 WITH fg AS (
@@ -96,17 +96,6 @@ JOIN map_topology.edge e ON ec.edge_id = e.edge_id
 JOIN map_digitizer.linework c ON ec.contact_id = c.id
 JOIN map_digitizer.linework_type t ON c.type = t.id
 WHERE t.topology IS NOT null;
-
-/* View for invalid linework */
-CREATE OR REPLACE VIEW map_topology.invalid_linework AS
-SELECT
-  f.id,
-  c.geometry,
-  c.type
-JOIN map_digitizer.linework c
-  ON c.id = f.id
-WHERE c.topology_error NOT NULL;
-
 
 CREATE OR REPLACE VIEW map_topology.face_display AS
 SELECT
