@@ -30,15 +30,12 @@ CREATE INDEX map_topology__face_relation_face_index
 
 CREATE OR REPLACE FUNCTION map_topology.__map_face_layer_id()
 RETURNS integer AS $$
-BEGIN
-  RETURN (
-    SELECT layer_id
-    FROM topology.layer
-    WHERE schema_name='map_topology'
-      AND table_name='map_face'
-      AND feature_column='topo');
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+SELECT layer_id
+FROM topology.layer
+WHERE schema_name='map_topology'
+  AND table_name='map_face'
+  AND feature_column='topo';
+$$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION map_topology.update_map_face(
   refresh boolean DEFAULT true)

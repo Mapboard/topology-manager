@@ -21,19 +21,18 @@ BEGIN
 IF (TG_OP = 'DELETE') THEN
   affected_area := OLD.geometry;
   topology := map_topology.polygon_topology(OLD);
-ELSE IF (TG_OP = 'INSERT') THEN
+ELSIF (TG_OP = 'INSERT') THEN
   affected_area := NEW.geometry;
   topology := map_topology.polygon_topology(NEW);
-ELSE IF (OLD.geometry != NEW.geometry) THEN
+ELSIF (OLD.geometry != NEW.geometry) THEN
   affected_area := ST_Union(OLD.geometry, NEW.geometry);
+  topology := map_topology.polygon_topology(NEW);
 END IF;
 
 -- TODO: there might be an issue with topology here...
 UPDATE map_topology.map_face
 SET unit_id = map_topology.unitForArea(geometry, topology)
 WHERE ST_Intersects(affected_area, geometry);
-
-RETURN null;
 
 END;
 $$ LANGUAGE plpgsql;

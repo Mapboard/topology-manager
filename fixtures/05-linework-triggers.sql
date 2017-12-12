@@ -9,44 +9,31 @@ SET search_path=map_topology,map_digitizer,topology,public;
 
 CREATE OR REPLACE FUNCTION map_topology.line_topology(type_id text)
 RETURNS text AS $$
-BEGIN
-  RETURN (
-    SELECT topology
-    FROM map_digitizer.linework_type
-    WHERE id = type_id
-  );
-END;
-$$ LANGUAGE plpgsql;
+SELECT topology
+FROM map_digitizer.linework_type
+WHERE id = type_id;
+$$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION map_topology.hash_geometry(line map_digitizer.linework)
 RETURNS uuid AS $$
-BEGIN
-  RETURN md5(ST_AsBinary(line.geometry))::uuid;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+SELECT md5(ST_AsBinary(line.geometry))::uuid;
+$$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION map_topology.__linework_layer_id()
 RETURNS integer AS $$
-BEGIN
-  RETURN (
-    SELECT layer_id
-    FROM topology.layer
-    WHERE schema_name='map_digitizer'
-      AND table_name='linework'
-      AND feature_column='topo');
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+SELECT layer_id
+FROM topology.layer
+WHERE schema_name='map_digitizer'
+  AND table_name='linework'
+  AND feature_column='topo';
+$$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION map_topology.__topo_precision()
 RETURNS numeric AS $$
-BEGIN
-  RETURN (
-    SELECT precision
-      INTO __precision
-      FROM topology.topology
-      WHERE name='map_topology');
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+SELECT precision::numeric
+  FROM topology.topology
+  WHERE name='map_topology';
+$$ LANGUAGE SQL IMMUTABLE;
 
 
 CREATE OR REPLACE FUNCTION map_topology.update_linework_topo(
