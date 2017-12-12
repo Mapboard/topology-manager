@@ -49,7 +49,7 @@ BEGIN
   INSERT INTO map_topology.__dirty_face (id, topology)
   SELECT
     face_id,
-    line_topology(line.type)
+    map_topology.line_topology(line.type)
   FROM map_topology.edge_face ef
   WHERE ef.edge_id IN (SELECT
     (topology.GetTopoGeomElements(line.topo))[1])
@@ -99,28 +99,33 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION map_topology.update_linework_topo(
-  INOUT line map_digitizer.linework) AS
+  line map_digitizer.linework)
+RETURNS text AS
 $$
 BEGIN
-  IF (line.topo IS null) THEN
-    RETURN;
-  END IF;
-
   IF (map_topology.hash_geometry(line) = line.geometry_hash) THEN
     -- We already have a valid topogeometry representation
-    RETURN;
+    RETURN null;
   END IF;
-
   BEGIN
-    line.topo := topology.toTopoGeom(
-      geometry, 'map_topology',
-      map_topology.__linework_layer_id(),
-      map_topology.__topo_precision());
-    line.geometry_hash := hash_geometry(line);
-    PERFORM map_topology.mark_surrounding_faces(line);
+    UPDATE map_digitizer.linework l
+    SET
+      topo = topology.toTopoGeom(
+        l.geometry, 'map_topology',
+        map_topology.__linework_layer_id(),
+        map_topology.__topo_precision()),
+      geometry_hash = map_topology.hash_geometry(l),
+      topology_error = null
+    WHERE l.id = line.id;
+    RETURN null;
   EXCEPTION WHEN others THEN
-    line.topology_error := SQLERRM;
+    UPDATE map_digitizer.linework l
+    SET
+      topology_error = SQLERRM
+    WHERE l.id = line.id;
+    RETURN SQLERRM::text;
   END;
+  RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 
