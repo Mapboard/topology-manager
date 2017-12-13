@@ -94,7 +94,43 @@ FROM faces;
 RAISE NOTICE 'Faces: %', __dissolved_faces;
 
 --- Update the geometry
-IF (NOT 0 = ANY(__dissolved_faces)) THEN
+IF (0 = ANY(__dissolved_faces)) THEN
+  -- Handle cases where we're linked with the global face
+  -- Delete all faces that touch these faces
+
+  /* This could be merged with code below for more procedural
+  technique */
+  WITH a AS (
+    SELECT ARRAY[unnest((
+        SELECT array_agg(e)
+        FROM (SELECT * FROM unnest(__dissolved_faces) id
+        WHERE id != 0) AS d(e)
+      )),3]::topology.topoelement vals
+  ),
+  b AS (
+  SELECT CreateTopoGeom('map_topology', 3, __layer_id,
+    TopoElementArray_Agg(a.vals)) topo
+  FROM a
+  ),
+  g AS (
+  SELECT
+    topo,
+    ST_SetSRID(topo::geometry,__srid) geometry,
+    __face.topology
+  FROM b
+  ),
+  del AS (
+  --- Delete overlapping topogeometries and insert all of their
+  --- constituent faces into the dirty linework channel (if not
+  --- already there)
+  DELETE FROM map_topology.map_face mf
+  USING g
+  WHERE ST_Overlaps(g.geometry, mf.geometry)
+  RETURNING mf.id
+  )
+  SELECT id FROM del INTO __deleted_face;
+
+ELSE
 
 --- Insert new topogeometry and recover ID
 WITH a AS (
