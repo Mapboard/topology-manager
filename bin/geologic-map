@@ -26,10 +26,10 @@ argv = yargs
   .command external 'create-tables', 'Create database tables and fixtures'
   .command external 'set-colors [file]', 'Set colors from csv file (id,color)'
   .command external 'update-contacts', 'Update contacts'
-  .command external 'update-faces', 'Update faces'
   .command external 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
   .command require '../src/commands/delete'
   .command require '../src/commands/reset'
+  .command require '../src/commands/update-faces'
   .demandCommand()
   .argv
 

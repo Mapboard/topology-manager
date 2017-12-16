@@ -1,13 +1,11 @@
-#!/usr/bin/env coffee
 {argv} = require 'yargs'
-{db,sql, proc} = require '../src/util'
+{db,sql, proc} = require '../util'
 
 count = "SELECT count(*) nfaces FROM map_topology.__dirty_face"
-
-do ->
-
+command = 'update-faces [--reset]'
+describe = 'Update map faces'
+handler = (argv)->
   if argv.reset?
-    console.log "Resetting map faces"
     await proc "procedures/reset-map-face"
 
   await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
@@ -20,4 +18,6 @@ do ->
     console.log "#{nfaces} remaining"
 
   process.exit()
+
+module.exports = {command, describe, handler}
 
