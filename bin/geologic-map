@@ -25,11 +25,12 @@ argv = yargs
                   GEOLOGIC_MAP_CONFIG environment variable"}
   .command external 'create-tables', 'Create database tables and fixtures'
   .command external 'set-colors [file]', 'Set colors from csv file (id,color)'
-  .command external 'update-contacts', 'Update contacts'
   .command external 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
-  .command require '../src/commands/delete'
-  .command require '../src/commands/reset'
+  .command require '../src/commands/update-contacts'
   .command require '../src/commands/update-faces'
+  .command require '../src/commands/update-topology'
+  .command require '../src/commands/reset'
+  .command require '../src/commands/delete'
   .demandCommand()
   .argv
 
