@@ -6,10 +6,13 @@ command = 'update [--reset]'
 describe = 'Update topology'
 
 handler = (argv)->
-  console.log "Updating contacts"
+  console.log "Updating contacts".green.bold
   await updateContacts()
-  console.log "Updating faces"
+  console.log "Updating faces".green.bold
   await updateFaces(argv.reset)
+  console.log "Cleaning topology".green.bold
+  await cleanTopology()
+
   process.exit()
 
 module.exports = {command, describe, handler}
