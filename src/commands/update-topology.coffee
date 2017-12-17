@@ -1,5 +1,6 @@
 {updateContacts} = require './update-contacts'
 {updateFaces} = require './update-faces'
+{cleanTopology} = require './clean-topology'
 colors = require 'colors'
 
 command = 'update [--reset]'

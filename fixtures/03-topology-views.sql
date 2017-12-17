@@ -9,33 +9,21 @@ CREATE OR REPLACE VIEW map_topology.edge_contact AS
 	  AND (topo).type = r.element_type;
 
 CREATE OR REPLACE VIEW map_topology.node_edge AS
-  WITH node_edge AS (
-    SELECT
-      edge_id,
-      start_node node_id
-    FROM map_topology.edge
+  WITH a AS (
+    SELECT edge.edge_id,
+      edge.start_node AS node_id
+     FROM map_topology.edge
     UNION ALL
-    SELECT
-      edge_id,
-      end_node node_id
+    SELECT edge.edge_id,
+      edge.end_node AS node_id
     FROM map_topology.edge
-  ),
-  node_contact AS (
-  SELECT
-    n.node_id,
-    n.geom,
-    ec.contact_id
-  FROM map_topology.node n
-  JOIN node_edge ne ON ne.node_id = n.node_id
-  JOIN map_topology.edge_contact ec ON ne.edge_id = ec.edge_id
   )
   SELECT
-    n.node_id,
-    array_agg(contact_id) edges,
-    count(contact_id) n_edges
-  FROM map_topology.node n
-  JOIN node_contact ne ON ne.node_id = n.node_id
-  GROUP BY n.node_id;
+    node_id,
+    array_agg(edge_id) edges,
+    count(edge_id) n_edges
+  FROM a
+  GROUP BY node_id;
 
 CREATE OR REPLACE VIEW map_topology.edge_face AS
 WITH ef AS (
