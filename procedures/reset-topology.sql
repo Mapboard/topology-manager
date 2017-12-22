@@ -1,7 +1,7 @@
-UPDATE map_topology.contact
+UPDATE map_digitizer.linework
 SET
   topo = null,
-  hash = null;
+  geometry_hash = null;
 
 TRUNCATE TABLE map_topology.face CASCADE;
 TRUNCATE TABLE map_topology.relation CASCADE;

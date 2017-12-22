@@ -9,7 +9,7 @@ handler = (argv)->
     name: 'shouldDelete'
     message: 'Do you really want to delete the topology?',
   }]
-  await proc('topology/procedures/delete-topology.sql')
+  await proc('procedures/delete-topology.sql')
   process.exit()
 
 module.exports = {command, describe, handler}

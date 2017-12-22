@@ -1,16 +1,25 @@
---- CLEAN TOPOLOGY --
--- Remove stray edges
-SELECT
-  e.edge_id,
-  map_topology.removeEdgeMaybe(e.edge_id) removed
-FROM map_topology.edge_data e
-LEFT JOIN map_topology.edge_contact ec
-  ON ec.edge_id = e.edge_id
-  WHERE ec.contact_id IS null;
--- Remove stray nodes
-SELECT
-  node_id,
-  map_topology.removeNodeMaybe(node_id) removed
-FROM map_topology.node;
+DELETE FROM map_topology.relation
+WHERE layer_id = map_topology.__linework_layer_id()
+  AND topogeo_id NOT IN (
+  SELECT (topo).id FROM map_digitizer.linework
+  );
+DELETE FROM map_topology.relation
+WHERE layer_id = map_topology.__map_face_layer_id()
+  AND topogeo_id NOT IN (
+  SELECT (topo).id FROM map_topology.map_face
+  );
 
+SELECT
+  topology.ST_RemEdgeModFace('map_topology', edge_id)
+FROM map_topology.edge_data
+WHERE edge_id NOT IN (
+  SELECT element_id
+  FROM map_topology.relation
+  WHERE element_type = 2
+);
 
+SELECT topology.ST_RemIsoNode('map_topology',node_id)
+FROM map_topology.node
+WHERE node_id NOT IN (SELECT node_id FROM map_topology.node_edge);
+
+SELECT map_topology.healEdges();

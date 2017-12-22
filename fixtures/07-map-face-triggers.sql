@@ -93,8 +93,37 @@ FROM faces;
 
 RAISE NOTICE 'Faces: %', __dissolved_faces;
 
+WITH a AS (
+  SELECT ARRAY[unnest((
+      SELECT array_agg(e)
+      FROM (SELECT * FROM unnest(__dissolved_faces) id
+      WHERE id != 0) AS d(e)
+    )),3]::topology.topoelement vals
+),
+b AS (
+SELECT CreateTopoGeom('map_topology', 3, __layer_id,
+  TopoElementArray_Agg(a.vals)) topo
+FROM a
+),
+g AS (
+SELECT
+  topo,
+  ST_SetSRID(topo::geometry,__srid) geometry,
+  __face.topology
+FROM b
+)
+--- Delete overlapping topogeometries and insert all of their
+--- constituent faces into the dirty linework channel (if not
+--- already there)
+DELETE FROM map_topology.map_face mf
+USING g
+WHERE ST_Overlaps(mf.geometry, g.geometry)
+   OR ST_CoveredBy(mf.geometry,g.geometry);
+
 --- Update the geometry
-IF (NOT 0 = ANY(__dissolved_faces)) THEN
+IF NOT (0 = ANY(__dissolved_faces)) THEN
+  -- Handle cases where we're linked with the global face
+  -- Delete all faces that touch these faces
 
 --- Insert new topogeometry and recover ID
 WITH a AS (
@@ -111,8 +140,7 @@ SELECT
   ST_SetSRID(topo::geometry,__srid) geometry,
   __face.topology
 FROM b
-),
-ins AS (
+)
 INSERT INTO map_topology.map_face
   (unit_id, topo, topology, geometry)
 SELECT
@@ -120,19 +148,7 @@ map_topology.unitForArea(g.geometry, g.topology) unit_id,
 g.topo,
 g.topology,
 g.geometry
-FROM g
-RETURNING *
-),
-del AS (
---- Delete overlapping topogeometries and insert all of their
---- constituent faces into the dirty linework channel (if not
---- already there)
-DELETE FROM map_topology.map_face mf
-USING ins
-WHERE ST_Overlaps(ins.geometry, mf.geometry)
-RETURNING mf.id
-)
-SELECT id FROM del INTO __deleted_face;
+FROM g;
 /*
 INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT

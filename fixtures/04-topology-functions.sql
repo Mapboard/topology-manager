@@ -131,3 +131,32 @@ RETURN result;
 END
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION map_topology.healEdges()
+RETURNS void AS $$
+DECLARE
+  __healed_edge integer;
+  __edges integer[];
+  __c1 integer;
+  __c2 integer;
+BEGIN
+
+__healed_edge := 0;
+
+WHILE (__healed_edge IS NOT null) LOOP
+
+SELECT
+  ST_ModEdgeHeal('map_topology', edges[1], edges[2])
+INTO __healed_edge
+FROM map_topology.node_edge
+WHERE n_edges = 2
+  AND edges[1] != edges[2]
+  AND (SELECT contact_id
+       FROM map_topology.edge_contact
+       WHERE edge_id = edges[1]) = (SELECT contact_id
+       FROM map_topology.edge_contact WHERE edge_id = edges[2])
+LIMIT 1;
+
+END LOOP;
+
+END
+$$ LANGUAGE plpgsql;
