@@ -2,10 +2,6 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
   id text PRIMARY KEY
 );
 
-INSERT INTO ${topo_schema~}.subtopology (id)
-VALUES ('default')
-ON CONFLICT DO NOTHING;
-
 -- Create an initial linework type
 INSERT INTO ${data_schema~}.linework_type (
   id, name,color,topology)
@@ -14,7 +10,8 @@ VALUES (
   'Default',
   '#000000',
   'default'
-);
+)
+ON CONFLICT DO NOTHING;
 
 -- Insert initial values into subtopology column
 INSERT INTO ${topo_schema~}.subtopology (id)
