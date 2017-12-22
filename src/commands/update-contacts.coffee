@@ -17,7 +17,7 @@ updateContacts = ->
       await db.query proc
     catch err
       console.error "#{err}".red
-      process.exit(1)
+      return
     {nlines} = await db.one count
     console.log "#{nlines} remaining"
 

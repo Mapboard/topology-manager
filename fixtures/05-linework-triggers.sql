@@ -84,7 +84,6 @@ IF (NOT OLD.geometry = NEW.geometry) THEN
   RETURN NEW;
 END IF;
 
-
 IF ((OLD.topo).id = (NEW.topo).id AND
     map_topology.line_topology(OLD.type) = map_topology.line_topology(NEW.type)) THEN
   /* Discards cases where we aren't changing anything relevant */
