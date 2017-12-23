@@ -4,9 +4,7 @@ colors = require 'colors'
 command = 'update-contacts'
 describe = 'Update topology for contacts'
 
-count = "SELECT count(*) nlines
-         FROM map_digitizer.linework
-         WHERE geometry_hash IS null"
+count = sql('procedures/count-contact')
 proc = sql('procedures/update-contact')
 
 updateContacts = ->
