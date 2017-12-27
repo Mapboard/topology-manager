@@ -12,7 +12,8 @@ updateContacts = ->
   console.log "#{nlines} remaining"
   while nlines > 0
     try
-      await db.query proc
+      {e} = await db.query proc
+      console.log(e) if e?
     catch err
       console.error "#{err}".red
       return

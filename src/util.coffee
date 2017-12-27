@@ -68,7 +68,8 @@ proc = (fn)->
     procedures = TSParser.parse _,'pg',';'
     console.log fn.green
     db.tx (ctx)->
-      procedures.map(runQuery)
+      for q in procedures
+        await runQuery(q)
       console.log ""
   catch err
     console.error "#{err.stack}".red
