@@ -19,8 +19,7 @@ startWatcher = ->
   updateAll()
   conn = await db.connect direct: true
   conn.client.on 'notification', (data)->
-    console.log('Received:', data)
-    updateAll()
+    await updateAll()
   conn.none('LISTEN $1~', 'events')
 
 handler = (argv)->

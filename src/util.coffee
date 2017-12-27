@@ -38,7 +38,8 @@ sql = (fn)->
     _ = readFileSync p, 'utf8'
     _ = pgp.as.format(_, params, {partial: true})
     queryIndex[p] = _
-    return queryIndex[p]
+
+  return queryIndex[p]
 
 queryInfo = (queryText)->
   s = queryText
@@ -49,23 +50,27 @@ queryInfo = (queryText)->
     s = arr[1]
   console.log s.replace(/"/g,'').gray
 
+runQuery = (q)->
+  try
+    queryInfo(q)
+    await db.query q
+  catch err
+    ste = err.toString()
+    if ste.endsWith "already exists"
+      console.error ste.dim.red
+    else
+      console.error ste.red
 
 proc = (fn)->
   ## Execute a (likely multi-transaction) stored procedure
-  _ = sql(fn)
-  procedures = TSParser.parse _,'pg',';'
-  console.log fn.green
-  db.tx (ctx)->
-    for q in procedures
-      queryInfo(q)
-      try
-        await db.query q
-      catch err
-        ste = err.toString()
-        if ste.endsWith "already exists"
-          console.error ste.dim.red
-        else
-          console.error ste.red
-    console.log ""
+  try
+    _ = sql(fn)
+    procedures = TSParser.parse _,'pg',';'
+    console.log fn.green
+    db.tx (ctx)->
+      procedures.map(runQuery)
+      console.log ""
+  catch err
+    console.error "#{err.stack}".red
 
 module.exports = {db,sql,proc}
