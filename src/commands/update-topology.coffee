@@ -27,7 +27,7 @@ handler = (argv)->
   if argv.watch
     startWatcher()
     return
-  updateAll(argv.reset)
+  await updateAll(argv.reset)
   process.exit()
 
 module.exports = {command, describe, handler}
