@@ -118,7 +118,8 @@ FROM b
 DELETE FROM map_topology.map_face mf
 USING g
 WHERE ST_Overlaps(mf.geometry, g.geometry)
-   OR ST_CoveredBy(mf.geometry,g.geometry);
+   OR ST_CoveredBy(mf.geometry,g.geometry)
+  AND mf.topology = __face.topology;
 
 --- Update the geometry
 IF NOT (0 = ANY(__dissolved_faces)) THEN
@@ -149,14 +150,7 @@ g.topo,
 g.topology,
 g.geometry
 FROM g;
-/*
-INSERT INTO map_topology.__dirty_face (id, topology)
-SELECT
-  (topology.GetTopoGeomElements(topo))[1],
-  __face.topology
-FROM del
-ON CONFLICT DO NOTHING;
-*/
+
 END IF;
 
 -- Delete from dirty faces where we just created a face
