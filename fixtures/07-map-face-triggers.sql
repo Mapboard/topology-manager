@@ -117,8 +117,9 @@ FROM b
 --- already there)
 DELETE FROM map_topology.map_face mf
 USING g
-WHERE ST_Overlaps(mf.geometry, g.geometry)
-   OR ST_CoveredBy(mf.geometry,g.geometry)
+WHERE (
+    ST_Overlaps(mf.geometry, g.geometry)
+    OR ST_CoveredBy(mf.geometry,g.geometry))
   AND mf.topology = __face.topology;
 
 --- Update the geometry
