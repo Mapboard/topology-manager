@@ -15,25 +15,25 @@ Procedure to keep contact table in sync with linework table
 RETURNS trigger AS $$
 DECLARE
   affected_area geometry;
-  topology text;
+  __topology text;
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   affected_area := OLD.geometry;
-  topology := map_topology.polygon_topology(OLD.type);
+  __topology := map_topology.polygon_topology(OLD.type);
 ELSIF (TG_OP = 'INSERT') THEN
   affected_area := NEW.geometry;
-  topology := map_topology.polygon_topology(NEW.type);
-ELSIF (OLD.geometry != NEW.geometry) THEN
+  __topology := map_topology.polygon_topology(NEW.type);
+ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
   affected_area := ST_Union(OLD.geometry, NEW.geometry);
-  topology := map_topology.polygon_topology(NEW.type);
+  __topology := map_topology.polygon_topology(NEW.type);
 END IF;
 
 -- TODO: there might be an issue with topology here...
-UPDATE map_topology.map_face
-SET unit_id = map_topology.unitForArea(geometry, topology)
+UPDATE map_topology.map_face mf
+SET unit_id = map_topology.unitForArea(geometry, mf.topology)
 WHERE ST_Intersects(affected_area, geometry);
-
+RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 
