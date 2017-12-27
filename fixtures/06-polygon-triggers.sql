@@ -20,13 +20,13 @@ BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   affected_area := OLD.geometry;
-  topology := map_topology.polygon_topology(OLD.unit_id);
+  topology := map_topology.polygon_topology(OLD.type);
 ELSIF (TG_OP = 'INSERT') THEN
   affected_area := NEW.geometry;
-  topology := map_topology.polygon_topology(NEW.unit_id);
+  topology := map_topology.polygon_topology(NEW.type);
 ELSIF (OLD.geometry != NEW.geometry) THEN
   affected_area := ST_Union(OLD.geometry, NEW.geometry);
-  topology := map_topology.polygon_topology(NEW.unit_id);
+  topology := map_topology.polygon_topology(NEW.type);
 END IF;
 
 -- TODO: there might be an issue with topology here...
