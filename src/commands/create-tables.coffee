@@ -1,11 +1,11 @@
-#!/usr/bin/env coffee
 glob = require 'glob-promise'
-{resolve} = require 'path'
-{proc} = require '../src/util'
-__base = resolve __dirname, '..'
+{__base, proc} = require '../util'
 colors = require 'colors'
 
-do ->
+command = 'create-tables'
+describe = 'Create tables'
+
+handler = (argv)->
   try
     for fn in await glob('fixtures/*.sql', cwd: __base)
       await proc(fn)
@@ -14,4 +14,7 @@ do ->
     console.log "Exiting on #{err}".red
     process.exit()
   process.exit()
+
+module.exports = {command, describe, handler}
+
 
