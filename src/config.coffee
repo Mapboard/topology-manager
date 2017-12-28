@@ -3,7 +3,7 @@
 
 {database, srid, topo_schema,
  data_schema, host, port,
- connection, tolerance} = require GEOLOGIC_MAP_CONFIG
+ connection, tolerance, server} = require GEOLOGIC_MAP_CONFIG
 
 host ?= 'localhost'
 port ?= 5432
@@ -17,4 +17,4 @@ basedir = resolve join __dirname, '..'
 
 module.exports = {connection, data_schema,
                   topo_schema, tolerance, srid
-                  basedir}
+                  basedir, server}

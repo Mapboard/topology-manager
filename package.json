@@ -10,6 +10,7 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
+    "map-digitizer-server": "github:davenquinn/map-digitizer-server",
     "pg-promise": "^7.3.2",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"

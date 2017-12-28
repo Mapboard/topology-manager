@@ -32,6 +32,7 @@ argv = yargs
   .command require '../src/commands/reset'
   .command require '../src/commands/delete'
   .command require '../src/commands/clean-topology'
+  .command require '../extensions/server/command'
   .demandCommand()
   .argv
 
