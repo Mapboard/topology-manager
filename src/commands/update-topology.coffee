@@ -29,6 +29,6 @@ handler = (argv)->
   await updateAll(argv.reset)
   process.exit()
 
-module.exports = {command, describe, handler}
+module.exports = {command, describe, handler, startWatcher}
 
 
