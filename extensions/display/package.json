@@ -1,0 +1,6 @@
+{
+  "name": "geologic-map-display",
+  "version": "0.1.0",
+  "description": "Views for display of datasets",
+  "fixtures": "fixtures"
+}

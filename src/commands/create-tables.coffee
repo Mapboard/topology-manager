@@ -17,6 +17,8 @@ handler = (argv)->
       {fixtures, path} = e
       continue unless fixtures
       console.log "Extension "+e.name.green.bold
+      console.log e.description.green.dim
+      console.log ""
       if typeof fixtures == 'string'
         __dir = join(path, fixtures)
         fixtures = await glob('*.sql', cwd: __dir)

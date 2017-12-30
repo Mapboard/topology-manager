@@ -17,21 +17,35 @@ srid ?= 4326
 
 cfgDir = dirname GEOLOGIC_MAP_CONFIG
 
+basedir = resolve join __dirname, '..'
+packageCfg = require '../package.json'
+
+prefix = 'file:'
+
+getFromFilePath = (cfgDir,v)->
+  _ = v.slice prefix.length
+  loc = resolve join cfgDir, _
+  return loc
+
+getLocation = (cfgDir, key, locString)->
+  if locString.startsWith prefix
+    return getFromFilePath(cfgDir,locString)
+
+  localVal = packageCfg.extensions[key]
+  console.log key, localVal
+  if localVal?
+    return getFromFilePath(basedir,localVal)
+  return require.resolve locString
+
 newExtensions = []
 for k,v of extensions
-  prefix = 'file:'
-  if v.startsWith prefix
-    _ = v.slice prefix.length
-    loc = resolve join cfgDir, _
-  else
-    loc = require.resolve v
-  console.log loc
+  loc = getLocation(cfgDir, k, v)
   cfg = require join(loc,'package.json')
+  if cfg.name != k
+    throw "Extension name #{cfg.name} does not match configuration."
   cfg.path = loc
   newExtensions.push cfg
 extensions = newExtensions
-
-basedir = resolve join __dirname, '..'
 
 module.exports = {connection, data_schema,
                   topo_schema, tolerance, srid
