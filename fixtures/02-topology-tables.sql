@@ -45,6 +45,12 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face (
   geometry geometry(MultiPolygon, ${srid})
 );
 
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face_edge (
+  id serial PRIMARY KEY,
+  edge_id integer REFERENCES ${topo_schema~}.edge_data (edge_id),
+  topo_id integer REFERENCES ${topo_schema~}.map_face (id)
+);
+
 SELECT topology.AddTopoGeometryColumn(${topo_schema},
   ${topo_schema}, 'map_face', 'topo', 'MULTIPOLYGON');
 
