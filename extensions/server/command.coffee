@@ -7,10 +7,11 @@ describe = 'Create a feature server'
 
 handler = (argv)->
   {tiles, port} = server
+  port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema}
   server = app.listen port, ->
     console.log "Listening on port #{server.address().port}"
-    startWatcher()
+    startWatcher(verbose=false)
 
 module.exports = {command, describe, handler}
 
