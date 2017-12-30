@@ -1,5 +1,7 @@
 glob = require 'glob-promise'
 {__base, proc} = require '../util'
+{extensions} = require '../config'
+{join} = require 'path'
 colors = require 'colors'
 
 command = 'create-tables'
@@ -10,8 +12,20 @@ handler = (argv)->
     for fn in await glob('fixtures/*.sql', cwd: __base)
       await proc(fn)
     await proc('extensions/map-digitizer.sql')
+
+    for e in extensions
+      {fixtures, path} = e
+      continue unless fixtures
+      console.log "Extension "+e.name.green.bold
+      if typeof fixtures == 'string'
+        __dir = join(path, fixtures)
+        fixtures = await glob('*.sql', cwd: __dir)
+      for fn in fixtures
+        p = join __dir, fn
+        await proc(p)
+
   catch err
-    console.log "Exiting on #{err}".red
+    console.log "#{err.stack}".red
     process.exit()
   process.exit()
 

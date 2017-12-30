@@ -1,5 +1,5 @@
 PGPromise = require 'pg-promise'
-{join, resolve} = require 'path'
+{join, resolve, isAbsolute} = require 'path'
 colors = require 'colors'
 Promise = require 'bluebird'
 {TSParser} = require 'tsparser'
@@ -28,9 +28,12 @@ queryIndex = {}
 sql = (fn)->
   # Function to get sql queries from a file
   params = {topo_schema, data_schema, srid, tolerance}
-  if not fn.endsWith('.sql')
-    fn += '.sql'
-  p = join __base, fn
+  if isAbsolute(fn)
+    p = fn
+  else
+    if not fn.endsWith('.sql')
+      fn += '.sql'
+    p = join __base, fn
   unless queryIndex[p]?
     # Using queryFile because it is best-documented
     # way to pre-format SQL. We could probably use
@@ -74,4 +77,4 @@ proc = (fn)->
   catch err
     console.error "#{err.stack}".red
 
-module.exports = {db,sql,proc}
+module.exports = {db,sql,proc,__base}
