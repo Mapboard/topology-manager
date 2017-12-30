@@ -1,5 +1,5 @@
-DROP MATERIALIZED VIEW IF EXISTS mapping.contact CASCADE;
-CREATE MATERIALIZED VIEW mapping.contact AS
+--DROP MATERIALIZED VIEW IF EXISTS mapping.contact CASCADE;
+CREATE VIEW mapping.contact AS
 WITH face_unit AS (
 SELECT DISTINCT ON (f.face_id)
   f.face_id,
@@ -34,7 +34,7 @@ SELECT
 FROM edge_unit eu
 JOIN map_topology.edge_contact ec
   ON ec.edge_id = eu.edge_id
-JOIN map_topology.contact c
+JOIN map_digitizer.linework c
   ON ec.contact_id = c.id
 JOIN map_topology.edge_data e ON ec.edge_id = e.edge_id
 JOIN map_digitizer.linework_type t
