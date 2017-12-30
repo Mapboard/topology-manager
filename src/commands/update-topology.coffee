@@ -7,7 +7,7 @@ colors = require 'colors'
 command = 'update [--reset] [--watch]'
 describe = 'Update topology'
 
-updateAll = (reset=false)->
+updateAll = (reset=false, verbose=false)->
   console.log "Updating contacts".green.bold
   await updateContacts()
   console.log "Updating faces".green.bold
@@ -29,6 +29,6 @@ handler = (argv)->
   await updateAll(argv.reset)
   process.exit()
 
-module.exports = {command, describe, handler}
+module.exports = {command, describe, handler, startWatcher}
 
 
