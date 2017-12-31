@@ -1,12 +1,40 @@
 #!/usr/bin/env coffee
-{proc} = require '../util'
+{proc, db, sql} = require '../util'
 colors = require 'colors'
 
 command = 'clean-topology'
 describe = 'Clean topology'
 
 cleanTopology = ->
-  await proc('procedures/clean-topology.sql')
+  rem_edge = sql('procedures/clean-topology-rem-edge')
+  await proc('procedures/clean-topology-01')
+
+  await db.task (t)->
+    console.log "Deleting edges".green.bold
+    edges = await db.query sql('procedures/get-edges-to-delete')
+    for {edge_id} in edges
+      try
+        {fid} = await t.one rem_edge, {edge_id}
+      catch err
+        console.error "#{edge_id} ".red.bold+"#{err}".slice(7).red.dim
+
+    await proc('procedures/clean-topology-02')
+
+    console.log "Healing edges".green.bold
+
+    n = 100
+    counter = 0
+    while n > 0
+      res = await t.query sql('procedures/get-edges-to-heal')
+      n = res.length
+      for {edge1,edge2} in res
+        try
+          t.one sql('procedures/clean-topology-heal-edge'), {edge1,edge2}
+          counter += 1
+        catch err
+          console.error "#{err}".red.dim
+
+    console.log "Healed #{counter} edges"
 
 handler = ->
   await cleanTopology()

@@ -21,7 +21,8 @@ WHERE edge_id NOT IN (
   SELECT element_id
   FROM map_topology.relation
   WHERE element_type = 2
-);
+)
+AND left_face = right_face;
 
 SELECT
   topology.ST_RemEdgeModFace('map_topology', edge_id)
