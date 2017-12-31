@@ -75,26 +75,23 @@ BEGIN
   END IF;
   RETURN false;
 EXCEPTION WHEN others THEN
-  RAISE NOTICE 'Error code: %', SQLSTATE;
-  RAISE NOTICE 'Error message: %', SQLERRM;
   RETURN false;
 END;
 $$
 LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION map_topology.removeEdgeMaybe(eid integer)
-RETURNS boolean AS
+RETURNS integer AS
 $$
 DECLARE
 fid integer;
 BEGIN
-  fid := ST_RemEdgeModFace('map_topology', eid);
-  RETURN true;
+  RETURN ST_RemEdgeModFace('map_topology', eid);
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;
   RAISE NOTICE 'Error message: %', SQLERRM;
-  RETURN false;
-END
+  RETURN NULL;
+END;
 $$
 LANGUAGE 'plpgsql';
 

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS ${data_schema~}.linework (
   name          text,
   FOREIGN KEY (type) REFERENCES ${data_schema~}.linework_type(id) ON UPDATE CASCADE
 );
+
 CREATE INDEX IF NOT EXISTS ${data_schema^}_linework_geometry_idx
   ON ${data_schema~}.linework USING gist (geometry);
 
