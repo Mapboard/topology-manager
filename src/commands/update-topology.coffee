@@ -16,11 +16,25 @@ updateAll = (reset=false, verbose=false)->
   await cleanTopology()
 
 startWatcher = ->
-  updateAll()
+  updateInProgress = false
+  needsUpdate = true
+  runCommand = =>
+    return if updateInProgress
+    return unless needsUpdate
+
+    updatInProgress = true
+    needsUpdate = false
+    await updateAll()
+    updateInProgress = false
+
   conn = await db.connect direct: true
   conn.client.on 'notification', (data)->
-    await updateAll()
+    needsUpdate = true
+
   conn.none('LISTEN $1~', 'events')
+  # Poll every second to see if we need to do things
+  setInterval runCommand, 1000
+
 
 handler = (argv)->
   if argv.watch
