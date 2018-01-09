@@ -1,3 +1,5 @@
+SET session_replication_role = replica;
+
 UPDATE map_digitizer.linework
 SET
   topo = null,
@@ -16,5 +18,5 @@ ALTER SEQUENCE map_topology.topogeo_s_1 RESTART WITH 1;
 
 SELECT setval(pg_get_serial_sequence('map_topology.map_face', 'id'), coalesce(max(id),0)+1, false)
   FROM map_topology.map_face;
-
+SET session_replication_role = DEFAULT;
 VACUUM ANALYZE;

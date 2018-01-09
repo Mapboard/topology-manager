@@ -130,7 +130,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION map_topology.unitForFace(face_id integer, in_topology text)
 RETURNS text AS $$
-SELECT 
+SELECT
   unit_id
 FROM map_topology.relation r
 JOIN map_topology.map_face f
@@ -139,4 +139,4 @@ WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = map_topology.__map_face_layer_id()
   AND topology = $2;
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL IMMUTABLE;
