@@ -45,10 +45,12 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face (
   geometry geometry(MultiPolygon, ${srid})
 );
 
-CREATE TABLE IF NOT EXISTS ${topo_schema~}.map_face_edge (
-  id serial PRIMARY KEY,
-  edge_id integer REFERENCES ${topo_schema~}.edge_data (edge_id),
-  topo_id integer REFERENCES ${topo_schema~}.map_face (id)
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.face_type (
+  face_id integer REFERENCES ${topo_schema~}.face (face_id) ON DELETE CASCADE,
+  map_face integer REFERENCES ${topo_schema~}.map_face (id) ON DELETE CASCADE,
+  topology text REFERENCES ${topo_schema~}.subtopology (id) ON UPDATE CASCADE,
+  unit_id text,
+  PRIMARY KEY (face_id, topology)
 );
 
 SELECT topology.AddTopoGeometryColumn(${topo_schema},
