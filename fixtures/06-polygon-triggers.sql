@@ -46,8 +46,35 @@ FOR EACH ROW
 EXECUTE PROCEDURE map_topology.polygon_update_trigger();
 
 CREATE OR REPLACE FUNCTION
-map_topology.register_face_units(__map_face map_topology.map_face)
+map_topology.register_face_unit(__map_face_id integer)
 RETURNS void AS $$
+WITH t AS (
+SELECT
+  id map_face,
+  unit_id,
+  topology,
+  (topo).*
+FROM map_topology.map_face
+WHERE id = __map_face_id
+)
+INSERT INTO map_topology.face_type AS ft (face_id, map_face, unit_id, topology)
+SELECT
+  face_id,
+  map_face,
+  unit_id,
+  topology
+FROM t
+JOIN map_topology.relation r
+  ON r.layer_id = t.layer_id
+  AND r.element_type = t.type
+  AND r.topogeo_id = t.id
+JOIN map_topology.face f
+  ON r.element_id = f.face_id
+ON CONFLICT (face_id, topology) DO UPDATE SET
+  map_face = EXCLUDED.map_face,
+  unit_id = EXCLUDED.unit_id
+WHERE ft.face_id = EXCLUDED.face_id
+  AND ft.topology = EXCLUDED.topology;
 $$ LANGUAGE SQL;
 
 
@@ -56,36 +83,20 @@ CREATE OR REPLACE FUNCTION map_topology.map_face_topo_update_trigger()
 Procedure to keep contact table in sync with linework table
 */
 RETURNS trigger AS $$
-DECLARE
-  __map_face map_topology.map_face;
-  __topology text;
 BEGIN
-
-IF (TG_OP = 'DELETE') THEN
-  __map_face := OLD;
-ELSE
-  __map_face := NEW;
+IF (NEW.topo IS NULL) THEN
+  RETURN null;
 END IF;
-
---IF (__map_face.topo IS NULL) THEN
-RETURN null;
---END IF;
-
--- TODO: there might be an issue with topology here...
-UPDATE map_topology.map_face mf
-SET unit_id = map_topology.unitForArea(geometry, mf.topology)
-WHERE ST_Intersects(affected_area, geometry);
+PERFORM map_topology.register_face_unit(NEW.id);
 RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 
 /* Create the actual trigger */
-DROP TRIGGER IF EXISTS map_digitizer_map_face_topo_update_trigger
+DROP TRIGGER IF EXISTS map_topology_map_face_topo_update_trigger
   ON map_topology.map_face;
 CREATE TRIGGER map_topology_map_face_topo_update_trigger
-AFTER INSERT
-OR UPDATE OF topo, unit_id
-OR DELETE
+AFTER INSERT OR UPDATE OF topo, unit_id
 ON map_topology.map_face
 FOR EACH ROW
 EXECUTE PROCEDURE map_topology.map_face_topo_update_trigger();

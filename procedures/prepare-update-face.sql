@@ -1,3 +1,7 @@
+SELECT map_topology.register_face_unit(id) FROM map_topology.map_face
+WHERE topo IS NOT null
+  AND id NOT IN (SELECT DISTINCT map_face FROM map_topology.face_type);
+
 WITH e AS (
 SELECT
   element_id,
@@ -34,5 +38,5 @@ SELECT unnest(ids) id FROM v1 WHERE count > 1
 )
 DELETE FROM map_topology.map_face f
 USING v3
-WHERE f.id = v3.id
+WHERE f.id = v3.id;
 
