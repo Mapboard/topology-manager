@@ -32,7 +32,6 @@ getLocation = (cfgDir, key, locString)->
     return getFromFilePath(cfgDir,locString)
 
   localVal = packageCfg.extensions[key]
-  console.log key, localVal
   if localVal?
     return getFromFilePath(basedir,localVal)
   return require.resolve locString

@@ -10,6 +10,8 @@ updateFaces = (reset=false)->
 
   await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
 
+  await proc "procedures/prepare-update-face"
+
   {nfaces} = await db.one count
   console.log "#{nfaces} remaining"
   while nfaces > 0

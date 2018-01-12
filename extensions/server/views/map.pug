@@ -1,0 +1,23 @@
+doctype html
+html(lang="en")
+  head
+    title= title
+    style
+      include ../../../node_modules/leaflet/dist/leaflet.css
+    script
+      include ../../../node_modules/leaflet/dist/leaflet.js
+    style.
+      body { margin: 0; }
+      #map { height: 100vh; }
+
+  body
+    #map
+    script.
+      var endpoints="#{endpoints}";
+      var map = L.map('map', {center: [-24.2254,16.1987], zoom: 12});
+      var url = "http://localhost:39805/geology/{z}/{x}/{y}/tile.png";
+      L.tileLayer(
+          url, {
+          maxZoom: 18
+          }).addTo(map);
+

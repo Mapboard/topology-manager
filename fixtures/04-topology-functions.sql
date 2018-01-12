@@ -75,26 +75,23 @@ BEGIN
   END IF;
   RETURN false;
 EXCEPTION WHEN others THEN
-  RAISE NOTICE 'Error code: %', SQLSTATE;
-  RAISE NOTICE 'Error message: %', SQLERRM;
   RETURN false;
 END;
 $$
 LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION map_topology.removeEdgeMaybe(eid integer)
-RETURNS boolean AS
+RETURNS integer AS
 $$
 DECLARE
 fid integer;
 BEGIN
-  fid := ST_RemEdgeModFace('map_topology', eid);
-  RETURN true;
+  RETURN ST_RemEdgeModFace('map_topology', eid);
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;
   RAISE NOTICE 'Error message: %', SQLERRM;
-  RETURN false;
-END
+  RETURN NULL;
+END;
 $$
 LANGUAGE 'plpgsql';
 
@@ -131,32 +128,15 @@ RETURN result;
 END
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION map_topology.healEdges()
-RETURNS void AS $$
-DECLARE
-  __healed_edge integer;
-  __edges integer[];
-  __c1 integer;
-  __c2 integer;
-BEGIN
-
-__healed_edge := 0;
-
-WHILE (__healed_edge IS NOT null) LOOP
-
+CREATE OR REPLACE FUNCTION map_topology.unitForFace(face_id integer, in_topology text)
+RETURNS text AS $$
 SELECT
-  ST_ModEdgeHeal('map_topology', edges[1], edges[2])
-INTO __healed_edge
-FROM map_topology.node_edge
-WHERE n_edges = 2
-  AND edges[1] != edges[2]
-  AND (SELECT contact_id
-       FROM map_topology.edge_contact
-       WHERE edge_id = edges[1]) = (SELECT contact_id
-       FROM map_topology.edge_contact WHERE edge_id = edges[2])
-LIMIT 1;
-
-END LOOP;
-
-END
-$$ LANGUAGE plpgsql;
+  unit_id
+FROM map_topology.relation r
+JOIN map_topology.map_face f
+  ON (f.topo).id = r.topogeo_id
+WHERE element_id = $1
+  AND element_type = 3
+  AND r.layer_id = map_topology.__map_face_layer_id()
+  AND topology = $2;
+$$ LANGUAGE SQL IMMUTABLE;
