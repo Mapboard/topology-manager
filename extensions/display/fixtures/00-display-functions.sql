@@ -9,9 +9,8 @@ $$ LANGUAGE SQL;
 
 -- The commonality between two units
 -- (units are part of the same what?)
-CREATE OR REPLACE
-  FUNCTION mapping.unit_commonality(text, text)
-  RETURNS integer AS $$
+CREATE OR REPLACE FUNCTION mapping.unit_commonality(text, text)
+RETURNS integer AS $$
     WITH t AS (
       SELECT UNNEST(tree) id
       FROM mapping.unit_tree
@@ -38,3 +37,7 @@ SELECT
 FROM mapping.unit a
 CROSS JOIN mapping.unit a1
 WHERE a.topology = a1.topology;
+
+CREATE INDEX mapping_unit_commonality_index
+ON mapping.__unit_commonality (u1, u2);
+

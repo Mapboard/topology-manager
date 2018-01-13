@@ -1,5 +1,5 @@
---DROP MATERIALIZED VIEW IF EXISTS mapping.contact CASCADE;
-CREATE VIEW mapping.contact AS
+DROP MATERIALIZED VIEW IF EXISTS mapping.contact CASCADE;
+CREATE MATERIALIZED VIEW mapping.contact AS
 WITH face_unit AS (
 SELECT DISTINCT ON (f.face_id)
   f.face_id,
@@ -50,7 +50,7 @@ SELECT c.*,
   ELSE (SELECT max(id) FROM mapping.unit_level) END AS commonality
 FROM main c
 )
-SELECT
+SELECT DISTINCT ON (v.id)
   v.*,
   l.name AS commonality_desc
 FROM vals v
