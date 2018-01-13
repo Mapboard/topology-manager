@@ -51,30 +51,42 @@ queryInfo = (queryText)->
     .exec(s)
   if arr? and arr[1]?
     s = arr[1]
-  console.log s.replace(/"/g,'').gray
+  return s.replace(/"/g,'')
 
-runQuery = (q)->
+runQuery = (q, opts={})->
+  opts.indent ?= ''
   try
-    queryInfo(q)
+    qi = queryInfo(q)
+    console.log opts.indent+qi.gray
     await db.query q
   catch err
     ste = err.toString()
     if ste.endsWith "already exists"
-      console.error ste.dim.red
+      console.error opts.indent+ste.dim.red
     else
-      console.error ste.red
+      console.error opts.indent+ste.red
 
-proc = (fn)->
+proc = (fn, opts={})->
   ## Execute a (likely multi-transaction) stored procedure
+  # Trim leading path for display if asked for
+  {indent, trimPath} = opts
+  indent ?= ''
+
+  if trimPath?
+    fnd = fn.replace(opts.trimPath,'')
+    if fnd.indexOf('/') == 0
+      fnd = fnd.substr(1)
+  fnd ?= fn
+
   try
     _ = sql(fn)
     procedures = TSParser.parse _,'pg',';'
-    console.log fn.green
+    console.log indent+fnd.green
     db.tx (ctx)->
       for q in procedures
-        await runQuery(q)
+        await runQuery(q, {indent})
       console.log ""
   catch err
-    console.error "#{err.stack}".red
+    console.error indent+"#{err.stack}".red
 
 module.exports = {db,sql,proc,__base}

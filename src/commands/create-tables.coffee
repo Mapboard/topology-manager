@@ -18,13 +18,14 @@ handler = (argv)->
       continue unless fixtures
       console.log "Extension "+e.name.green.bold
       console.log e.description.green.dim
+      console.log "at: ".grey + e.path.green
       console.log ""
       if typeof fixtures == 'string'
         __dir = join(path, fixtures)
         fixtures = await glob('*.sql', cwd: __dir)
       for fn in fixtures
         p = join __dir, fn
-        await proc(p)
+        await proc(p, {trimPath: e.path, indent: "    "})
 
   catch err
     console.log "#{err.stack}".red
