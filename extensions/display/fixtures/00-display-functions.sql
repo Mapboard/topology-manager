@@ -1,3 +1,5 @@
+CREATE SCHEMA mapping;
+
 -- The subunits of a unit
 CREATE OR REPLACE FUNCTION mapping.subunits(text) RETURNS text[] AS $$
     SELECT ARRAY(SELECT id
@@ -26,4 +28,13 @@ CREATE OR REPLACE
     ORDER BY u.level DESC LIMIT 1
 $$ LANGUAGE SQL;
 
-
+DROP MATERIALIZED VIEW mapping.__unit_commonality CASCADE;
+CREATE MATERIALIZED VIEW mapping.__unit_commonality AS
+SELECT
+  a.id u1,
+  a1.id u2,
+  a.topology,
+  coalesce(mapping.unit_commonality(a.id, a1.id),0) commonality
+FROM mapping.unit a
+CROSS JOIN mapping.unit a1
+WHERE a.topology = a1.topology;

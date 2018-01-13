@@ -39,7 +39,7 @@ CREATE OR REPLACE
     )
     SELECT count(*)::integer
     FROM t
-$$ LANGUAGE SQL;
+$$ LANGUAGE SQL IMMUTABLE;
 
 
 -- Subunits of a unit

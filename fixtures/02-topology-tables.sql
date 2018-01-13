@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.face_type (
   unit_id text,
   PRIMARY KEY (face_id, topology)
 );
-CREATE INDEX face_type_ix ON ${topo_schema~}.face_type;
+CREATE INDEX face_type_ix ON ${topo_schema~}.face_type (face_id);
 
 SELECT topology.AddTopoGeometryColumn(${topo_schema},
   ${topo_schema}, 'map_face', 'topo', 'MULTIPOLYGON');
