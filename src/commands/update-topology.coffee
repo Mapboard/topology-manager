@@ -4,14 +4,19 @@
 {db} = require '../util'
 colors = require 'colors'
 
-command = 'update [--reset] [--watch]'
+command = 'update [--reset] [--fill-holes] [--watch]'
 describe = 'Update topology'
 
-updateAll = (reset=false, verbose=false)->
+updateAll = (opts={})->
+  {verbose, reset, fillHoles} = opts
+  reset ?= false
+  verbose ?= false
+  fillHoles ?= false
+
   console.log "Updating contacts".green.bold
   await updateContacts()
   console.log "Updating faces".green.bold
-  await updateFaces(reset)
+  await updateFaces({reset, fillHoles})
   console.log "Cleaning topology".green.bold
   await cleanTopology()
 
@@ -40,7 +45,8 @@ handler = (argv)->
   if argv.watch
     startWatcher()
     return
-  await updateAll(argv.reset)
+  {reset, fillHoles} = argv
+  await updateAll({reset,fillHoles})
   process.exit()
 
 module.exports = {command, describe, handler, startWatcher}

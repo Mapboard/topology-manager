@@ -79,9 +79,7 @@ $$ LANGUAGE SQL;
 
 
 CREATE OR REPLACE FUNCTION map_topology.map_face_topo_update_trigger()
-/*
-Procedure to keep contact table in sync with linework table
-*/
+/* Procedure to keep contact table in sync with linework table */
 RETURNS trigger AS $$
 BEGIN
 IF (NEW.topo IS NULL) THEN
