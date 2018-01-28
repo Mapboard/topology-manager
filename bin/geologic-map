@@ -1,7 +1,7 @@
 #!/usr/bin/env coffee
 yargs = require 'yargs'
 {spawnSync} = require 'child_process'
-{join} = require 'path'
+{join, resolve} = require 'path'
 {existsSync} = require 'fs'
 colors = require 'colors'
 
@@ -18,6 +18,15 @@ external = (cmd, describe="")->
     spawnSync prefixedCommand, argv._.slice(1), {stdio: 'inherit'}
   return {command, describe, handler}
 
+### Create extension commands from config ###
+createExtensionCommands = (argv)->
+  {extensions} = require '../src/config'
+  for ext in extensions
+    ext.commands ?= []
+    for cmd in ext.commands
+      argv.command cmd
+  return argv
+
 argv = yargs
   .usage '$0 <command>'
   .option 'c', {
@@ -33,6 +42,9 @@ argv = yargs
   .command require '../src/commands/delete'
   .command require '../src/commands/clean-topology'
   .command require '../extensions/server/command'
+  .wrap null
+
+createExtensionCommands(argv)
   .demandCommand()
   .argv
 

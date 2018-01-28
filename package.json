@@ -5,7 +5,8 @@
   "author": "Daven Quinn",
   "license": "MIT",
   "extensions": {
-    "geologic-map-display": "file:extensions/display"
+    "geologic-map-display": "file:extensions/display",
+    "fill-patterns": "file:extensions/fill-patterns"
   },
   "dependencies": {
     "bluebird": "^3.5.1",

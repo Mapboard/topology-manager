@@ -43,7 +43,16 @@ for k,v of extensions
   if cfg.name != k
     throw "Extension name #{cfg.name} does not match configuration."
   cfg.path = loc
+  cfg.commands ?= []
+  cfg.commands = cfg.commands.map (cmd)->
+    global.config = cfg
+    try
+      return require join(loc,cmd)
+    catch err
+      #throw "Command #{cmd} misconfigured"
+      throw err
   newExtensions.push cfg
+
 extensions = newExtensions
 
 module.exports = {connection, data_schema,
