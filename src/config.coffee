@@ -5,7 +5,7 @@
 {database, srid, topo_schema,
  data_schema, host, port,
  connection, tolerance, server,
- extensions} = require GEOLOGIC_MAP_CONFIG
+ extensions, rest...} = require GEOLOGIC_MAP_CONFIG
 
 host ?= 'localhost'
 port ?= 5432
@@ -22,6 +22,12 @@ packageCfg = require '../package.json'
 
 prefix = 'file:'
 
+appRequire = (fn)->
+  require join(basedir,fn)
+
+cfgRequire = (fn)->
+  require join(cfgDir,fn)
+
 getFromFilePath = (cfgDir,v)->
   _ = v.slice prefix.length
   loc = resolve join cfgDir, _
@@ -36,25 +42,23 @@ getLocation = (cfgDir, key, locString)->
     return getFromFilePath(basedir,localVal)
   return require.resolve locString
 
-newExtensions = []
-for k,v of extensions
+configDir = cfgDir
+config = {connection, data_schema, configDir
+          topo_schema, tolerance, srid
+          basedir, server, appRequire, cfgRequire,
+          rest...}
+
+# Make config accessible to extensions
+# There is probably a better way to do this.
+global.config = config
+# Get configurations for each extension.
+config.extensions = for k,v of extensions
   loc = getLocation(cfgDir, k, v)
   cfg = require join(loc,'package.json')
   if cfg.name != k
     throw "Extension name #{cfg.name} does not match configuration."
   cfg.path = loc
   cfg.commands ?= []
-  cfg.commands = cfg.commands.map (cmd)->
-    global.config = cfg
-    try
-      return require join(loc,cmd)
-    catch err
-      #throw "Command #{cmd} misconfigured"
-      throw err
-  newExtensions.push cfg
+  cfg
 
-extensions = newExtensions
-
-module.exports = {connection, data_schema,
-                  topo_schema, tolerance, srid
-                  basedir, server, extensions}
+module.exports = config

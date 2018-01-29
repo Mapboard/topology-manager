@@ -20,10 +20,13 @@ external = (cmd, describe="")->
 
 ### Create extension commands from config ###
 createExtensionCommands = (argv)->
-  {extensions} = require '../src/config'
-  for ext in extensions
+  config = require '../src/config'
+  global.config = config
+  for ext in config.extensions
     ext.commands ?= []
-    for cmd in ext.commands
+    for commandFile in ext.commands
+      commandFile = join(ext.path, commandFile)
+      cmd = require commandFile
       argv.command cmd
   return argv
 
