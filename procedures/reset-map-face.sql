@@ -8,5 +8,5 @@ FROM map_topology.face
 CROSS JOIN map_topology.subtopology st
 ON CONFLICT DO NOTHING;
 
-TRUNCATE TABLE map_topology.map_face;
+TRUNCATE TABLE map_topology.map_face CASCADE;
 

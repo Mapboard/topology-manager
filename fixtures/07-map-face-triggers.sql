@@ -118,9 +118,8 @@ FROM b
 DELETE FROM map_topology.map_face mf
 USING g
 -- Intersection might be too wide a parameter
-WHERE (ST_Overlaps(mf.geometry, g.geometry)
-  OR ST_Contains(mf.geometry,g.geometry)
-  OR ST_Contains(g.geometry,mf.geometry))
+WHERE (ST_Intersects(mf.geometry, ST_Buffer(g.geometry,-1))
+  AND NOT ST_Touches(mf.geometry, ST_Buffer(g.geometry,-1)))
   AND mf.topology = __face.topology;
 
 --- Update the geometry
