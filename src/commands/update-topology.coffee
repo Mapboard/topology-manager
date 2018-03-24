@@ -4,17 +4,17 @@
 {db} = require '../util'
 colors = require 'colors'
 
-command = 'update [--reset] [--fill-holes] [--watch]'
+command = 'update [--reset] [--fill-holes] [--watch] [--fix-failed]'
 describe = 'Update topology'
 
 updateAll = (opts={})->
-  {verbose, reset, fillHoles} = opts
+  {verbose, reset, fillHoles, fixFailed} = opts
   reset ?= false
   verbose ?= false
   fillHoles ?= false
 
   console.log "Updating contacts".green.bold
-  await updateContacts()
+  await updateContacts({fixFailed})
   console.log "Updating faces".green.bold
   await updateFaces({reset, fillHoles})
   console.log "Cleaning topology".green.bold
