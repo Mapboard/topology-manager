@@ -4,7 +4,6 @@ yargs = require 'yargs'
 {join, resolve} = require 'path'
 {existsSync} = require 'fs'
 colors = require 'colors'
-
 external = (cmd, describe="")->
   cmdStart = cmd.split(' ')[0]
   prefixedCommand = "geologic-map-#{cmdStart}"
@@ -20,6 +19,8 @@ external = (cmd, describe="")->
 
 ### Create extension commands from config ###
 createExtensionCommands = (argv)->
+  # Set verbosity
+  global.verbose = argv.argv.verbose
   config = require '../src/config'
   global.config = config
   for ext in config.extensions
@@ -35,6 +36,11 @@ argv = yargs
   .option 'c', {
     description: "JSON config file. Used in lieu of the
                   GEOLOGIC_MAP_CONFIG environment variable"}
+  .option 'verbose', {
+    alias: 'v'
+    description: "Increase verbosity"
+    global: true
+    }
   .command external 'set-colors [file]', 'Set colors from csv file (id,color)'
   .command external 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
   .command require '../src/commands/update-contacts'

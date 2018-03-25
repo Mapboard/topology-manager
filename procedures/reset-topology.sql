@@ -3,7 +3,8 @@ SET session_replication_role = replica;
 UPDATE map_digitizer.linework
 SET
   topo = null,
-  geometry_hash = null;
+  geometry_hash = null,
+  topology_error = null;
 
 TRUNCATE TABLE map_topology.face CASCADE;
 TRUNCATE TABLE map_topology.relation CASCADE;

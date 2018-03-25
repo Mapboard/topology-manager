@@ -9,10 +9,12 @@ Promise = require 'bluebird'
  data_schema, connection, tolerance} = require './config'
 
 logFunc = (e)->
+  return unless global.verbose
+  #console.log global.verbose
+  #return unless global.verbose
   console.log colors.grey(e.query)
   if e.params?
     console.log "    "+colors.cyan(e.params)
-logFunc = null
 
 pgp = PGPromise(promiseLib: Promise, query: logFunc)
 
