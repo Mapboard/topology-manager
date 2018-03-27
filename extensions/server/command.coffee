@@ -1,5 +1,5 @@
 {server, data_schema, connection} = require '../../src/config'
-{startWatcher} = require '../../src/commands/update-topology'
+{startWatcher} = require '../../src/commands/update'
 {appFactory} = require 'map-digitizer-server'
 {join} = require 'path'
 

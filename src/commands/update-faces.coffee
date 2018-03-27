@@ -1,6 +1,7 @@
+ProgressBar = require 'progress'
 {db,sql, proc} = require '../util'
 
-count = "SELECT count(*) nfaces FROM map_topology.__dirty_face"
+count = "SELECT count(*)::integer nfaces FROM map_topology.__dirty_face"
 command = 'update-faces [--reset] [--fill-holes]'
 describe = 'Update map faces'
 
@@ -16,15 +17,19 @@ updateFaces = (opts={})->
     await proc "procedures/set-holes-as-dirty"
 
   await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
-
   await proc "procedures/prepare-update-face"
 
+
+  console.time "Updating faces"
   {nfaces} = await db.one count
-  console.log "#{nfaces} remaining"
+  bar = new ProgressBar('Updating faces :bar :current/:total (:eta s)', { total: nfaces })
+
   while nfaces > 0
     await db.query "SELECT map_topology.update_map_face(false)"
-    {nfaces} = await db.one count
-    console.log "#{nfaces} remaining"
+    {nfaces: next} = await db.one count
+    bar.tick nfaces-next
+    nfaces = next
+  console.timeEnd "Updating faces"
 
 handler = (argv)->
   await updateFaces(argv)
