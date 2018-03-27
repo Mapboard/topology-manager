@@ -67,3 +67,13 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
   topology text references ${topo_schema~}.subtopology ON DELETE CASCADE,
   PRIMARY KEY(id, topology)
 );
+
+/*
+Added columns to edge_data table to hold joins to contacts
+(this will speed up a slow part of the system
+*/
+ALTER TABLE ${topo_schema~}.edge_data
+  ADD COLUMN topology text REFERENCES ${topo_schema~}.subtopology,
+  ADD COLUMN line_id integer REFERENCES ${data_schema~}.linework
+          ON UPDATE CASCADE
+          ON DELETE SET NULL;

@@ -70,7 +70,8 @@ JOIN map_topology.relation r
   AND r.topogeo_id = t.id
 JOIN map_topology.face f
   ON r.element_id = f.face_id
-ON CONFLICT (face_id, topology) DO UPDATE SET
+ON CONFLICT (face_id, topology) DO
+UPDATE SET
   map_face = EXCLUDED.map_face,
   unit_id = EXCLUDED.unit_id
 WHERE ft.face_id = EXCLUDED.face_id

@@ -1,13 +1,3 @@
-CREATE OR REPLACE VIEW map_topology.edge_contact AS
-  SELECT
-  	id contact_id,
-  	r.element_id edge_id
-	FROM map_digitizer.linework
-  JOIN map_topology.relation r
-	  ON (topo).id = r.topogeo_id
-	  AND (topo).layer_id = r.layer_id
-	  AND (topo).type = r.element_type;
-
 CREATE OR REPLACE VIEW map_topology.node_edge AS
   WITH a AS (
     SELECT edge.edge_id,
@@ -52,12 +42,11 @@ JOIN map_topology.node_edge e ON n.node_id = e.node_id;
 CREATE OR REPLACE VIEW map_topology.edge_type AS
   SELECT
     e.edge_id,
-    geom geometry,
+    e.geom geometry,
     c.id contact_id,
     c.type contact_type
-  FROM map_topology.edge e
-  JOIN map_topology.edge_contact ec ON e.edge_id = ec.edge_id
-  JOIN map_digitizer.linework c ON c.id = ec.contact_id;
+  FROM map_topology.edge_data e
+  JOIN map_digitizer.linework c ON c.id = e.line_id;
 
 CREATE OR REPLACE VIEW map_topology.face_data AS
 WITH fg AS (
@@ -74,16 +63,6 @@ WHERE NOT ST_IsEmpty(geometry);
 -- Can be reworked with create table and triggers
 -- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
 -- https://hashrocket.com/blog/posts/materialized-view-strategies-using-postgresql
-CREATE OR REPLACE VIEW map_topology.edge_topology AS
-SELECT
-  e.edge_id,
-  t.topology,
-  geometry
-FROM map_topology.edge_contact ec
-JOIN map_topology.edge e ON ec.edge_id = e.edge_id
-JOIN map_digitizer.linework c ON ec.contact_id = c.id
-JOIN map_digitizer.linework_type t ON c.type = t.id
-WHERE t.topology IS NOT null;
 
 CREATE OR REPLACE VIEW map_topology.face_display AS
 SELECT

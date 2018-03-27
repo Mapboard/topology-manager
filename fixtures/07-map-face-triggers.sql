@@ -1,29 +1,37 @@
 /*
+Potential alternate algorithm:
+
+1. get overlapping map faces
+2. split on new geometry
+3. if original geometry is the same, leave alone
+    (for partial overlaps)
+4. else, 
+5. check if any edges do not have a face associated
+  build them up the previous way.
+
+
+*/
+
+/*
 A materialized view to store relationships between faces,
 which saves ~0.5s per query. This is updated by default
 but this can be disabled for speed.
+
+Drastically simplified this view creation
 */
 DROP MATERIALIZED VIEW IF EXISTS map_topology.__face_relation;
 CREATE MATERIALIZED VIEW map_topology.__face_relation AS
-WITH ec AS (
-SELECT
-c.id contact_id,
-c.type,
-(topology.GetTopoGeomElements(c.topo))[1] edge_id
-FROM map_digitizer.linework c
-WHERE c.topo IS NOT NULL
-)
 SELECT
   f1.edge_id,
   f1.face_id f1,
   f2.face_id f2,
-  map_topology.line_topology(ec.type) topology
+  e.topology
 FROM map_topology.edge_face f1
 JOIN map_topology.edge_face f2
   ON f1.edge_id = f2.edge_id
  AND f1.face_id != f2.face_id
-LEFT JOIN ec
-  ON ec.edge_id = f1.edge_id;
+LEFT JOIN map_topology.edge_data e
+  ON f1.edge_id = e.edge_id;
 -- Indexes to speed things up
 CREATE INDEX map_topology__face_relation_face_index
   ON map_topology.__face_relation (f1);
