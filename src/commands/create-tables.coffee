@@ -4,7 +4,7 @@ glob = require 'glob-promise'
 {join} = require 'path'
 colors = require 'colors'
 
-command = 'create-tables'
+command = 'create-tables [--extensions]'
 describe = 'Create tables'
 
 handler = (argv)->
@@ -12,6 +12,8 @@ handler = (argv)->
     for fn in await glob('fixtures/*.sql', cwd: __base)
       await proc(fn)
     await proc('extensions/map-digitizer.sql')
+
+    process.exit() unless argv.extensions
 
     for e in extensions
       {fixtures, path} = e

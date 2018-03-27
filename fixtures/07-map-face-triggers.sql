@@ -5,7 +5,7 @@ Potential alternate algorithm:
 2. split on new geometry
 3. if original geometry is the same, leave alone
     (for partial overlaps)
-4. else, 
+4. else,
 5. check if any edges do not have a face associated
   build them up the previous way.
 
@@ -22,16 +22,18 @@ Drastically simplified this view creation
 DROP MATERIALIZED VIEW IF EXISTS map_topology.__face_relation;
 CREATE MATERIALIZED VIEW map_topology.__face_relation AS
 SELECT
-  f1.edge_id,
-  f1.face_id f1,
-  f2.face_id f2,
+  e.edge_id,
+  e.left_face f1,
+  e.right_face f2,
   e.topology
-FROM map_topology.edge_face f1
-JOIN map_topology.edge_face f2
-  ON f1.edge_id = f2.edge_id
- AND f1.face_id != f2.face_id
-LEFT JOIN map_topology.edge_data e
-  ON f1.edge_id = e.edge_id;
+FROM map_topology.edge_data e
+UNION ALL
+SELECT
+  e.edge_id,
+  e.right_face f1,
+  e.left_face f2,
+  e.topology
+FROM map_topology.edge_data e;
 -- Indexes to speed things up
 CREATE INDEX map_topology__face_relation_face_index
   ON map_topology.__face_relation (f1);
