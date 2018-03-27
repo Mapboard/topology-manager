@@ -7,6 +7,7 @@ command = 'serve'
 describe = 'Create a feature server'
 
 handler = ->
+  server ?= {}
   {tiles, port} = server
   port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema}
