@@ -45,7 +45,7 @@ argv = yargs
   .command external 'config [sub.item]', 'Show configuration, optionally fetching a specific value'
   .command require '../src/commands/update-contacts'
   .command require '../src/commands/update-faces'
-  .command require '../src/commands/update-topology'
+  .command require '../src/commands/update'
   .command require '../src/commands/create-tables'
   .command require '../src/commands/reset'
   .command require '../src/commands/delete'
