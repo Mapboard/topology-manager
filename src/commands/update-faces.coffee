@@ -16,7 +16,6 @@ updateFaces = (opts={})->
   if fillHoles
     await proc "procedures/set-holes-as-dirty"
 
-  await db.none "REFRESH MATERIALIZED VIEW map_topology.__face_relation"
   await proc "procedures/prepare-update-face"
 
 
@@ -25,7 +24,7 @@ updateFaces = (opts={})->
   bar = new ProgressBar('Updating faces :bar :current/:total (:eta s)', { total: nfaces })
 
   while nfaces > 0
-    await db.query "SELECT map_topology.update_map_face(false)"
+    await db.query "SELECT map_topology.update_map_face()"
     {nfaces: next} = await db.one count
     bar.tick nfaces-next
     nfaces = next

@@ -72,12 +72,18 @@ SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 SELECT array_agg(face) faces FROM b;
 $$ LANGUAGE SQL IMMUTABLE;
 
+
+
 CREATE OR REPLACE FUNCTION map_topology.update_map_face()
 RETURNS map_topology.__dirty_face AS $$
 DECLARE
+  __topo_elements integer[][];
+  __topo topogeometry;
+  __geometry geometry;
   __face map_topology.__dirty_face;
   __precision integer;
   __dissolved_faces integer[];
+  __is_global boolean;
   __deleted_face integer;
   __layer_id integer;
   __n_updated integer;
@@ -98,73 +104,73 @@ WHERE name = 'map_topology';
 
 __layer_id := map_topology.__map_face_layer_id();
 
-__dissolved_faces := map_topology.adjacent_faces(__face.id,__face.topology);
+RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.topology;
 
-IF (0 = ANY(__dissolved_faces)) THEN
-  RAISE NOTICE 'Face % is adjacent to the global face on topology "%"',
-    __face.id,__face.topology;
-
-  -- We assume that none of the other faces have map_faces
-  -- If this is incorrect, we can change the assumption
-  -- to do this for all the __dissolved_faces
-  WITH face AS (
-    SELECT (map_topology.containing_face(__face.id,__face.topology)).*
-  ), d AS (
-    DELETE FROM map_topology.map_face
-    USING face
-    WHERE face_id = face.id
-  )
-  DELETE FROM map_topology.__dirty_face
-  USING face
+-- Special case when adjacent to global face
+IF (__face.id = 0) THEN
+  DELETE
+  FROM map_topology.__dirty_face df
   WHERE topology = __face.topology
-    AND id IN (SELECT (topology.GetTopoGeomElements(face.topo))[1]);
-
+    AND id = 0;
   RETURN __face;
 END IF;
 
+
+__dissolved_faces := map_topology.adjacent_faces(__face.id,__face.topology);
+-- Special case when adjacent to global face
+IF (__dissolved_faces IS NULL) THEN
+  __dissolved_faces := ARRAY[__face.id];
+END IF;
+
+__is_global := (0 = ANY(__dissolved_faces));
+
 RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
 
--- First, delete the faces we are going to fix
--- from the dirty faces list
+-- PostgreSQL 9.3 and above
+__dissolved_faces := array_remove(__dissolved_faces,0);
+
+IF (__is_global) THEN
+  RAISE NOTICE 'Face % is adjacent to the global face',__face.id;
+END IF;
+
+--- Create a new topogeometry covering the whole area
+WITH a AS (
+  SELECT ARRAY[unnest(__dissolved_faces),3] vals
+)
+SELECT array_agg(a.vals)
+INTO __topo_elements
+FROM a;
+
+__topo := CreateTopoGeom('map_topology', 3, __layer_id, __topo_elements);
+
+__geometry := ST_SetSRID(__topo::geometry,__srid);
+
+DELETE FROM map_topology.map_face mf
+-- Intersection might be too wide a parameter
+WHERE (ST_Intersects(mf.geometry, ST_Buffer(__geometry,-__precision))
+  AND NOT ST_Touches(mf.geometry, ST_Buffer(__geometry,-__precision)))
+  AND mf.topology = __face.topology;
+
 DELETE
 FROM map_topology.__dirty_face df
 WHERE topology = __face.topology
   AND id = ANY(__dissolved_faces);
 
---- Update the geometry
---- Insert new topogeometry and recover ID
-WITH a AS (
-  SELECT ARRAY[unnest(__dissolved_faces),3]::topology.topoelement vals
-),
-b AS (
-SELECT CreateTopoGeom('map_topology', 3, __layer_id,
-  TopoElementArray_Agg(a.vals)) topo
-FROM a
-),
-g AS (
-SELECT
-  topo,
-  ST_SetSRID(topo::geometry,__srid) geometry,
-  __face.topology
-FROM b
-),
-d AS (
-  --- already there)
-  DELETE FROM map_topology.map_face mf
-  USING g
-  -- Intersection might be too wide a parameter
-  WHERE (ST_Intersects(mf.geometry, ST_Buffer(g.geometry,__precision))
-    AND NOT ST_Touches(mf.geometry, ST_Buffer(g.geometry,__precision)))
-    AND mf.topology = __face.topology
-)
+IF (__is_global) THEN
+  DELETE
+  FROM map_topology.__dirty_face df
+  WHERE topology = __face.topology
+    AND id = 0;
+  RETURN __face;
+END IF;
+
 INSERT INTO map_topology.map_face
   (unit_id, topo, topology, geometry)
 SELECT
-map_topology.unitForArea(g.geometry, g.topology) unit_id,
-g.topo,
-g.topology,
-g.geometry
-FROM g;
+map_topology.unitForArea(__geometry, __face.topology) unit_id,
+__topo,
+__face.topology,
+__geometry;
 
 RETURN __face;
 
@@ -178,7 +184,7 @@ BEGIN
 -- Loop throug table of dirty linework
 WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
 LOOP
-  PERFORM map_topology.update_map_face(false);
+  PERFORM map_topology.update_map_face();
 END LOOP;
 
 END;
