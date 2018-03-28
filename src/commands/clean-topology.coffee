@@ -28,11 +28,13 @@ cleanTopology = ->
       res = await t.query sql('procedures/get-edges-to-heal')
       n = res.length
       for {edge1,edge2} in res
+        if global.verbose
+          console.log "Healing edges "+String(edge1).green+" and "+String(edge2).green
         try
           t.one sql('procedures/clean-topology-heal-edge'), {edge1,edge2}
           counter += 1
         catch err
-          console.error "#{err}".red.dim
+          console.error "#{err.message}".red.dim
 
     console.log "Healed #{counter} edges"
 

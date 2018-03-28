@@ -124,6 +124,14 @@ BEGIN
     -- We already have a valid topogeometry representation
     RETURN null;
   END IF;
+  -- Set that line-edge relations need to be refreshed
+  -- This should be made into a trigger
+  UPDATE map_topology.edge_data
+  SET
+    topology = null,
+    line_id = null
+  WHERE line_id = line.id;
+
   -- Set topogeometry
   topogeo := topology.toTopoGeom(
       line.geometry, 'map_topology',
