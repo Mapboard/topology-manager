@@ -16,7 +16,14 @@ logFunc = (e)->
   if e.params?
     console.log "    "+colors.cyan(e.params)
 
-pgp = PGPromise(promiseLib: Promise, query: logFunc)
+logNoticesFunction = (client, dc, isFresh) ->
+  return unless isFresh
+  return unless global.verbose
+  client.on 'notice', (msg)->
+    msg = String(msg).slice(8)
+    console.log("NOTICE ".blue+msg)
+
+pgp = PGPromise(promiseLib: Promise, query: logFunc, connect: logNoticesFunction)
 
 {QueryFile} = pgp
 {readFileSync} = require 'fs'
