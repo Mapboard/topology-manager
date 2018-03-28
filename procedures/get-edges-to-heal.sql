@@ -9,10 +9,10 @@ WHERE n_edges = 2
 ec AS (
 SELECT
   node_id,
-  array_agg(contact_id) contacts,
+  array_agg(line_id) contacts,
   array_agg(ec.edge_id) edges
 FROM node_edge ne
-JOIN map_topology.edge_contact ec
+JOIN map_topology.edge_data ec
   ON ne.edge_id = ec.edge_id
 GROUP BY node_id
 )
