@@ -1,4 +1,4 @@
-SELECT count(*) nlines
+SELECT count(*)::integer nlines
 FROM map_digitizer.linework l
 WHERE geometry_hash IS null
   AND map_topology.line_topology(l.type) IS NOT null

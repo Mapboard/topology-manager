@@ -132,14 +132,14 @@ BEGIN
     line_id = null
   WHERE line_id = line.id;
 
-  -- Set topogeometry
-  topogeo := topology.toTopoGeom(
-      line.geometry, 'map_topology',
-      map_topology.__linework_layer_id(),
-      map_topology.__topo_precision());
-
   -- Actually set topogeometry
   BEGIN
+    -- Set topogeometry
+    topogeo := topology.toTopoGeom(
+        line.geometry, 'map_topology',
+        map_topology.__linework_layer_id(),
+        map_topology.__topo_precision());
+
     UPDATE map_digitizer.linework l
     SET
       topo = topogeo,
@@ -154,6 +154,7 @@ BEGIN
     WHERE l.id = line.id;
     RETURN SQLERRM::text;
   END;
+  RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 

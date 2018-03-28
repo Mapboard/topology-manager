@@ -1,3 +1,4 @@
+ProgressBar = require 'progress'
 {db,sql} = require '../util'
 colors = require 'colors'
 
@@ -17,17 +18,18 @@ updateContacts = (opts={})->
     await db.query resetErrors
 
   {nlines} = await db.one count
-  console.log "#{nlines} remaining"
+  __ = 'Updating lines :bar :current/:total (:eta s)'
+  bar = new ProgressBar(__, { total: nlines })
   while nlines > 0
     try
       [{e}] = await db.query proc
       if e?
-        console.error "#{e}".red
+        bar.interrupt "#{e}".red.dim
     catch err
-      console.error "#{err}".red
+      bar.interrupt "#{err}".red
       continue
+    bar.tick()
     {nlines} = await db.one count
-    console.log "#{nlines} remaining"
 
   # Post-update (in an ideal world we would not have to do this)
   console.log "Linking lines to topology edges".gray
