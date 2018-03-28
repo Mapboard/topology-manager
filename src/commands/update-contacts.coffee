@@ -18,7 +18,7 @@ updateContacts = (opts={})->
     await db.query resetErrors
 
   {nlines} = await db.one count
-  __ = 'Updating lines :bar :current/:total (:eta s)'
+  __ = 'Updating lines :bar :current/:total (:elapsed/:eta s)'
   bar = new ProgressBar(__, { total: nlines })
   while nlines > 0
     try
