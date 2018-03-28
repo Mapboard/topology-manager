@@ -85,6 +85,7 @@ END IF;
    We may put in a dirty marker here instead of hashing if it seems better */
 IF (NOT OLD.geometry = NEW.geometry) THEN
   NEW.geometry_hash := null;
+  PERFORM map_topology.mark_surrounding_faces(OLD);
   RETURN NEW;
 END IF;
 

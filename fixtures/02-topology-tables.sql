@@ -14,7 +14,8 @@ VALUES (
   'Default',
   '#000000',
   'default'
-);
+)
+ON CONFLICT DO NOTHING;
 
 -- Insert initial values into subtopology column
 INSERT INTO ${topo_schema~}.subtopology (id)
