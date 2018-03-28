@@ -63,6 +63,7 @@ BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   PERFORM map_topology.mark_surrounding_faces(OLD);
+  --PERFORM map_topology.join_surrounding_faces(NEW)
   RETURN OLD;
 END IF;
 
@@ -70,6 +71,9 @@ IF (TG_OP = 'INSERT') THEN
   /*
   We will probably not have topo set on inserts most of the time, but we might
   on programmatic or eagerly-managed insertions, so it's worth a try.
+
+  NEW method: get map faces that cover this
+  PERFORM map_topology.join_surrounding_faces(NEW)
   */
   PERFORM map_topology.mark_surrounding_faces(NEW);
   RETURN NEW;
@@ -90,6 +94,17 @@ IF ((OLD.topo).id = (NEW.topo).id AND
   RETURN NEW;
 END IF;
 
+/* This is probably where we should update map faces for referential
+   integrity
+
+Envisioned series of steps:
+1. Find overlapping map faces
+2. Join all of the overlapping faces
+3. Split faces on this new 
+
+*/
+
+/* We can fall back to this if we don't have a handled case for now */
 PERFORM map_topology.mark_surrounding_faces(OLD);
 PERFORM map_topology.mark_surrounding_faces(NEW);
 RETURN NEW;
