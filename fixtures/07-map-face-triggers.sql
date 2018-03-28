@@ -19,24 +19,6 @@ but this can be disabled for speed.
 
 Drastically simplified this view creation
 */
-DROP MATERIALIZED VIEW IF EXISTS map_topology.__face_relation;
-CREATE MATERIALIZED VIEW map_topology.__face_relation AS
-SELECT
-  e.edge_id,
-  e.left_face f1,
-  e.right_face f2,
-  e.topology
-FROM map_topology.edge_data e
-UNION ALL
-SELECT
-  e.edge_id,
-  e.right_face f1,
-  e.left_face f2,
-  e.topology
-FROM map_topology.edge_data e;
--- Indexes to speed things up
-CREATE INDEX map_topology__face_relation_face_index
-  ON map_topology.__face_relation (f1);
 
 CREATE OR REPLACE FUNCTION map_topology.__map_face_layer_id()
 RETURNS integer AS $$
@@ -47,11 +29,54 @@ WHERE schema_name='map_topology'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION map_topology.update_map_face(
-  refresh boolean DEFAULT true)
+CREATE OR REPLACE FUNCTION map_topology.other_face(
+  e map_topology.edge_data,
+  fid integer
+)
+RETURNS integer
+AS $$
+SELECT CASE
+  WHEN e.left_face = fid THEN e.right_face
+  WHEN e.right_face = fid THEN e.left_face
+  ELSE null
+END
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION map_topology.adjacent_faces(
+  fid integer,
+  topoid text
+)
+RETURNS integer[]
+AS $$
+WITH RECURSIVE r(faces,adjacent,cycle) AS (
+SELECT
+  ARRAY[left_face,right_face] faces,
+  map_topology.other_face(e,fid) adjacent,
+  false
+FROM map_topology.edge_data e
+  WHERE (left_face = fid OR right_face = fid)
+    AND coalesce(topology,'none') != topoid
+UNION
+SELECT DISTINCT ON (map_topology.other_face(e,r1.adjacent))
+  r1.faces || map_topology.other_face(e,r1.adjacent) faces,
+  map_topology.other_face(e,r1.adjacent) adjacent,
+  (map_topology.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
+FROM map_topology.edge_data e, r r1
+WHERE (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
+  AND coalesce(topology,'none') != topoid
+  AND NOT cycle
+  AND NOT r1.adjacent = 0
+), b AS (
+SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
+)
+SELECT array_agg(face) faces FROM b;
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION map_topology.update_map_face()
 RETURNS map_topology.__dirty_face AS $$
 DECLARE
   __face map_topology.__dirty_face;
+  __precision integer;
   __dissolved_faces integer[];
   __deleted_face integer;
   __layer_id integer;
@@ -66,77 +91,47 @@ INTO __srid
 FROM topology.topology
 WHERE name='map_topology';
 
+SELECT precision
+INTO __precision
+FROM topology.topology
+WHERE name = 'map_topology';
+
 __layer_id := map_topology.__map_face_layer_id();
 
-IF refresh THEN
-  EXECUTE 'REFRESH MATERIALIZED VIEW map_topology.__face_relation';
+__dissolved_faces := map_topology.adjacent_faces(__face.id,__face.topology);
+
+IF (0 = ANY(__dissolved_faces)) THEN
+  RAISE NOTICE 'Face % is adjacent to the global face on topology "%"',
+    __face.id,__face.topology;
+
+  -- We assume that none of the other faces have map_faces
+  -- If this is incorrect, we can change the assumption
+  -- to do this for all the __dissolved_faces
+  WITH face AS (
+    SELECT (map_topology.containing_face(__face.id,__face.topology)).*
+  ), d AS (
+    DELETE FROM map_topology.map_face
+    USING face
+    WHERE face_id = face.id
+  )
+  DELETE FROM map_topology.__dirty_face
+  USING face
+  WHERE topology = __face.topology
+    AND id IN (SELECT (topology.GetTopoGeomElements(face.topo))[1]);
+
+  RETURN __face;
 END IF;
 
-WITH RECURSIVE joinable_face AS (
-SELECT DISTINCT ON (topology, f1, f2)
-  f1, f2, topology
-FROM map_topology.__face_relation
-WHERE coalesce(topology,'none') != __face.topology
-),
-r(faces,adjacent,cycle) AS (
-SELECT
-  ARRAY[f.f1, f.f2] faces,
-  f.f2 adjacent,
-  false
-FROM joinable_face f
-WHERE f1 = __face.id
-UNION
-SELECT DISTINCT ON (f2)
-  r1.faces || j.f2 faces,
-  j.f2 adjacent,
-  (j.f2 = ANY(r1.faces)) AS cycle
-FROM joinable_face j, r r1
-WHERE r1.adjacent = j.f1
-  AND NOT cycle
-),
-faces AS (
-SELECT DISTINCT unnest(faces) face FROM r
-)
-SELECT coalesce(array_agg(face),ARRAY[__face.id])
-INTO __dissolved_faces
-FROM faces;
+RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
 
-RAISE NOTICE 'Faces: %', __dissolved_faces;
-
-WITH a AS (
-  SELECT ARRAY[unnest((
-      SELECT array_agg(e)
-      FROM (SELECT * FROM unnest(__dissolved_faces) id
-      WHERE id != 0) AS d(e)
-    )),3]::topology.topoelement vals
-),
-b AS (
-SELECT CreateTopoGeom('map_topology', 3, __layer_id,
-  TopoElementArray_Agg(a.vals)) topo
-FROM a
-),
-g AS (
-SELECT
-  topo,
-  ST_SetSRID(topo::geometry,__srid) geometry,
-  __face.topology
-FROM b
-)
---- Delete overlapping topogeometries and insert all of their
---- constituent faces into the dirty linework channel (if not
---- already there)
-DELETE FROM map_topology.map_face mf
-USING g
--- Intersection might be too wide a parameter
-WHERE (ST_Intersects(mf.geometry, ST_Buffer(g.geometry,-1))
-  AND NOT ST_Touches(mf.geometry, ST_Buffer(g.geometry,-1)))
-  AND mf.topology = __face.topology;
+-- First, delete the faces we are going to fix
+-- from the dirty faces list
+DELETE
+FROM map_topology.__dirty_face df
+WHERE topology = __face.topology
+  AND id = ANY(__dissolved_faces);
 
 --- Update the geometry
-IF NOT (0 = ANY(__dissolved_faces)) THEN
-  -- Handle cases where we're linked with the global face
-  -- Delete all faces that touch these faces
-
 --- Insert new topogeometry and recover ID
 WITH a AS (
   SELECT ARRAY[unnest(__dissolved_faces),3]::topology.topoelement vals
@@ -152,6 +147,15 @@ SELECT
   ST_SetSRID(topo::geometry,__srid) geometry,
   __face.topology
 FROM b
+),
+d AS (
+  --- already there)
+  DELETE FROM map_topology.map_face mf
+  USING g
+  -- Intersection might be too wide a parameter
+  WHERE (ST_Intersects(mf.geometry, ST_Buffer(g.geometry,__precision))
+    AND NOT ST_Touches(mf.geometry, ST_Buffer(g.geometry,__precision)))
+    AND mf.topology = __face.topology
 )
 INSERT INTO map_topology.map_face
   (unit_id, topo, topology, geometry)
@@ -162,19 +166,6 @@ g.topology,
 g.geometry
 FROM g;
 
-END IF;
-
--- Delete from dirty faces where we just created a face
-WITH a AS (
-DELETE
-FROM map_topology.__dirty_face df
-WHERE topology = __face.topology
-  AND id = ANY(__dissolved_faces)
-RETURNING id
-)
-SELECT count(id)
-INTO __n_updated FROM a;
-
 RETURN __face;
 
 END;
@@ -184,7 +175,6 @@ CREATE OR REPLACE FUNCTION map_topology.update_all_map_faces()
 RETURNS void AS $$
 BEGIN
 
-EXECUTE 'REFRESH MATERIALIZED VIEW map_topology.__face_relation';
 -- Loop throug table of dirty linework
 WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
 LOOP
