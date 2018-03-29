@@ -39,15 +39,6 @@ SELECT
 FROM map_topology.node n
 JOIN map_topology.node_edge e ON n.node_id = e.node_id;
 
-CREATE OR REPLACE VIEW map_topology.edge_type AS
-  SELECT
-    e.edge_id,
-    e.geom geometry,
-    c.id contact_id,
-    c.type contact_type
-  FROM map_topology.edge_data e
-  JOIN map_digitizer.linework c ON c.id = e.line_id;
-
 CREATE OR REPLACE VIEW map_topology.face_data AS
 WITH fg AS (
 SELECT

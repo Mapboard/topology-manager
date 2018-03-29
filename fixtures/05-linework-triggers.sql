@@ -59,13 +59,36 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION map_topology.linework_changed()
 RETURNS trigger AS $$
+DECLARE
+  __edges integer[];
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   PERFORM map_topology.mark_surrounding_faces(OLD);
   --PERFORM map_topology.join_surrounding_faces(NEW)
   RETURN OLD;
+
+  -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
+
+__edges := array_agg((topology.GetTopoGeomElements(NEW.topo))[1]);
+
+DELETE FROM map_topology.__edge_relation
+WHERE line_id IN (OLD.id)
+  AND NOT(edge_id = ANY(__edges));
+
+-- Maybe we could make this faster IDK
+INSERT INTO map_topology.__edge_relation
+  (edge_id, topology, line_id, type)
+VALUES (
+  unnest(edges),
+  NEW.topology,
+  NEW.id,
+  NEW.type
+)
+ON CONFLICT DO UPDATE SET
+  line_id = NEW.id,
+  type = NEW.type;
 
 IF (TG_OP = 'INSERT') THEN
   /*
@@ -101,7 +124,7 @@ END IF;
 Envisioned series of steps:
 1. Find overlapping map faces
 2. Join all of the overlapping faces
-3. Split faces on this new 
+3. Split faces on this new
 
 */
 
@@ -125,14 +148,6 @@ BEGIN
     -- We already have a valid topogeometry representation
     RETURN null;
   END IF;
-  -- Set that line-edge relations need to be refreshed
-  -- This should be made into a trigger
-  UPDATE map_topology.edge_data
-  SET
-    topology = null,
-    line_id = null
-  WHERE line_id = line.id;
-
   -- Actually set topogeometry
   BEGIN
     -- Set topogeometry

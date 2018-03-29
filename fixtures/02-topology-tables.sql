@@ -60,9 +60,7 @@ SELECT topology.AddTopoGeometryColumn(${topo_schema},
 
 CREATE INDEX map_face_gix ON ${topo_schema~}.map_face USING GIST (geometry);
 
-/*
-A table to hold dirty faces
-*/
+/* A table to hold dirty faces */
 CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
   id integer REFERENCES ${topo_schema~}.face ON DELETE CASCADE,
   topology text references ${topo_schema~}.subtopology ON DELETE CASCADE,
@@ -71,13 +69,14 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
 
 /* EDGE INFRASTRUCTURE */
 
-/*
-Added columns to edge_data table to hold joins to contacts
-(this will speed up a slow part of the system
-*/
-ALTER TABLE ${topo_schema~}.edge_data
-  ADD COLUMN topology text REFERENCES ${topo_schema~}.subtopology,
-  ADD COLUMN line_id integer REFERENCES ${data_schema~}.linework
-          ON UPDATE CASCADE
-          ON DELETE SET NULL;
+CREATE TABLE IF NOT EXISTS ${topo_schema~}.__edge_relation (
+  edge_id integer REFERENCES ${topo_schema~}.edge_data ON DELETE CASCADE,
+  topology text REFERENCES ${topo_schema~}.subtopology ON DELETE CASCADE,
+  line_id integer REFERENCES ${data_schema~}.linework ON DELETE CASCADE,
+  "type" text
+      REFERENCES ${data_schema~}.linework_type
+      ON UPDATE CASCADE
+      ON DELETE SET NULL,
+  PRIMARY KEY(edge_id, topology)
+);
 

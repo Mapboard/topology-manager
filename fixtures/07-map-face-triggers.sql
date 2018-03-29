@@ -54,16 +54,18 @@ SELECT
   map_topology.other_face(e,fid) adjacent,
   false
 FROM map_topology.edge_data e
+JOIN map_topology.__edge_relation er
+  ON er.edge_id = e.edge_id AND er.topology != topoid
   WHERE (left_face = fid OR right_face = fid)
-    AND coalesce(topology,'none') != topoid
 UNION
 SELECT DISTINCT ON (map_topology.other_face(e,r1.adjacent))
   r1.faces || map_topology.other_face(e,r1.adjacent) faces,
   map_topology.other_face(e,r1.adjacent) adjacent,
   (map_topology.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
-FROM map_topology.edge_data e, r r1
+FROM map_topology.edge_data e, r r1, map_topology.__edge_relation er
 WHERE (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
-  AND coalesce(topology,'none') != topoid
+  AND er.edge_id = e.edge_id
+  AND er.topology != topoid
   AND NOT cycle
   AND NOT r1.adjacent = 0
 ), b AS (
@@ -71,8 +73,6 @@ SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 )
 SELECT array_agg(face) faces FROM b;
 $$ LANGUAGE SQL IMMUTABLE;
-
-
 
 CREATE OR REPLACE FUNCTION map_topology.update_map_face()
 RETURNS map_topology.__dirty_face AS $$
