@@ -23,7 +23,6 @@ updateContacts = (opts={})->
   rows = await db.query getContacts
   __ = 'Updating lines :bar :current/:total (:elapsed/:eta s)'
   bar = new ProgressBar(__, { total: rows.length })
-
   mapFn = ({id})->
     try
       {err} = await db.one proc, {id}
@@ -32,8 +31,7 @@ updateContacts = (opts={})->
     catch err
       bar.interrupt "#{err}".red.dim
     bar.tick()
-
-  await Promise.map rows, mapFn, {concurrency: 8}
+  await Promise.map rows, mapFn, {concurrency: 1}
 
   # Post-update (in an ideal world we would not have to do this)
   console.log "Linking lines to topology edges".gray

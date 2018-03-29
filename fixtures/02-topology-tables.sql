@@ -4,9 +4,10 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
 
 INSERT INTO ${topo_schema~}.subtopology (id)
 VALUES ('default')
+WHERE NOT EXISTS (SELECT * FROM ${topo_schema~}.subtopology)
 ON CONFLICT DO NOTHING;
 
--- Create an initial linework type
+-- Create an initial linework type (if nothing exists
 INSERT INTO ${data_schema~}.linework_type (
   id, name,color,topology)
 VALUES (
@@ -15,6 +16,7 @@ VALUES (
   '#000000',
   'default'
 )
+WHERE NOT EXISTS (SELECT * FROM ${data_schema~}.linework_type)
 ON CONFLICT DO NOTHING;
 
 -- Insert initial values into subtopology column

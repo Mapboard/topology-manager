@@ -18,11 +18,10 @@ updateFaces = (opts={})->
 
   await proc "procedures/prepare-update-face"
 
-
   console.time "Updating faces"
   {nfaces} = await db.one count
   bar = new ProgressBar('Updating faces :bar :current/:total (:eta s)', { total: nfaces })
-
+  bar.tick(0)
   while nfaces > 0
     await db.query "SELECT map_topology.update_map_face()"
     {nfaces: next} = await db.one count

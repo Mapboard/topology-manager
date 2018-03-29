@@ -8,20 +8,22 @@ Promise = require 'bluebird'
 {srid, topo_schema,
  data_schema, connection, tolerance} = require './config'
 
+global.log = console.log
+
 logFunc = (e)->
   return unless global.verbose
   #console.log global.verbose
   #return unless global.verbose
-  console.log colors.grey(e.query)
+  global.log colors.grey(e.query)
   if e.params?
-    console.log "    "+colors.cyan(e.params)
+    global.log "    "+colors.cyan(e.params)
 
 logNoticesFunction = (client, dc, isFresh) ->
   return unless isFresh
   return unless global.verbose
   client.on 'notice', (msg)->
     msg = String(msg).slice(8)
-    console.log("NOTICE ".blue+msg)
+    global.log("NOTICE ".blue+msg)
 
 pgp = PGPromise(promiseLib: Promise, query: logFunc, connect: logNoticesFunction)
 
