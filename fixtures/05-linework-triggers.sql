@@ -113,12 +113,13 @@ RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
+/*
+Function to update topogeometry of linework
+*/
 CREATE OR REPLACE FUNCTION map_topology.update_linework_topo(
   line map_digitizer.linework)
 RETURNS text AS
 $$
-DECLARE
-topogeo topogeometry;
 BEGIN
   IF (map_topology.hash_geometry(line) = line.geometry_hash) THEN
     -- We already have a valid topogeometry representation
@@ -135,14 +136,12 @@ BEGIN
   -- Actually set topogeometry
   BEGIN
     -- Set topogeometry
-    topogeo := topology.toTopoGeom(
-        line.geometry, 'map_topology',
-        map_topology.__linework_layer_id(),
-        map_topology.__topo_precision());
-
     UPDATE map_digitizer.linework l
     SET
-      topo = topogeo,
+      topo = topology.toTopoGeom(
+        line.geometry, 'map_topology',
+        map_topology.__linework_layer_id(),
+        map_topology.__topo_precision()),
       geometry_hash = map_topology.hash_geometry(l),
       topology_error = null
     WHERE l.id = line.id;

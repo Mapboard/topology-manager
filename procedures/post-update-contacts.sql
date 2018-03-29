@@ -21,4 +21,12 @@ WHERE element_id = edge_id
  AND (
   line_id IS null
   OR ed.topology IS null
-  OR ed.topology != lt.topology)
+  OR ed.topology != lt.topology);
+
+UPDATE map_topology.edge_data e
+SET
+  line_id = null,
+  topology = null
+FROM map_digitizer.linework l
+WHERE e.line_id = l.id
+  AND l.topo IS NULL;

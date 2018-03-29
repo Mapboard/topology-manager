@@ -31,10 +31,11 @@ cleanTopology = ->
         if global.verbose
           console.log "Healing edges "+String(edge1).green+" and "+String(edge2).green
         try
+          console.log edge1,edge2
           t.one sql('procedures/clean-topology-heal-edge'), {edge1,edge2}
           counter += 1
         catch err
-          console.error "#{err.message}".red.dim
+          console.log "#{err.message}".red.dim
 
     console.log "Healed #{counter} edges"
 
