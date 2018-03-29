@@ -71,7 +71,9 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__edges := array_agg((topology.GetTopoGeomElements(NEW.topo))[1]);
+SELECT array_agg(elem)
+INTO __edges
+FROM (SELECT (GetTopoGeomElements(NEW.topo))[1] elem) AS a;
 
 DELETE FROM map_topology.__edge_relation
 WHERE line_id IN (OLD.id)
@@ -81,12 +83,12 @@ WHERE line_id IN (OLD.id)
 INSERT INTO map_topology.__edge_relation
   (edge_id, topology, line_id, type)
 VALUES (
-  unnest(edges),
-  NEW.topology,
+  unnest(__edges),
+  map_topology.line_topology(NEW.type),
   NEW.id,
   NEW.type
 )
-ON CONFLICT DO UPDATE SET
+ON CONFLICT (edge_id, topology) DO UPDATE SET
   line_id = NEW.id,
   type = NEW.type;
 
