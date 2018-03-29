@@ -71,6 +71,10 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
+IF (NEW.topo IS null) THEN
+  RETURN NEW;
+END IF;
+
 SELECT array_agg(elem)
 INTO __edges
 FROM (SELECT (GetTopoGeomElements(NEW.topo))[1] elem) AS a;

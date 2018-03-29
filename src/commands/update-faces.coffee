@@ -1,5 +1,6 @@
 ProgressBar = require 'progress'
 {db,sql, proc} = require '../util'
+{deleteEdges} = require './clean-topology'
 
 count = "SELECT count(*)::integer nfaces FROM map_topology.__dirty_face"
 command = 'update-faces [--reset] [--fill-holes]'
@@ -17,6 +18,11 @@ updateFaces = (opts={})->
     await proc "procedures/set-holes-as-dirty"
 
   await proc "procedures/prepare-update-face"
+
+  # Needed until we solve the fact that
+  # this can't merge across not-in-use
+  # edges that aren't assigned to a topology
+  await deleteEdges()
 
   console.time "Updating faces"
   {nfaces} = await db.one count

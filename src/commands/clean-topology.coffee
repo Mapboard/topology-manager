@@ -5,10 +5,9 @@ colors = require 'colors'
 command = 'clean-topology'
 describe = 'Clean topology'
 
-cleanTopology = ->
+deleteEdges = ->
   rem_edge = sql('procedures/clean-topology-rem-edge')
   await proc('procedures/clean-topology-01')
-
   await db.task (t)->
     console.log "Deleting edges".green.bold
     edges = await db.query sql('procedures/get-edges-to-delete')
@@ -20,6 +19,11 @@ cleanTopology = ->
 
     await proc('procedures/clean-topology-02')
 
+cleanTopology = ->
+
+  await deleteEdges()
+
+  await db.task (t)->
     console.log "Healing edges".green.bold
 
     n = 100
@@ -44,5 +48,5 @@ handler = ->
   process.exit()
 
 module.exports = {command, describe,
-                  handler, cleanTopology}
+                  handler, cleanTopology, deleteEdges}
 

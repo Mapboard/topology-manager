@@ -15,5 +15,4 @@ FROM map_digitizer.linework l
 JOIN map_digitizer.linework_type t
   ON l.type = t.id
 WHERE topo IS NOT null
-  AND l.id NOT IN (SELECT line_id FROM map_topology.__edge_relation e)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (edge_id, topology) DO NOTHING;
