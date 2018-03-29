@@ -20,6 +20,9 @@ updateFaces = (opts={})->
 
   console.time "Updating faces"
   {nfaces} = await db.one count
+  if nfaces == 0
+    console.log "No faces to update"
+    return
   bar = new ProgressBar('Updating faces :bar :current/:total (:eta s)', { total: nfaces })
   bar.tick(0)
   while nfaces > 0
