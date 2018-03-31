@@ -1,8 +1,10 @@
+/* Register units for faces that don't have units */
 SELECT map_topology.register_face_unit(id) FROM map_topology.map_face
 WHERE topo IS NOT null
   AND id NOT IN (SELECT DISTINCT map_face FROM map_topology.face_type);
 
 WITH e AS (
+-- Get faces related to map_faces
 SELECT
   element_id,
   f.id,
@@ -31,6 +33,7 @@ INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT element_id, topology
 FROM v1
 WHERE count > 1
+  AND element_id IN (SELECT face_id FROM map_topology.map_face)
 ON CONFLICT DO NOTHING
 ),
 v3 AS (
