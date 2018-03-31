@@ -19,11 +19,6 @@ updateFaces = (opts={})->
 
   await proc "procedures/prepare-update-face"
 
-  # Needed until we solve the fact that
-  # this can't merge across not-in-use
-  # edges that aren't assigned to a topology
-  await deleteEdges()
-
   console.time "Updating faces"
   {nfaces} = await db.one count
   if nfaces == 0

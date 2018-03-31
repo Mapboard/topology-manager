@@ -49,31 +49,30 @@ CREATE OR REPLACE FUNCTION map_topology.adjacent_faces(
 RETURNS integer[]
 AS $$
 WITH RECURSIVE r(faces,adjacent,cycle) AS (
-SELECT
+SELECT DISTINCT ON (map_topology.other_face(e,fid))
   ARRAY[left_face,right_face] faces,
   map_topology.other_face(e,fid) adjacent,
   false
 FROM map_topology.edge_data e
-JOIN map_topology.__edge_relation er
+LEFT JOIN map_topology.__edge_relation er
   ON er.edge_id = e.edge_id
+WHERE (e.left_face = fid OR e.right_face = fid)
   AND e.left_face != e.right_face
   AND er.topology IS DISTINCT FROM topoid
-  WHERE (left_face = fid OR right_face = fid)
 UNION
 SELECT DISTINCT ON (map_topology.other_face(e,r1.adjacent))
   r1.faces || map_topology.other_face(e,r1.adjacent) faces,
   map_topology.other_face(e,r1.adjacent) adjacent,
   (map_topology.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
 FROM map_topology.edge_data e
-JOIN map_topology.__edge_relation er
+LEFT JOIN map_topology.__edge_relation er
   ON er.edge_id = e.edge_id
-  AND e.left_face != e.right_face
-  AND er.topology IS DISTINCT FROM topoid
 JOIN r r1
   ON (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
-WHERE (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
+WHERE e.left_face != e.right_face
   AND NOT cycle
   AND NOT r1.adjacent = 0
+  AND er.topology IS DISTINCT FROM topoid
 ), b AS (
 SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 )

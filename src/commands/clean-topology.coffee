@@ -26,7 +26,7 @@ cleanTopology = ->
   await db.task (t)->
     console.log "Healing edges".green.bold
 
-    n = 100
+    n = 10
     counter = 0
     while n > 0
       res = await t.query sql('procedures/get-edges-to-heal')

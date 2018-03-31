@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
 CREATE TABLE IF NOT EXISTS ${topo_schema~}.__edge_relation (
   edge_id integer REFERENCES ${topo_schema~}.edge_data ON DELETE CASCADE,
   topology text REFERENCES ${topo_schema~}.subtopology ON DELETE CASCADE,
-  line_id integer REFERENCES ${data_schema~}.linework ON DELETE CASCADE,
+  line_id integer REFERENCES ${data_schema~}.linework ON DELETE SET NULL,
   "type" text
       REFERENCES ${data_schema~}.linework_type
       ON UPDATE CASCADE

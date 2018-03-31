@@ -54,6 +54,7 @@ BEGIN
   WHERE ef.edge_id IN (SELECT
     (topology.GetTopoGeomElements(line.topo))[1])
   ON CONFLICT DO NOTHING;
+  RAISE NOTICE 'Marking faces';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -74,28 +75,11 @@ END IF;
 IF (NEW.topo IS null) THEN
   RETURN NEW;
 END IF;
+/* We now are working with situations were we have a topogeometry of some
+   sort
+*/
 
-SELECT array_agg(elem)
-INTO __edges
-FROM (SELECT (GetTopoGeomElements(NEW.topo))[1] elem) AS a;
-
-DELETE FROM map_topology.__edge_relation
-WHERE line_id IN (OLD.id)
-  AND NOT(edge_id = ANY(__edges));
-
--- Maybe we could make this faster IDK
-INSERT INTO map_topology.__edge_relation
-  (edge_id, topology, line_id, type)
-VALUES (
-  unnest(__edges),
-  map_topology.line_topology(NEW.type),
-  NEW.id,
-  NEW.type
-)
-ON CONFLICT (edge_id, topology) DO UPDATE SET
-  line_id = NEW.id,
-  type = NEW.type;
-
+/* SPECIAL CASE FOR PROGRAMMATIC INSERTS (with topo defined) ONLY) */
 IF (TG_OP = 'INSERT') THEN
   /*
   We will probably not have topo set on inserts most of the time, but we might
@@ -108,21 +92,51 @@ IF (TG_OP = 'INSERT') THEN
   RETURN NEW;
 END IF;
 
-/* More complex logic for updates */
 
-/* Wipe hash if we know we have geometry changes.
-   We may put in a dirty marker here instead of hashing if it seems better */
+/* We have changed the geometry. We need to wipe the hash and then exit */
+/*   We may put in a dirty marker here instead of hashing if it seems better */
 IF (NOT OLD.geometry = NEW.geometry) THEN
   NEW.geometry_hash := null;
   PERFORM map_topology.mark_surrounding_faces(OLD);
   RETURN NEW;
 END IF;
+/* Now we are working with situations where we have a stable geometry
+   and should update the topogeometry to match
+*/
 
-IF ((OLD.topo).id = (NEW.topo).id AND
-    map_topology.line_topology(OLD.type) = map_topology.line_topology(NEW.type)) THEN
+IF (
+  /* Hopefully this catches all topogeometry changes,
+     if it doesn't we'll have to reset
+  */
+  (OLD.topo).id = (NEW.topo).id AND
+  map_topology.line_topology(OLD.type) = map_topology.line_topology(NEW.type)
+) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;
 END IF;
+/* We are new working with only changed topogeometries */
+
+SELECT array_agg(elem)
+INTO __edges
+FROM (SELECT (GetTopoGeomElements(NEW.topo))[1] elem) AS a;
+
+/* Delete unreferenced elements from topo tracker */
+DELETE FROM map_topology.__edge_relation
+WHERE line_id IN (OLD.id)
+  AND NOT(edge_id = ANY(__edges));
+
+/* Add new objects into linework tracker */
+INSERT INTO map_topology.__edge_relation
+  (edge_id, topology, line_id, type)
+VALUES (
+  unnest(__edges),
+  map_topology.line_topology(NEW.type),
+  NEW.id,
+  NEW.type
+)
+ON CONFLICT (edge_id, topology) DO UPDATE SET
+  line_id = NEW.id,
+  type = NEW.type;
 
 /* This is probably where we should update map faces for referential
    integrity
