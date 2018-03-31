@@ -120,22 +120,41 @@ IF (__face.id = 0) THEN
   RETURN __face;
 END IF;
 
-
+/* First, get the adjoining faces */
 __dissolved_faces := map_topology.adjacent_faces(__face.id,__face.topology);
--- Special case when adjacent to global face
+RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
+
+-- Special case when adjoining global face
 IF (__dissolved_faces IS NULL) THEN
   __dissolved_faces := ARRAY[__face.id];
 END IF;
 
 __is_global := (0 = ANY(__dissolved_faces));
+IF (__is_global) THEN
+  RAISE NOTICE 'Face % is adjacent to the global face',__face.id;
+END IF;
 
-RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
-
+/* Global face does not work for geometry operations */
 -- PostgreSQL 9.3 and above
 __dissolved_faces := array_remove(__dissolved_faces,0);
 
+-- /* Delete all topogeometries currently inhabiting the space */
+-- DELETE FROM map_topology.map_face
+-- WHERE id IN (
+  -- SELECT DISTINCT
+    -- (map_topology.containing_face(
+        -- unnest(__dissolved_faces), __face.topology)).id
+-- );
+
+--- Escape before topogeometry creation if global
 IF (__is_global) THEN
-  RAISE NOTICE 'Face % is adjacent to the global face',__face.id;
+  DELETE
+  FROM map_topology.__dirty_face df
+  WHERE topology = __face.topology
+    AND (
+      id = ANY(__dissolved_faces) OR id = 0
+    );
+  RETURN __face;
 END IF;
 
 --- Create a new topogeometry covering the whole area
@@ -151,10 +170,13 @@ __topo := CreateTopoGeom('map_topology', 3, __layer_id, __topo_elements);
 __geometry := ST_SetSRID(__topo::geometry,__srid);
 
 DELETE FROM map_topology.map_face mf
--- Intersection might be too wide a parameter
-WHERE (ST_Intersects(mf.geometry, ST_Buffer(__geometry,-__precision))
-  AND NOT ST_Touches(mf.geometry, ST_Buffer(__geometry,-__precision)))
-  AND mf.topology = __face.topology;
+WHERE id IN (
+  SELECT DISTINCT
+    (map_topology.containing_face(
+        unnest(__dissolved_faces),
+        __face.topology)
+    ).id
+  );
 
 DELETE
 FROM map_topology.__dirty_face df
@@ -172,10 +194,17 @@ END IF;
 INSERT INTO map_topology.map_face
   (unit_id, topo, topology, geometry)
 SELECT
-map_topology.unitForArea(__geometry, __face.topology) unit_id,
+map_topology.unitForArea(
+  __geometry,
+  __face.topology) unit_id,
 __topo,
 __face.topology,
 __geometry;
+
+DELETE
+FROM map_topology.__dirty_face df
+WHERE topology = __face.topology
+  AND id = ANY(__dissolved_faces);
 
 RETURN __face;
 

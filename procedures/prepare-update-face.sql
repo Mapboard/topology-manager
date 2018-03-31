@@ -33,7 +33,7 @@ INSERT INTO map_topology.__dirty_face (id, topology)
 SELECT element_id, topology
 FROM v1
 WHERE count > 1
-  AND element_id IN (SELECT face_id FROM map_topology.map_face)
+  AND element_id IN (SELECT face_id FROM map_topology.face)
 ON CONFLICT DO NOTHING
 ),
 v3 AS (

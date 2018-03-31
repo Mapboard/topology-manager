@@ -3,19 +3,20 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
 );
 
 INSERT INTO ${topo_schema~}.subtopology (id)
-VALUES ('default')
+SELECT 'default'
+FROM topology.topology -- dummy table
 WHERE NOT EXISTS (SELECT * FROM ${topo_schema~}.subtopology)
 ON CONFLICT DO NOTHING;
 
 -- Create an initial linework type (if nothing exists
 INSERT INTO ${data_schema~}.linework_type (
   id, name,color,topology)
-VALUES (
+SELECT
   'default',
   'Default',
   '#000000',
   'default'
-)
+FROM topology.topology -- dummy table
 WHERE NOT EXISTS (SELECT * FROM ${data_schema~}.linework_type)
 ON CONFLICT DO NOTHING;
 
@@ -74,7 +75,7 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.__dirty_face (
 CREATE TABLE IF NOT EXISTS ${topo_schema~}.__edge_relation (
   edge_id integer REFERENCES ${topo_schema~}.edge_data ON DELETE CASCADE,
   topology text REFERENCES ${topo_schema~}.subtopology ON DELETE CASCADE,
-  line_id integer REFERENCES ${data_schema~}.linework ON DELETE SET NULL,
+  line_id integer REFERENCES ${data_schema~}.linework ON DELETE CASCADE,
   "type" text
       REFERENCES ${data_schema~}.linework_type
       ON UPDATE CASCADE

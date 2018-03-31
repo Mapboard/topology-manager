@@ -36,10 +36,9 @@ updateContacts = (opts={})->
     bar.tick(result.length)
     remaining -= result.length
 
-  # We have probably moved beyond this.
   # Post-update (in an ideal world we would not have to do this)
   #console.log "Linking lines to topology edges".gray
-  #await db.query postUpdateContacts
+  await db.query postUpdateContacts
 
 handler = (argv)->
   await updateContacts(argv)

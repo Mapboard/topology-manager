@@ -41,20 +41,40 @@ to `map_topology.map_face`
 CREATE OR REPLACE FUNCTION map_topology.mark_surrounding_faces(
   line map_digitizer.linework)
 RETURNS void AS $$
+DECLARE
+  __faces integer[];
 BEGIN
   IF (line.topo IS null) THEN
     RETURN;
   END IF;
 
+  -- GET ADJACENT FACES
+  WITH edges AS (
+  SELECT (topology.GetTopoGeomElements(line.topo))[1] edge_id
+  ),
+  faces AS (
+  SELECT
+    left_face, right_face
+  FROM edges e
+  JOIN map_topology.edge_data e1
+    ON e.edge_id = e1.edge_id
+  ),
+  faces1 AS (
+  SELECT left_face f FROM faces
+  UNION
+  SELECT right_face f FROM faces
+  )
+  SELECT array_agg(f)
+  INTO __faces
+  FROM faces1;
+
   INSERT INTO map_topology.__dirty_face (id, topology)
   SELECT
-    face_id,
+    unnest(__faces),
     map_topology.line_topology(line.type)
-  FROM map_topology.edge_face ef
-  WHERE ef.edge_id IN (SELECT
-    (topology.GetTopoGeomElements(line.topo))[1])
   ON CONFLICT DO NOTHING;
-  RAISE NOTICE 'Marking faces';
+
+  RAISE NOTICE 'Marking faces %', __faces;
 END;
 $$ LANGUAGE plpgsql;
 
