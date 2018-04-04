@@ -8,7 +8,8 @@ SELECT
   t.color
 FROM map_topology.map_face f
 JOIN map_digitizer.polygon_type t
-  ON f.unit_id = t.id;
+  ON f.unit_id = t.id
+WHERE f.unit_id != 'surficial-none';
 
 
 

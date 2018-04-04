@@ -1,61 +1,40 @@
-DROP MATERIALIZED VIEW IF EXISTS mapping.contact CASCADE;
-CREATE MATERIALIZED VIEW mapping.contact AS
-WITH face_unit AS (
-SELECT DISTINCT ON (f.face_id)
-  f.face_id,
-  m.unit_id,
-  m.topology
-FROM map_topology.face_data f
-LEFT JOIN mapping.map_face m
-  ON ST_Contains(m.geometry, ST_PointOnSurface(f.geometry))
-), edge_unit AS (
+CREATE OR REPLACE VIEW mapping.contact AS
 SELECT
-  array_agg(unit_id::text) units,
-  edge_id,
-  f.topology
-FROM map_topology.edge_face e
-LEFT JOIN face_unit f
-  ON e.face_id = f.face_id
-WHERE unit_id IS NOT null
-GROUP BY edge_id, f.topology
-),
-main AS (
-SELECT
-  e.edge_id id,
-  eu.units,
-  c.id AS contact_id,
-  c.map_width,
-  c.certainty,
-  c.hidden,
-  t.color,
-  t.id AS type,
+  er.edge_id id,
+  line_id,
+  er.type,
+  0 as map_width,
+  et.color,
+  er.topology,
+  f.unit_id left_face,
+  f1.unit_id right_face,
   e.geom geometry,
-  t.topology
-FROM edge_unit eu
-JOIN map_topology.edge_contact ec
-  ON ec.edge_id = eu.edge_id
-JOIN map_digitizer.linework c
-  ON ec.contact_id = c.id
-JOIN map_topology.edge_data e ON ec.edge_id = e.edge_id
-JOIN map_digitizer.linework_type t
-  ON c.type = t.id
- AND eu.topology = t.topology
-),
---- We could split this out if we don't want to define
---- commonality levels in all cases
-vals AS (
-SELECT c.*,
-  CASE WHEN array_length(units,1) = 2 THEN
-    coalesce(mapping.unit_commonality(units[1], units[2]),-1)
-  ELSE (SELECT max(id) FROM mapping.unit_level) END AS commonality
-FROM main c
-)
-SELECT DISTINCT ON (v.id)
-  v.*,
-  l.name AS commonality_desc
-FROM vals v
-LEFT JOIN mapping.unit_level l
-  ON commonality = l.id;
+  false AS hidden,
+  coalesce(uc.commonality, 6) commonality
+FROM map_topology.__edge_relation er
+JOIN map_topology.edge_data e
+  ON er.edge_id = e.edge_id
+JOIN map_topology.relation r
+  ON (r.element_id = e.left_face AND r.element_type = 3)
+JOIN map_topology.relation r1
+  ON (r1.element_id = e.right_face AND r1.element_type = 3)
+JOIN map_topology.map_face f
+  ON (f.topo).id = r.topogeo_id
+JOIN map_topology.map_face f1
+  ON (f1.topo).id = r1.topogeo_id
+LEFT JOIN mapping.__unit_commonality uc
+  ON uc.u1 = f.unit_id
+ AND uc.u2 = f1.unit_id
+ AND uc.topology = er.topology
+JOIN map_digitizer.linework_type et
+  ON et.id = er.type
+WHERE type NOT IN ('arbitrary-bedrock', 'arbitrary-surficial-contact')
+  AND f.unit_id IS NOT null
+  AND f1.unit_id IS NOT null
+  AND f1.topology = er.topology
+  AND f.topology = er.topology
+  AND f1.unit_id != 'surficial-none'
+  AND f.unit_id != 'surficial-none';
 
 CREATE INDEX mapping_contact_gix ON mapping.contact USING GIST (geometry);
 
