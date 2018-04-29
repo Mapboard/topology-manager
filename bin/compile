@@ -1,0 +1,8 @@
+#!/bin/bash
+
+mkdir -p dist
+#npm run prepublish
+pkg . --target node8-macos-x64 --output dist/postgis-geologic-map
+# Kind of a hack. We have to keep this with our executable
+#cp node_modules/sqlite3/lib/binding/node-v57-darwin-x64/node_sqlite3.node dist
+

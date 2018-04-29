@@ -4,6 +4,10 @@
   "description": "A PostGIS helper library to manage a geologic map",
   "author": "Daven Quinn",
   "license": "MIT",
+  "bin": "bin/geologic-map",
+  "scripts": {
+    "compile": "./bin/compile"
+  },
   "extensions": {
     "geologic-map-display": "file:extensions/display",
     "fill-patterns": "file:extensions/fill-patterns"
@@ -22,5 +26,14 @@
     "tilelive-mapnik": "^0.6.18",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
+  },
+  "pkg": {
+    "assets": [
+      "**/*.coffee",
+      "extensions/*/package.json",
+      "extensions/**/*.pug",
+      "**/*.sql",
+      "node_modules/@mapbox/mbtiles/lib/**/*.*"
+    ]
   }
 }
