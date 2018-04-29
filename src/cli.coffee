@@ -32,7 +32,7 @@ createExtensionCommands = (argv)->
   return argv
 
 argv = yargs
-  .usage '$0 <command>'
+  .usage 'geologic-map <command>'
   .option 'c', {
     description: "JSON config file. Used in lieu of the
                   GEOLOGIC_MAP_CONFIG environment variable"}
