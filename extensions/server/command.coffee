@@ -26,4 +26,3 @@ handler = ->
 
 module.exports = {command, describe, handler}
 
-

@@ -1,6 +1,7 @@
 {GEOLOGIC_MAP_CONFIG} = process.env
 {resolve,join, dirname} = require 'path'
 {existsSync} = require 'fs'
+require 'tilelive-modules/loader'
 
 {database, srid, topo_schema,
  data_schema, host, port,
