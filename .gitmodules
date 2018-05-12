@@ -1,0 +1,3 @@
+[submodule "extensions/server/map-digitizer-server"]
+	path = extensions/server/map-digitizer-server
+	url = git://github.com/davenquinn/map-digitizer-server.git

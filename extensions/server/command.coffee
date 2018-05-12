@@ -1,6 +1,6 @@
 {server, data_schema, connection} = require '../../src/config'
 {startWatcher} = require '../../src/commands/update'
-{appFactory} = require 'map-digitizer-server'
+appFactory = require './map-digitizer-server/src/feature-server'
 {join} = require 'path'
 
 command = 'serve'
