@@ -2,6 +2,6 @@
 
 // This calling signature is compatible with zeit/pkg
 var path = require('path');
-var script = path.resolve(path.join(__dirname, '..', 'src', 'cli.coffee'));
+var script = path.resolve(path.join(__dirname, '..', 'src', 'geologic-map'));
 process.argv.splice(2, 0, script);
 require('coffeescript/bin/coffee');
