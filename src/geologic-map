@@ -13,8 +13,8 @@ external = (cmd, describe="")->
     # See if this is available locally, if not, search
     # on path.
     fp = join __dirname, prefixedCommand
-    prefixedCommand = fp if existsSync fp
-    spawnSync prefixedCommand, argv._.slice(1), {stdio: 'inherit'}
+    v = process.argv.slice(3)
+    spawnSync prefixedCommand, v, {stdio: 'inherit'}
   return {command, describe, handler}
 
 ### Create extension commands from config ###

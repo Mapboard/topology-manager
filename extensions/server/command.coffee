@@ -14,7 +14,7 @@ handler = ->
   app.set 'views', join(__dirname, 'views')
   app.set 'view engine', 'pug'
 
-  app.get '/map', (req,res)->
+  app.get '/', (req,res)->
     res.render 'map.pug', {
       title: 'Geologic Map', message: 'Hello there!'
       endpoints: Object.keys(tiles)

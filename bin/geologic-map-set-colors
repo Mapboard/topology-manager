@@ -4,6 +4,7 @@
 {db} = require '../src/util'
 
 do ->
+  console.log process.argv
   csv = readFileSync process.argv[2], 'utf-8'
 
   for ln in csv.split(/\r?\n/)

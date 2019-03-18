@@ -25,7 +25,11 @@ logNoticesFunction = (client, dc, isFresh) ->
     msg = String(msg).slice(8)
     global.log("NOTICE ".blue+msg)
 
-pgp = PGPromise(promiseLib: Promise, query: logFunc, connect: logNoticesFunction)
+pgp = PGPromise({
+  promiseLib: Promise,
+  query: logFunc,
+  connect: logNoticesFunction
+})
 
 {QueryFile} = pgp
 {readFileSync} = require 'fs'

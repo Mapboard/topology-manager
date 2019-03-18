@@ -6,24 +6,25 @@
   "license": "MIT",
   "bin": "bin/geologic-map",
   "scripts": {
-    "compile": "./bin/compile"
+    "compile": "./bin/compile",
+    "preinstall": "linklocal"
   },
   "extensions": {
     "geologic-map-display": "file:extensions/display",
     "fill-patterns": "file:extensions/fill-patterns"
   },
   "dependencies": {
+    "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
     "leaflet": "^1.2.0",
-    "map-digitizer-server": "github:davenquinn/map-digitizer-server",
+    "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
     "pg-promise": "^7.3.2",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
-    "tilelive-mapnik": "^0.6.18",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
   },
