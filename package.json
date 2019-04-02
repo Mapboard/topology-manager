@@ -11,7 +11,8 @@
   },
   "extensions": {
     "geologic-map-display": "file:extensions/display",
-    "fill-patterns": "file:extensions/fill-patterns"
+    "fill-patterns": "file:extensions/fill-patterns",
+    "live-tiles": "file:extensions/live-tiles"
   },
   "dependencies": {
     "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
