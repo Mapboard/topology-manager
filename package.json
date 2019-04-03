@@ -15,6 +15,7 @@
     "live-tiles": "file:extensions/live-tiles"
   },
   "dependencies": {
+    "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
@@ -26,6 +27,7 @@
     "pg-promise": "^7.3.2",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
+    "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
   },

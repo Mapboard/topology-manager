@@ -4,6 +4,7 @@ colors = require 'colors'
 Promise = require 'bluebird'
 {TSParser} = require 'tsparser'
 {readFileSync} = require 'fs'
+stripComments = require "sql-strip-comments"
 
 {srid, topo_schema,
  data_schema, connection, tolerance} = require './config'
@@ -62,7 +63,7 @@ sql = (fn)->
 queryInfo = (queryText)->
   s = queryText
        .replace /\/\*[\s\S]*?\*\/|--.*?$/gm, ''
-  arr = /^[\s\n]*([A-Z\s]+[a-zA-Z_."]*)/g
+  arr = /^[\s\n]*([A-Za-z\s]+[a-zA-Z_."]*)/g
     .exec(s)
   if arr? and arr[1]?
     s = arr[1]
@@ -94,7 +95,7 @@ proc = (fn, opts={})->
   fnd ?= fn
 
   try
-    _ = sql(fn)
+    _ = stripComments(sql(fn))
     procedures = TSParser.parse _,'pg',';'
     console.log indent+fnd.green
     db.tx (ctx)->
