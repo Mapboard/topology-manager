@@ -6,6 +6,20 @@ cors = require 'cors'
 morgan = require 'morgan'
 loader = require "tilelive-modules/loader"
 tileliveCache = require "tilelive-cache"
+Promise = require 'bluebird'
+
+loadTileLayer = (tilelive, uri)->
+  app = express().disable("x-powered-by")
+  tilelive.load uri, (e, source)->
+    app.get '/:z/:x/:y.png', (req, res, next)->
+      {z,x,y} = req.params
+      source.getTile z,x,y, (err, tile, headers)->
+        if err? then next(err)
+        unless tile?
+          return res.status(404).send("Not found")
+        res.set(headers)
+        return res.status(200).send(tile);
+  return app
 
 liveTileServer = (cfg)->
   {layers} = cfg['live-tiles']
@@ -31,7 +45,7 @@ liveTileServer = (cfg)->
     # Uses `davenquinn/tessera`
     # so we don't have to load mapnik native modules
     # to run the tile server on weird architectures
-    app.use prefix, appFactory(tilelive, uri+"?tileSize=512&scale=2")
+    app.use prefix, loadTileLayer(tilelive, uri+"?tileSize=512&scale=2")
 
   return app
 
