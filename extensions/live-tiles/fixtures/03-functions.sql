@@ -48,6 +48,8 @@ END;
 $$
 LANGUAGE plpgsql IMMUTABLE;
 
+/* Get largest spherical mercator tile containing
+   geometry */
 CREATE OR REPLACE FUNCTION
 tiles.LargestContainingTile(geom geometry)
 RETURNS tile_coord

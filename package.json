@@ -7,7 +7,8 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "linklocal"
+    "preinstall": "linklocal",
+    "serve": "nodemon ./src/geologic-map serve"
   },
   "extensions": {
     "geologic-map-display": "file:extensions/display",
