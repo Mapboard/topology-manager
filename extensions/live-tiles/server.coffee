@@ -1,4 +1,4 @@
-appFactory = require './tessera.js'
+appFactory = require './tessera'
 tilelive = require '@mapbox/tilelive'
 express = require 'express'
 responseTime = require "response-time"
