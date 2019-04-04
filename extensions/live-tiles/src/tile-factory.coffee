@@ -1,7 +1,8 @@
-tilelive = require '@mapbox/tilelive'
 loader = require "tilelive-modules/loader"
 {memoize} = require 'underscore'
 Promise = require 'bluebird'
+cache =  require("tilelive-cache")
+tilelive = cache(require("@mapbox/tilelive"))
 {db, sql: __sql} = require '../../../src/util.coffee'
 
 sql = (id)->

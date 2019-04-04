@@ -36,7 +36,7 @@ handler = ->
     fn = ({z,x,y})->
       await getTile z,x,y
 
-    Promise.map(coords, fn, {concurrency: 8})
+    Promise.mapSeries(coords, fn, {concurrency: 8})
 
 module.exports = {command, describe, handler}
 
