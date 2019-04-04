@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS tiles.tile (
   y integer NOT NULL,
   tile bytea NOT NULL,
   created timestamp without time zone DEFAULT now(),
+  stale boolean,
   PRIMARY KEY (z, x, y)
 );
 

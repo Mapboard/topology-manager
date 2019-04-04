@@ -7,12 +7,30 @@ loader = require "tilelive-modules/loader"
 tileliveCache = require "tilelive-cache"
 {memoize} = require 'underscore'
 Promise = require 'bluebird'
+{db, sql: __sql} = require '../../src/util.coffee'
+
+sql = (id)->
+  __sql require.resolve("./procedures/#{id}.sql")
 
 tileFactory = memoize (uri)->
   loadURI = Promise.promisify(tilelive.load)
   source = await loadURI(uri)
-  opts = {multiArgs: true, context: source}
-  return Promise.promisify(source.getTile, opts)
+  opts = {context: source}
+  getTile = Promise.promisify(source.getTile, opts)
+
+  q = sql 'get-tile'
+  q2 = sql 'set-tile'
+  buildTile = (z,x,y)->
+    console.log "Creating tile: #{z} #{x} #{y}"
+    tile = await getTile(z,x,y)
+    db.none(q2, {z,x,y,tile})
+    return tile
+
+  (z,x,y)->
+    {tile} = await db.oneOrNone(q, {z,x,y}) or {}
+    if not tile?
+      tile = await buildTile(z,x,y)
+    return tile
 
 handleTileRequest = (uri)->(req, res, next)->
   z = req.params.z | 0
@@ -21,10 +39,11 @@ handleTileRequest = (uri)->(req, res, next)->
 
   getTile = await tileFactory(uri)
   try
-    [tile, headers] = await getTile z,x,y
+    # Ignore headers that are also set by getTile
+    tile = await getTile z,x,y
     unless tile?
       return res.status(404).send("Not found")
-    res.set(headers)
+    res.set({'Content-Type':'image/png'})
     return res.status(200).send(tile)
   catch err
     return next(err)
