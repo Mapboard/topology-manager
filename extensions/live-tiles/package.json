@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Store tiles in the database",
   "fixtures": "fixtures",
+  "commands": [
+    "./src/cache-tiles.coffee"
+  ],
   "dependencies": {
     "express": "^4.16.4",
     "tessera": "git://github.com/davenquinn/tessera.git#master"
