@@ -3,12 +3,8 @@
 "syncline-hinge","Syncline Hinge","#aaaaaa",
 "road","Road","#cccccc",
 "bedding-trace","Bedding trace","#444444",
-"z-fold-hinge","Z-fold hinge","#aaaaaa",
 "watercourse","Watercourse","#3574AC",
-"fault","Generic Fault","#950000","bedrock"
+"normal-fault","Normal Fault","#950000","bedrock"
 "bedrock","Bedrock Contact","#000000","bedrock"
-"nappe-bounding-surface","Nappe-bounding surface","#222222","bedrock"
-"arbitrary-bedrock","Arbitrary bedrock contact","#888888","bedrock"
 "surficial","Surficial Contact","#ffbe17","surficial"
 "thrust-fault","Thrust Fault","#300000","bedrock"
-"arbitrary-surficial-contact","Arbitrary Surficial Contact","#eeac09","surficial"
