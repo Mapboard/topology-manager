@@ -1,0 +1,17 @@
+version: '3'
+services:
+  db:
+    image: mdillon/postgis:11
+    environment:
+      - POSTGRES_DB=geologic_map
+    ports:
+      - "54321:5432"
+    expose:
+      - 5432
+  frontend:
+    build: frontend
+    ports:
+      - '3006'
+    expose:
+      - '3006'
+

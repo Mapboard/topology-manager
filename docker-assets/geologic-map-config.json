@@ -1,0 +1,8 @@
+{
+  "database": "geologic_map",
+  "srid": 32611,
+  "tolerance": 0.1,
+  "extensions": {
+    "demo-units": "file:/ext/demo-units"
+  }
+}
