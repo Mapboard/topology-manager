@@ -27,6 +27,9 @@ name = EXCLUDED.name,
 color = EXCLUDED.color,
 topology = EXCLUDED.topology;
 
+DELETE FROM ${data_schema~}.linework_type
+WHERE id NOT IN (SELECT id FROM tmp_linework_type);
+
 DROP TABLE tmp_linework_type;
 
 -- Polygons
@@ -50,6 +53,7 @@ name = EXCLUDED.name,
 color = EXCLUDED.color,
 topology = EXCLUDED.topology;
 
----
+DELETE FROM ${data_schema~}.polygon_type
+WHERE id NOT IN (SELECT id FROM tmp_polygon_type);
 
 DROP TABLE tmp_polygon_type;
