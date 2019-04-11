@@ -8,8 +8,8 @@ services:
       - "54321:5432"
     expose:
       - 5432
-  frontend:
-    build: frontend
+  app:
+    build: .
     ports:
       - '3006'
     expose:

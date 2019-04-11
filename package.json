@@ -15,7 +15,6 @@
     "live-tiles": "file:extensions/live-tiles"
   },
   "dependencies": {
-    "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
     "glob": "^7.1.2",
