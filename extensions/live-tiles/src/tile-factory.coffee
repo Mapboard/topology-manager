@@ -8,7 +8,15 @@ tilelive = cache(require("@mapbox/tilelive"))
 sql = (id)->
   __sql require.resolve("../procedures/#{id}.sql")
 
-tileFactory = memoize (input)->
+tileFactory = (buildTile)->
+  q = sql 'get-tile'
+  (z,x,y)->
+    {tile} = await db.oneOrNone(q, {z,x,y}) or {}
+    if not tile?
+      tile = await buildTile(z,x,y)
+    return tile
+
+tileliveTileFactory = memoize (input)->
   uri = input+"?tileSize=512&scale=2"
   loader(tilelive, {})
   loadURI = Promise.promisify(tilelive.load)
@@ -16,18 +24,17 @@ tileFactory = memoize (input)->
   opts = {context: source}
   getTile = Promise.promisify(source.getTile, opts)
 
-  q = sql 'get-tile'
   q2 = sql 'set-tile'
-  buildTile = (z,x,y)->
+
+  tileFactory (z,x,y)->
     console.log "Creating tile: #{z} #{x} #{y}"
     tile = await getTile(z,x,y)
     db.none(q2, {z,x,y,tile})
     return tile
 
+vectorTileFactory = (layer)->
+  q = sql 'get-vector-tile'
   (z,x,y)->
-    {tile} = await db.oneOrNone(q, {z,x,y}) or {}
-    if not tile?
-      tile = await buildTile(z,x,y)
-    return tile
+    
 
 module.exports = {tileFactory}
