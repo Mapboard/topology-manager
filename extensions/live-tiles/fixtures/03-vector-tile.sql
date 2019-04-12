@@ -9,6 +9,7 @@ srid integer;
 mercator_bbox geometry;
 projected_bbox geometry;
 res bytea;
+zres float;
 BEGIN
 
 SELECT ST_SRID(geometry)
@@ -19,6 +20,8 @@ LIMIT 1;
 mercator_bbox := TileBBox(coord.z, coord.x, coord.y, 3857);
 projected_bbox := ST_Transform(mercator_bbox, srid);
 
+zres := ZRes(coord.z);
+
 SELECT
   ST_AsMVT(a, 'polygon', 4096, 'geom')
 INTO res
@@ -27,7 +30,12 @@ FROM (
     id,
     unit_id,
     ST_AsMVTGeom(
-      ST_Transform(geometry, 3857),
+      ST_ChaikinSmoothing(
+        ST_Simplify(
+          ST_Transform(geometry, 3857),
+          zres
+        ), 1, true
+      ),
       mercator_bbox
     ) geom
   FROM map_topology.face_display
