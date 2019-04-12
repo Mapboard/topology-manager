@@ -23,13 +23,15 @@ SELECT
   ST_AsMVT(a, 'polygon', 4096, 'geom')
 INTO res
 FROM (
-SELECT
-  ST_AsMVTGeom(
-    ST_Transform(geometry, 3857),
-    mercator_bbox
-  ) geom
-FROM map_topology.face_display
-WHERE ST_Intersects(geometry, projected_bbox)
+  SELECT
+    id,
+    unit_id,
+    ST_AsMVTGeom(
+      ST_Transform(geometry, 3857),
+      mercator_bbox
+    ) geom
+  FROM map_topology.face_display
+  WHERE ST_Intersects(geometry, projected_bbox)
 ) a;
 
 RETURN res;
