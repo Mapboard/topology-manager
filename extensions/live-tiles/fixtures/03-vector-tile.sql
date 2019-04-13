@@ -8,7 +8,8 @@ DECLARE
 srid integer;
 mercator_bbox geometry;
 projected_bbox geometry;
-res bytea;
+poly bytea;
+line bytea;
 zres float;
 BEGIN
 
@@ -24,7 +25,7 @@ zres := ZRes(coord.z);
 
 SELECT
   ST_AsMVT(a, 'polygon', 4096, 'geom')
-INTO res
+INTO poly
 FROM (
   SELECT
     id,
@@ -42,8 +43,8 @@ FROM (
   WHERE ST_Intersects(geometry, projected_bbox)
 ) a;
 
-RETURN res;
+RETURN poly;
 
 END;
 $$
-LANGUAGE plpgsql IMMUTABLE;
+LANGUAGE plpgsql;

@@ -8,33 +8,35 @@ tilelive = cache(require("@mapbox/tilelive"))
 sql = (id)->
   __sql require.resolve("../procedures/#{id}.sql")
 
-tileFactory = (buildTile)->
+interfaceFactory = (name, buildTile)->
+  {id: layer_id, content_type, format} = await db.one sql('get-tile-metadata'), {name}
   q = sql 'get-tile'
-  (z,x,y)->
-    {tile} = await db.oneOrNone(q, {z,x,y}) or {}
+  q2 = sql 'set-tile'
+  getTile = (tileArgs)->
+    {z,x,y, layer_id} = tileArgs
+    {tile} = await db.oneOrNone(q, tileArgs) or {}
     if not tile?
-      tile = await buildTile(z,x,y)
+      console.log "Creating tile (#{z},#{x},#{y}) for layer #{name}"
+      tile = await buildTile(tileArgs)
+      db.none(q2, {z,x,y,tile,layer_id})
     return tile
+  return {getTile, content_type, format, layer_id}
 
-tileliveTileFactory = memoize (input)->
-  uri = input+"?tileSize=512&scale=2"
+tileliveInterface = (name, uri)->
+  uri += "?tileSize=512&scale=2"
   loader(tilelive, {})
   loadURI = Promise.promisify(tilelive.load)
   source = await loadURI(uri)
   opts = {context: source}
   getTile = Promise.promisify(source.getTile, opts)
 
-  q2 = sql 'set-tile'
+  interfaceFactory name, (tileArgs)->
+    {z,x,y} = tileArgs
+    await getTile(z,x,y)
 
-  tileFactory (z,x,y)->
-    console.log "Creating tile: #{z} #{x} #{y}"
-    tile = await getTile(z,x,y)
-    db.none(q2, {z,x,y,tile})
-    return tile
-
-vectorTileFactory = (layer)->
+vectorTileInterface = (layer)->
   q = sql 'get-vector-tile'
-  (z,x,y)->
-    
+  interfaceFactory layer, (tileArgs)->
+    await db.one q, tileArgs
 
-module.exports = {tileFactory}
+module.exports = {vectorTileInterface, tileliveInterface}
