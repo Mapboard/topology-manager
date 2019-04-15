@@ -21,6 +21,8 @@
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
+    "axios": "^0.18.0",
+    "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
     "express": "^4.16.4",
