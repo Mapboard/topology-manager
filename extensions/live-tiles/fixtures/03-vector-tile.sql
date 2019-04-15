@@ -21,7 +21,7 @@ LIMIT 1;
 mercator_bbox := TileBBox(coord.z, coord.x, coord.y, 3857);
 projected_bbox := ST_Transform(mercator_bbox, srid);
 
-zres := ZRes(coord.z);
+zres := ZRes(coord.z)/2;
 
 SELECT
   ST_AsMVT(a, 'polygon', 4096, 'geom')
