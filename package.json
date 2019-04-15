@@ -10,6 +10,9 @@
     "preinstall": "linklocal",
     "serve": "./bin/geologic-map-serve-dev"
   },
+  "browserslist": [
+    "> 1%"
+  ],
   "extensions": {
     "geologic-map-display": "file:extensions/display",
     "fill-patterns": "file:extensions/fill-patterns",
