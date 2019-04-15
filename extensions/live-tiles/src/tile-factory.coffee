@@ -37,6 +37,7 @@ tileliveInterface = (name, uri)->
 vectorTileInterface = (layer)->
   q = sql 'get-vector-tile'
   interfaceFactory layer, (tileArgs)->
-    await db.one q, tileArgs
+    {tile} = await db.one q, tileArgs
+    return tile
 
 module.exports = {vectorTileInterface, tileliveInterface}

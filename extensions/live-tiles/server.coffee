@@ -3,6 +3,7 @@ responseTime = require "response-time"
 cors = require 'cors'
 morgan = require 'morgan'
 {vectorTileInterface} = require './src/tile-factory'
+style = require './src/map-style'
 
 tileLayerServer = ({getTile, content_type, format, layer_id})->
   # Small replacement for tessera
@@ -39,6 +40,9 @@ liveTileServer = (cfg)->
 
   app.get "/", (req,res)->
     res.send("Live tiles")
+
+  app.get "/style.json", (req, res)->
+    res.json style
 
   vectorTileInterface 'map-data'
     .then (cfg)->

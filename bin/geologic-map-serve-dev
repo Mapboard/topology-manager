@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 
+function finish {
+  if [[ -n $pid ]]; then
+    echo "Killing watcher"
+    kill $pid
+  fi
+}
+
 cd $(git rev-parse --show-toplevel)
 
 dist=./extensions/web/dist
 
 export MAPBOX_TOKEN="$(geologic-map config web.access-token)"
 
-parcel ./extensions/web/index.html \
+parcel watch ./extensions/web/index.html \
   --out-dir $dist &
-pid1=$!
+pid=$!
 
-nodemon --ignore $dist ./src/geologic-map serve &
-pid2=$!
+nodemon --ignore $dist ./src/geologic-map serve
 
-wait $pid1 $pid2
+trap finish EXIT

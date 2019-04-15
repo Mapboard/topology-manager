@@ -1,10 +1,10 @@
 geology = {
   type: "vector",
   tiles: [
-    "/live-tiles/map-data/{z}/{x}/{y}.pbf",
+    "http://localhost:3006/live-tiles/map-data/{z}/{x}/{y}.pbf",
   ],
   maxzoom: 15
-  minzoom: 12
+  minzoom: 10
 }
 
 module.exports = {
@@ -13,4 +13,24 @@ module.exports = {
   sources: {
     geology
   }
+  layers: [
+    {
+      "id": "water",
+      "source": "geology",
+      "source-layer": "polygon",
+      "type": "fill",
+      "paint": {
+        "fill-color": "#0000ff"
+      }
+    }
+    {
+      "id": "contact",
+      "source": "geology",
+      "source-layer": "polygon",
+      "type": "line",
+      "paint": {
+        "line-color": "#000000"
+      }
+    }
+  ]
 }
