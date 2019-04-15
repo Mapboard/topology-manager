@@ -1,6 +1,7 @@
 cfg = require '../../src/config'
 {startWatcher} = require '../../src/commands/update'
 appFactory = require './map-digitizer-server/src/feature-server'
+express = require 'express'
 {join} = require 'path'
 
 command = 'serve'
@@ -13,14 +14,8 @@ handler = ->
   {tiles, port} = server
   port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema, createFunctions: false}
-  app.set 'views', join(__dirname, 'views')
-  app.set 'view engine', 'pug'
 
-  app.get '/', (req,res)->
-    res.render 'map.pug', {
-      title: 'Geologic Map', message: 'Hello there!'
-      endpoints: Object.keys(tiles)
-    }
+  app.use express.static join(__dirname,'..','web','dist')
 
   # This should be conditional
   liveTiles = require '../live-tiles/server'
