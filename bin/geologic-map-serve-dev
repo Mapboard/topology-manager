@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+cd $(git rev-parse --show-toplevel)
+
+parcel ./extensions/server/views/map.pug \
+  --out-dir ./extensions/web/dist &
+pid1=$!
+
+nodemon ./src/geologic-map serve &
+pid2=$!
+
+wait $pid1 $pid2
