@@ -8,7 +8,8 @@ DECLARE
 srid integer;
 mercator_bbox geometry;
 projected_bbox geometry;
-poly bytea;
+bedrock bytea;
+surface bytea;
 line bytea;
 zres float;
 BEGIN
@@ -24,26 +25,46 @@ projected_bbox := ST_Transform(mercator_bbox, srid);
 zres := ZRes(coord.z)/2;
 
 SELECT
-  ST_AsMVT(a, 'polygon', 4096, 'geom')
-INTO poly
+  ST_AsMVT(a, 'bedrock', 4096, 'geom')
+INTO bedrock
 FROM (
   SELECT
     id,
     unit_id,
     ST_AsMVTGeom(
-      ST_ChaikinSmoothing(
-        ST_Simplify(
-          ST_Transform(geometry, 3857),
-          zres
-        ), 1, true
+      ST_Simplify(
+        ST_Transform(geometry, 3857),
+        zres/2
       ),
       mercator_bbox
     ) geom
   FROM map_topology.face_display
   WHERE ST_Intersects(geometry, projected_bbox)
+    AND topology = 'bedrock'
 ) a;
 
-RETURN poly;
+SELECT
+  ST_AsMVT(a, 'surficial', 4096, 'geom')
+INTO surface
+FROM (
+  SELECT
+    id,
+    unit_id,
+    ST_AsMVTGeom(
+      ST_Simplify(
+        ST_Transform(geometry, 3857),
+        zres/2
+      ),
+      mercator_bbox
+    ) geom
+  FROM map_topology.face_display
+  WHERE ST_Intersects(geometry, projected_bbox)
+    AND topology = 'surficial'
+    AND unit_id != 'surficial-none'
+) a;
+
+
+RETURN bedrock || surface;
 
 END;
 $$

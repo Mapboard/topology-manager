@@ -26,21 +26,31 @@ createStyle = ->
       {
         "id": "unit",
         "source": "geology",
-        "source-layer": "polygon",
+        "source-layer": "bedrock",
         "type": "fill",
         "paint": {
           "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
         }
       }
       {
-        "id": "contact",
+        "id": "surface",
         "source": "geology",
-        "source-layer": "polygon",
-        "type": "line",
+        "source-layer": "surficial",
+        "type": "fill",
         "paint": {
-          "line-color": "#000000"
+          "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
         }
       }
+
+      #{
+        #"id": "contact",
+        #"source": "geology",
+        #"source-layer": "polygon",
+        #"type": "line",
+        #"paint": {
+          #"line-color": "#000000"
+        #}
+      #}
     ]
   }
 
