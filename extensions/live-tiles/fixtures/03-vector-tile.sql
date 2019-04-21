@@ -77,7 +77,7 @@ SELECT
         ST_Transform(
           ST_Simplify(e.geom, zres/2),
           3857
-        ), zres*2
+        ), zres*6
       ), 1, true
     ),
     mercator_bbox
@@ -116,7 +116,7 @@ SELECT
         ST_Transform(
           ST_Simplify(l.geometry, zres/2),
           3857
-        ), zres*2
+        ), zres*6
       ), 1, true
     ),
     mercator_bbox

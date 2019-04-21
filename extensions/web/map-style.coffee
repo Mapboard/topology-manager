@@ -33,6 +33,16 @@ createStyle = ->
         }
       }
       {
+        "id": "bedrock-contact",
+        "source": "geology",
+        "source-layer": "contact",
+        "type": "line",
+        "paint": {
+          "line-color": "#000000"
+        }
+        filter: ["!=", "surficial", ["get", "type"]]
+      }
+      {
         "id": "surface",
         "source": "geology",
         "source-layer": "surficial",
@@ -42,14 +52,36 @@ createStyle = ->
         }
       }
       {
-        "id": "contact",
+        "id": "surficial-contact",
         "source": "geology",
         "source-layer": "contact",
         "type": "line",
         "paint": {
+          "line-color": "#ffbe17"
+        }
+        filter: ["==", "surficial", ["get", "type"]]
+      }
+      {
+        "id": "watercourse",
+        "source": "geology",
+        "source-layer": "line",
+        "type": "line",
+        "paint": {
+          "line-color": "#3574AC"
+        }
+        filter: ["==", "watercourse", ["get", "type"]]
+      }
+      {
+        "id": "line",
+        "source": "geology",
+        "source-layer": "line",
+        "type": "line",
+        "paint": {
           "line-color": "#000000"
         }
+        filter: ["!=", "watercourse", ["get", "type"]]
       }
+
     ]
   }
 
