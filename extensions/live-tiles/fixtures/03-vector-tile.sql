@@ -10,6 +10,7 @@ projected_bbox geometry;
 bedrock bytea;
 surface bytea;
 contact bytea;
+line bytea;
 zres float;
 BEGIN
 
@@ -101,7 +102,33 @@ WHERE e.geom && projected_bbox
     'arbitrary-surficial-contact'
 )) a;
 
-RETURN bedrock || surface || contact;
+SELECT
+  ST_AsMVT(a, 'line', 4096, 'geom')
+INTO line
+FROM (
+SELECT
+  null AS edge_id,
+  l.id AS line_id,
+  l.type,
+  ST_AsMVTGeom(
+    ST_ChaikinSmoothing(
+      ST_Segmentize(
+        ST_Transform(
+          ST_Simplify(l.geometry, zres/2),
+          3857
+        ), zres*2
+      ), 1, true
+    ),
+    mercator_bbox
+  ) geom
+FROM map_digitizer.linework l
+JOIN map_digitizer.linework_type t
+  ON l.type = t.id
+WHERE l.geometry && projected_bbox
+  AND t.topology IS null
+) a;
+
+RETURN bedrock || surface || contact || line;
 
 END;
 $$
