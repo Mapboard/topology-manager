@@ -41,16 +41,15 @@ createStyle = ->
           "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
         }
       }
-
-      #{
-        #"id": "contact",
-        #"source": "geology",
-        #"source-layer": "polygon",
-        #"type": "line",
-        #"paint": {
-          #"line-color": "#000000"
-        #}
-      #}
+      {
+        "id": "contact",
+        "source": "geology",
+        "source-layer": "contact",
+        "type": "line",
+        "paint": {
+          "line-color": "#000000"
+        }
+      }
     ]
   }
 

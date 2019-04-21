@@ -71,9 +71,13 @@ SELECT
   er.line_id,
   er.type,
   ST_AsMVTGeom(
-    ST_Simplify(
-      ST_Transform(e.geom, 3857),
-      zres/2
+    ST_ChaikinSmoothing(
+      ST_Segmentize(
+        ST_Transform(
+          ST_Simplify(e.geom, zres/2),
+          3857
+        ), zres*2
+      ), 1, true
     ),
     mercator_bbox
   ) geom,
@@ -91,7 +95,7 @@ LEFT JOIN mapping.__unit_commonality uc
   ON uc.u1 = f1.unit_id
  AND uc.u2 = f2.unit_id
  AND uc.topology = er.topology
-WHERE e.geom && TileBBox(10, 556, 583, 32733)
+WHERE e.geom && projected_bbox
   AND er.type NOT IN (
     'arbitrary-bedrock',
     'arbitrary-surficial-contact'
