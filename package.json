@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
@@ -46,5 +46,10 @@
       "**/*.sql",
       "node_modules/@mapbox/mbtiles/lib/**/*.*"
     ]
+  },
+  "devDependencies": {
+    "coffeescript": "^2.4.1",
+    "cssnano": "^4.1.10",
+    "stylus": "^0.54.5"
   }
 }

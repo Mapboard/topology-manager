@@ -81,8 +81,7 @@ SELECT
       ), 1, true
     ),
     mercator_bbox
-  ) geom,
-  coalesce(uc.commonality, 6) commonality
+  ) geom
 FROM map_topology.edge_data e
 JOIN map_topology.__edge_relation er
   ON er.edge_id = e.edge_id
@@ -92,10 +91,6 @@ JOIN map_topology.face_type f1
 JOIN map_topology.face_type f2
   ON e.right_face = f2.face_id
  AND er.topology = f2.topology
-LEFT JOIN mapping.__unit_commonality uc
-  ON uc.u1 = f1.unit_id
- AND uc.u2 = f2.unit_id
- AND uc.topology = er.topology
 WHERE e.geom && projected_bbox
   AND er.type NOT IN (
     'arbitrary-bedrock',
