@@ -3,6 +3,7 @@ responseTime = require "response-time"
 cors = require 'cors'
 morgan = require 'morgan'
 {vectorTileInterface} = require './src/tile-factory'
+{db} = require '../../src/util.coffee'
 
 tileLayerServer = ({getTile, content_type, format, layer_id})->
   # Small replacement for tessera
@@ -30,6 +31,15 @@ tileLayerServer = ({getTile, content_type, format, layer_id})->
 
   return app
 
+startWatcher = ->
+  console.log 'Starting topology watcher'
+  # Listen for data
+  conn = await db.connect {direct: true}
+  conn.client.on 'notification', (data)->
+    console.log "Topology: #{data.payload}"
+
+  conn.none('LISTEN $1~', 'topology')
+
 liveTileServer = (cfg)->
   {layers} = cfg['live-tiles']
 
@@ -44,6 +54,8 @@ liveTileServer = (cfg)->
     .then (cfg)->
       server = tileLayerServer cfg
       app.use "/map-data", server
+
+  startWatcher()
 
   return app
 
