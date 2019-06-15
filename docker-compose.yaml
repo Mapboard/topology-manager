@@ -13,6 +13,6 @@ services:
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/geologic-map-config.json
     ports:
-      - '3006'
+      - '3006:3006'
     expose:
       - '3006'

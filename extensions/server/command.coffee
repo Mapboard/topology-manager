@@ -9,6 +9,7 @@ describe = 'Create a feature server'
 handler = ->
   server ?= {}
   {tiles, port} = server
+  tiles ?= {}
   port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema}
   app.set 'views', join(__dirname, 'views')
@@ -25,4 +26,3 @@ handler = ->
     startWatcher(verbose=false)
 
 module.exports = {command, describe, handler}
-
