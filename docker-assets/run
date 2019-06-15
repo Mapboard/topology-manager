@@ -1,8 +1,9 @@
 #!/bin/bash
 
-while ! $(psql -h database -p 5432 -U postgres sparrow > /dev/null 2>&1) ; do
+while ! $(psql -h db -p 5432 -U postgres geologic_map > /dev/null 2>&1) ; do
   echo "Waiting for database..."
   sleep 1
 done
 
-echo "Ready to go"
+/app/bin/geologic-map create-tables --all
+/app/bin/geologic-map serve

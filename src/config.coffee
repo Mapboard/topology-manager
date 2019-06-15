@@ -10,7 +10,7 @@ require 'tilelive-modules/loader'
 
 host ?= 'localhost'
 port ?= 5432
-connection ?= { host, port, database} # Also needs user, password
+connection ?= { host, port, database } # Also needs user, password
 data_schema ?= 'map_digitizer'
 topo_schema ?= 'map_topology'
 tolerance ?= 1

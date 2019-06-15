@@ -138,7 +138,7 @@ END IF;
 
 SELECT array_agg(elem)
 INTO __edges
-FROM (SELECT (GetTopoGeomElements(NEW.topo))[1] elem) AS a;
+FROM (SELECT (topology.GetTopoGeomElements(NEW.topo))[1] elem) AS a;
 
 /* Delete unreferenced elements from topo tracker */
 DELETE FROM map_topology.__edge_relation
@@ -219,4 +219,3 @@ DROP TRIGGER IF EXISTS map_topology_linework_trigger ON map_digitizer.linework;
 CREATE TRIGGER map_topology_linework_trigger
 BEFORE INSERT OR UPDATE OR DELETE ON map_digitizer.linework
 FOR EACH ROW EXECUTE PROCEDURE map_topology.linework_changed();
-

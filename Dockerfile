@@ -7,14 +7,15 @@ RUN mkdir /app
 
 WORKDIR /app
 
-RUN npm install -g linklocal
+RUN npm install -g linklocal && \
+  mkdir -p /app/extensions/server/map-digitizer-server
 
 COPY package.json /app/
-COPY ./extensions/server/map-digitizer-server/package.json \
-  /app/extensions/server/map-digitizer-server/package.json
+COPY ./extensions/server/map-digitizer-server/*.* \
+  /app/extensions/server/map-digitizer-server/
 
-RUN npm install
+RUN linklocal && npm install
 
-COPY *.* /app/
+COPY . /app/
 
 CMD /app/docker-assets/run

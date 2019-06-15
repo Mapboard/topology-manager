@@ -1,8 +1,13 @@
 {
-  "database": "geologic_map",
+  "connection": {
+    "database": "geologic_map",
+    "port": 5432,
+    "host": "db",
+    "user": "postgres"
+  },
   "srid": 32611,
   "tolerance": 0.1,
   "extensions": {
-    "demo-units": "file:/ext/demo-units"
+    "demo-units": "file:./demo-units"
   }
 }

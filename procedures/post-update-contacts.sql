@@ -7,7 +7,7 @@ The trigger *should* keep integrity but we can just be safe
 
 INSERT INTO map_topology.__edge_relation (edge_id, topology, line_id, type)
 SELECT
-  (GetTopoGeomElements(topo))[1] edge_id,
+  (topology.GetTopoGeomElements(topo))[1] edge_id,
   t.topology,
   l.id,
   l.type
