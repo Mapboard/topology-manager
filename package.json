@@ -14,9 +14,9 @@
     "> 1%"
   ],
   "extensions": {
-    "geologic-map-display": "file:extensions/display",
-    "fill-patterns": "file:extensions/fill-patterns",
-    "live-tiles": "file:extensions/live-tiles"
+    "geologic-map-display": "file:./extensions/display",
+    "fill-patterns": "file:./extensions/fill-patterns",
+    "live-tiles": "file:./extensions/live-tiles"
   },
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
@@ -30,6 +30,7 @@
     "inquirer": "^4.0.1",
     "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
     "mapbox-gl": "^0.53.1",
+    "pg": "^7.11.0",
     "pg-promise": "^7.5.4",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",

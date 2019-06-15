@@ -3,11 +3,20 @@ Functions allowing changes to topological relations
 // Should merge with similar functions for Naukluft
 */
 
+CREATE OR REPLACE FUNCTION map_topology.__map_face_layer_id()
+RETURNS integer AS $$
+SELECT layer_id
+FROM topology.layer
+WHERE schema_name='map_topology'
+  AND table_name='map_face'
+  AND feature_column='topo';
+$$ LANGUAGE SQL IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION map_topology.topologizeGeometry(geom geometry, tolerance numeric = 1)
-RETURNS topogeometry AS
+RETURNS topology.topogeometry AS
 $$
 DECLARE
-topo topogeometry;
+topo topology.topogeometry;
 layer_id integer;
 BEGIN
   SELECT layer_id
@@ -28,10 +37,10 @@ $$
 LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION map_topology.addMapFace(geom geometry, tolerance numeric = 1)
-RETURNS topogeometry AS
+RETURNS topology.topogeometry AS
 $$
 DECLARE
-topo topogeometry;
+topo topology.topogeometry;
 layer_id integer;
 BEGIN
   SELECT l.layer_id

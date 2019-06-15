@@ -20,15 +20,6 @@ but this can be disabled for speed.
 Drastically simplified this view creation
 */
 
-CREATE OR REPLACE FUNCTION map_topology.__map_face_layer_id()
-RETURNS integer AS $$
-SELECT layer_id
-FROM topology.layer
-WHERE schema_name='map_topology'
-  AND table_name='map_face'
-  AND feature_column='topo';
-$$ LANGUAGE SQL IMMUTABLE;
-
 CREATE OR REPLACE FUNCTION map_topology.other_face(
   e map_topology.edge_data,
   fid integer
@@ -83,7 +74,7 @@ CREATE OR REPLACE FUNCTION map_topology.update_map_face()
 RETURNS map_topology.__dirty_face AS $$
 DECLARE
   __topo_elements integer[][];
-  __topo topogeometry;
+  __topo topology.topogeometry;
   __geometry geometry;
   __face map_topology.__dirty_face;
   __precision integer;
@@ -165,7 +156,7 @@ SELECT array_agg(a.vals)
 INTO __topo_elements
 FROM a;
 
-__topo := CreateTopoGeom('map_topology', 3, __layer_id, __topo_elements);
+__topo := topology.CreateTopoGeom('map_topology', 3, __layer_id, __topo_elements);
 
 __geometry := ST_SetSRID(__topo::geometry,__srid);
 
@@ -223,5 +214,3 @@ END LOOP;
 
 END;
 $$ LANGUAGE plpgsql;
-
-

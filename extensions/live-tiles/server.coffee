@@ -41,8 +41,6 @@ startWatcher = ->
   conn.none('LISTEN $1~', 'topology')
 
 liveTileServer = (cfg)->
-  {layers} = cfg['live-tiles']
-
   app = express().disable("x-powered-by")
   if process.env.NODE_ENV != "production"
     app.use(morgan("dev"))
