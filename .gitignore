@@ -1,3 +1,5 @@
 .redo
 node_modules
 dist
+.cache
+extensions/web/dist

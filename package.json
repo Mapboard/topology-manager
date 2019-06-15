@@ -7,25 +7,33 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "linklocal"
+    "preinstall": "linklocal",
+    "serve": "./bin/geologic-map-serve-dev"
   },
+  "browserslist": [
+    "> 1%"
+  ],
   "extensions": {
     "geologic-map-display": "file:extensions/display",
     "fill-patterns": "file:extensions/fill-patterns",
     "live-tiles": "file:extensions/live-tiles"
   },
   "dependencies": {
+    "@mapbox/postgis-vt-util": "^1.2.1",
+    "axios": "^0.18.0",
+    "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
+    "express": "^4.16.4",
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "leaflet": "^1.2.0",
     "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
-    "pg": "^7.11.0",
+    "mapbox-gl": "^0.53.1",
     "pg-promise": "^7.5.4",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
+    "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
   },

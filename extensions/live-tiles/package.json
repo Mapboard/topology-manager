@@ -2,5 +2,13 @@
   "name": "live-tiles",
   "version": "0.1.0",
   "description": "Store tiles in the database",
-  "fixtures": "fixtures"
+  "fixtures": "fixtures",
+  "commands": [
+    "./src/cache-tiles.coffee"
+  ],
+  "dependencies": {
+    "axios": "^0.18.0",
+    "express": "^4.16.4",
+    "tessera": "git://github.com/davenquinn/tessera.git#master"
+  }
 }
