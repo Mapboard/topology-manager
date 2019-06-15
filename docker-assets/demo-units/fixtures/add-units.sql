@@ -14,7 +14,7 @@ WITH NO DATA;
 
 
 COPY tmp_linework_type (id,name,color,topology)
-FROM '${dirname:raw}/../linework-types.csv'
+FROM '/app/docker-assets/demo-units/linework-types.csv'
 DELIMITER ',' CSV HEADER;
 
 INSERT INTO ${data_schema~}.linework_type
@@ -40,7 +40,7 @@ SELECT * FROM ${data_schema~}.polygon_type
 WITH NO DATA;
 
 COPY tmp_polygon_type (id,name,color,topology)
-FROM '${dirname:raw}/../polygon-types.csv'
+FROM '/app/docker-assets/demo-units/polygon-types.csv'
 DELIMITER ',' CSV HEADER;
 
 INSERT INTO ${data_schema~}.polygon_type

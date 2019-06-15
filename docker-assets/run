@@ -5,5 +5,8 @@ while ! $(psql -h db -p 5432 -U postgres geologic_map > /dev/null 2>&1) ; do
   sleep 1
 done
 
+
+psql -h db -p 5432 -U postgres geologic_map -f /app/demo-units/fixtures/add-units.sql
+
 /app/bin/geologic-map create-tables --all
 /app/bin/geologic-map serve
