@@ -1,4 +1,5 @@
 import {get} from 'axios'
+import baseStyle from './base-style.json'
 
 geology = {
   type: "vector",
@@ -16,7 +17,7 @@ createStyle = ->
   for d in data
     colors[d.id] = d.color
 
-  return {
+  newStyle = {
     version: 8
     name: "Geology"
     sources: {
@@ -84,5 +85,17 @@ createStyle = ->
 
     ]
   }
+
+  style = baseStyle
+
+  style.sources.geology = geology
+
+  style.layers = [
+    newStyle.layers...
+    baseStyle.layers...
+  ]
+
+  return style
+
 
 export {createStyle}

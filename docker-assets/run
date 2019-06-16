@@ -5,8 +5,26 @@ while ! $(psql -h db -p 5432 -U postgres geologic_map > /dev/null 2>&1) ; do
   sleep 1
 done
 
+psql -h db -p 5432 -U postgres geologic_map <<SQL
+CREATE TABLE tmp_linework_type
+AS SELECT * FROM map_digitizer.linework_type
+WITH NO DATA;
 
-psql -h db -p 5432 -U postgres geologic_map -f /app/demo-units/fixtures/add-units.sql
+CREATE TABLE tmp_polygon_type
+AS SELECT * FROM map_digitizer.polygon_type
+WITH NO DATA;
+SQL
+
+cat /app/docker-assets/demo-units/linework-types.csv \
+| psql -h db -p 5432 -U postgres geologic_map -c "
+COPY tmp_linework_type (id,name,color,topology)
+FROM STDIN DELIMITER ',' CSV HEADER;"
+
+cat /app/docker-assets/demo-units/polygon-types.csv \
+| psql -h db -p 5432 -U postgres geologic_map -c "
+COPY tmp_polygon_type (id,name,color,topology)
+FROM STDIN DELIMITER ',' CSV HEADER;"
+
 
 /app/bin/geologic-map create-tables --all
 /app/bin/geologic-map serve

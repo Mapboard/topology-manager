@@ -50,6 +50,7 @@
   "devDependencies": {
     "coffeescript": "^2.4.1",
     "cssnano": "^4.1.10",
+    "parcel-bundler": "^1.12.3",
     "stylus": "^0.54.5"
   }
 }

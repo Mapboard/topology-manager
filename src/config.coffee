@@ -1,5 +1,5 @@
 {GEOLOGIC_MAP_CONFIG} = process.env
-{resolve,join, dirname} = require 'path'
+{resolve,join, dirname, isAbsolute} = require 'path'
 {existsSync} = require 'fs'
 require 'tilelive-modules/loader'
 
@@ -35,6 +35,8 @@ getFromFilePath = (cfgDir,v)->
   return loc
 
 getLocation = (cfgDir, key, locString)->
+  if isAbsolute(locString)
+    return require.resolve locString
   if locString.startsWith prefix
     return getFromFilePath(cfgDir,locString)
 

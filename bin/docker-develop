@@ -1,0 +1,12 @@
+#!/usr/bin/env zsh
+
+cd "$(git rev-parse --show-toplevel)"
+
+dist=./extensions/web/dist
+
+rm -f "$dist"/*.*
+
+parcel build ./extensions/web/index.html --out-dir $dist
+
+docker-compose up --build -d
+docker-compose logs -f app
