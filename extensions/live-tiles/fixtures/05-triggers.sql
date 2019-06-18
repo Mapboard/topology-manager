@@ -6,6 +6,7 @@ RETURNS trigger AS $$
 DECLARE
 payload text;
 BEGIN
+  -- New feature does not seem to be a thing
   payload := NEW.edge_id::text;
   PERFORM pg_notify('topology', (payload));
   RETURN NEW;
@@ -20,13 +21,14 @@ AFTER INSERT
     OR UPDATE
     OR DELETE
     ON map_topology.__edge_relation
-FOR EACH STATEMENT
+FOR EACH ROW
 EXECUTE PROCEDURE map_topology.linework_topology_notify();
 
 
 CREATE OR REPLACE FUNCTION map_topology.polygon_topology_notify()
 RETURNS trigger AS $$
 BEGIN
+  -- New doesn't seem to be a thing
   PERFORM pg_notify('topology', NEW.id::text);
   RETURN NEW;
 END;
@@ -41,6 +43,5 @@ AFTER INSERT
     OR UPDATE
     OR DELETE
     ON map_topology.map_face
-FOR EACH STATEMENT
+FOR EACH ROW
 EXECUTE PROCEDURE map_topology.polygon_topology_notify();
-

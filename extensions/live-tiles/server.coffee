@@ -36,6 +36,7 @@ startWatcher = ->
   # Listen for data
   conn = await db.connect {direct: true}
   conn.client.on 'notification', (data)->
+    console.log data
     console.log "Topology: #{data.payload}"
 
   conn.none('LISTEN $1~', 'topology')
