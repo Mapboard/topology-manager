@@ -90,3 +90,23 @@ END
 $$
 LANGUAGE plpgsql IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION tiles.contains(a tile_coord, b tile_coord)
+RETURNS boolean
+AS $$
+DECLARE
+  dz integer;
+BEGIN
+
+dz := b.z-a.z;
+
+IF dz < 0 THEN
+  RETURN false;
+ELSIF b.x < a.x*2^dz OR b.x > (a.x+1)*2^dz THEN
+	RETURN false;
+ELSIF b.y < a.y*2^dz OR b.y > (a.y+1)*2^dz THEN
+  RETURN false;
+END IF;
+RETURN true;
+
+END;
+$$ LANGUAGE 'plpgsql';

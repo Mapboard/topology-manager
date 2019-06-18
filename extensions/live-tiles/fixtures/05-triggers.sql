@@ -24,7 +24,6 @@ AFTER INSERT
 FOR EACH ROW
 EXECUTE PROCEDURE map_topology.linework_topology_notify();
 
-
 CREATE OR REPLACE FUNCTION map_topology.polygon_topology_notify()
 RETURNS trigger AS $$
 BEGIN

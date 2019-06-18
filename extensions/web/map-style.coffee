@@ -91,8 +91,8 @@ createStyle = ->
   style.sources.geology = geology
 
   style.layers = [
-    newStyle.layers...
     baseStyle.layers...
+    newStyle.layers...
   ]
 
   return style
