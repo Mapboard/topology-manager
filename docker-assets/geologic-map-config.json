@@ -5,7 +5,7 @@
     "host": "db",
     "user": "postgres"
   },
-  "srid": 32611,
+  "srid": 32733,
   "tolerance": 0.1,
   "loadPosition": {
     "lon": 15.8,
