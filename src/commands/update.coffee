@@ -14,12 +14,15 @@ updateAll = (opts={})->
   fillHoles ?= false
 
   console.time('update')
-  console.log "Updating contacts".green.bold
-  await updateContacts({fixFailed})
-  console.log "Updating faces".green.bold
-  await updateFaces({reset, fillHoles})
-  console.log "Cleaning topology".green.bold
-  await cleanTopology()
+  try
+    console.log "Updating contacts".green.bold
+    await updateContacts({fixFailed})
+    console.log "Updating faces".green.bold
+    await updateFaces({reset, fillHoles})
+    console.log "Cleaning topology".green.bold
+    await cleanTopology()
+  catch err
+    console.error err
   console.timeEnd('update')
 
 startWatcher = ->
@@ -52,5 +55,3 @@ handler = (argv)->
   process.exit()
 
 module.exports = {command, describe, handler, startWatcher}
-
-
