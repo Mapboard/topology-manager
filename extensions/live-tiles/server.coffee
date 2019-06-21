@@ -3,6 +3,7 @@ responseTime = require "response-time"
 cors = require 'cors'
 morgan = require 'morgan'
 {vectorTileInterface} = require './src/tile-factory'
+{topologyWatcher} = require './src/event-server'
 {db} = require '../../src/util.coffee'
 
 tileLayerServer = ({getTile, content_type, format, layer_id})->
@@ -31,16 +32,6 @@ tileLayerServer = ({getTile, content_type, format, layer_id})->
 
   return app
 
-startWatcher = ->
-  console.log 'Starting topology watcher'
-  # Listen for data
-  conn = await db.connect {direct: true}
-  conn.client.on 'notification', (data)->
-    console.log data
-    console.log "Topology: #{data.payload}"
-
-  conn.none('LISTEN $1~', 'topology')
-
 liveTileServer = (cfg)->
   app = express().disable("x-powered-by")
   if process.env.NODE_ENV != "production"
@@ -54,8 +45,6 @@ liveTileServer = (cfg)->
       server = tileLayerServer cfg
       app.use "/map-data", server
 
-  startWatcher()
-
   return app
 
-module.exports = liveTileServer
+module.exports = {liveTileServer, topologyWatcher}

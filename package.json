@@ -34,6 +34,8 @@
     "pg-promise": "^7.5.4",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
+    "socket.io": "^2.2.0",
+    "socket.io-client": "^2.2.0",
     "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "yargs": "^10.0.3"
