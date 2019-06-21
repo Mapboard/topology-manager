@@ -7,7 +7,7 @@ geology = {
     "http://localhost:3006/live-tiles/map-data/{z}/{x}/{y}.pbf",
   ],
   maxzoom: 15
-  minzoom: 10
+  minzoom: 5
 }
 
 createStyle = ->

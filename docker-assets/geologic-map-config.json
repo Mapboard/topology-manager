@@ -13,7 +13,7 @@
     "width": 4000
   },
   "live-tiles": {
-    "zoomRange": [9,15],
+    "zoomRange": [5,15],
     "bounds": [15.75, -24.60, 16.60, -23.7]
   },
   "extensions": {
