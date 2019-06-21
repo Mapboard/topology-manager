@@ -30,6 +30,7 @@
     "inquirer": "^4.0.1",
     "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
     "mapbox-gl": "^0.53.1",
+    "mapbox-gl-utils": "^0.26.1",
     "pg": "^7.11.0",
     "pg-promise": "^7.5.4",
     "progress": "^2.0.0",
@@ -38,6 +39,7 @@
     "socket.io-client": "^2.2.0",
     "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
+    "underscore": "^1.9.1",
     "yargs": "^10.0.3"
   },
   "pkg": {
