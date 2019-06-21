@@ -4,9 +4,10 @@ cd "$(git rev-parse --show-toplevel)"
 
 dist=./extensions/web/dist
 
+files=(-f docker-compose.yaml -f docker-compose.develop.yaml)
+
+docker-compose $files up --build -d
+
 rm -f "$dist"/*.*
-
-parcel build ./extensions/web/index.html --out-dir $dist
-
-docker-compose up --build -d
-docker-compose logs -f app
+docker-compose $files logs -f app & \
+parcel ./extensions/web/index.html --out-dir $dist
