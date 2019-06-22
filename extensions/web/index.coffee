@@ -1,6 +1,7 @@
 import 'babel-polyfill'
 import {createStyle, createGeologySource} from '../live-tiles/src/map-style'
 import io from 'socket.io-client'
+import {get} from 'axios'
 import {debounce} from 'underscore'
 import mbxUtils from 'mapbox-gl-utils'
 

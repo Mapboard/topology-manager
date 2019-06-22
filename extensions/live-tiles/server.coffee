@@ -4,7 +4,7 @@ cors = require 'cors'
 morgan = require 'morgan'
 {vectorTileInterface} = require './src/tile-factory'
 {topologyWatcher} = require './src/event-server'
-{db} = require '../../src/util.coffee'
+{db, sql} = require '../../src/util.coffee'
 {createStyle} = require './src/map-style'
 
 tileLayerServer = ({getTile, content_type, format, layer_id})->
@@ -46,10 +46,10 @@ liveTileServer = (cfg)->
       server = tileLayerServer cfg
       app.use "/map-data", server
 
-  # app.get "/style.json", (req, res)->
-  #   fn = require.resolve("../server/map-digitizer-server-sql/get-feature-types")
-  #   polygonTypes = await db.query sql(fn), {schema: 'map_digitizer', table: 'polygon_type'}
-  #   res.json(createStyle(polygonTypes))
+  app.get "/style.json", (req, res)->
+    fn = require.resolve("../server/map-digitizer-server/sql/get-feature-types.sql")
+    polygonTypes = await db.query sql(fn), {schema: 'map_digitizer', table: 'polygon_type'}
+    res.json(createStyle(polygonTypes))
 
   return app
 

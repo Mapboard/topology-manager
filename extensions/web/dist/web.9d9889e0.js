@@ -148,7 +148,7 @@ module.exports = !require('./_fails')(function () {
 });
 
 },{"./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/_core.js":[function(require,module,exports) {
-var core = module.exports = { version: '2.6.9' };
+var core = module.exports = { version: '2.6.5' };
 if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 
 },{}],"../../node_modules/core-js/modules/_is-object.js":[function(require,module,exports) {
@@ -608,14 +608,7 @@ module.exports = Array.isArray || function isArray(arg) {
   return cof(arg) == 'Array';
 };
 
-},{"./_cof":"../../node_modules/core-js/modules/_cof.js"}],"../../node_modules/core-js/modules/_to-object.js":[function(require,module,exports) {
-// 7.1.13 ToObject(argument)
-var defined = require('./_defined');
-module.exports = function (it) {
-  return Object(defined(it));
-};
-
-},{"./_defined":"../../node_modules/core-js/modules/_defined.js"}],"../../node_modules/core-js/modules/_object-dps.js":[function(require,module,exports) {
+},{"./_cof":"../../node_modules/core-js/modules/_cof.js"}],"../../node_modules/core-js/modules/_object-dps.js":[function(require,module,exports) {
 var dP = require('./_object-dp');
 var anObject = require('./_an-object');
 var getKeys = require('./_object-keys');
@@ -746,14 +739,12 @@ var enumKeys = require('./_enum-keys');
 var isArray = require('./_is-array');
 var anObject = require('./_an-object');
 var isObject = require('./_is-object');
-var toObject = require('./_to-object');
 var toIObject = require('./_to-iobject');
 var toPrimitive = require('./_to-primitive');
 var createDesc = require('./_property-desc');
 var _create = require('./_object-create');
 var gOPNExt = require('./_object-gopn-ext');
 var $GOPD = require('./_object-gopd');
-var $GOPS = require('./_object-gops');
 var $DP = require('./_object-dp');
 var $keys = require('./_object-keys');
 var gOPD = $GOPD.f;
@@ -770,7 +761,7 @@ var SymbolRegistry = shared('symbol-registry');
 var AllSymbols = shared('symbols');
 var OPSymbols = shared('op-symbols');
 var ObjectProto = Object[PROTOTYPE];
-var USE_NATIVE = typeof $Symbol == 'function' && !!$GOPS.f;
+var USE_NATIVE = typeof $Symbol == 'function';
 var QObject = global.QObject;
 // Don't use setters in Qt Script, https://github.com/zloirock/core-js/issues/173
 var setter = !QObject || !QObject[PROTOTYPE] || !QObject[PROTOTYPE].findChild;
@@ -880,7 +871,7 @@ if (!USE_NATIVE) {
   $DP.f = $defineProperty;
   require('./_object-gopn').f = gOPNExt.f = $getOwnPropertyNames;
   require('./_object-pie').f = $propertyIsEnumerable;
-  $GOPS.f = $getOwnPropertySymbols;
+  require('./_object-gops').f = $getOwnPropertySymbols;
 
   if (DESCRIPTORS && !require('./_library')) {
     redefine(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
@@ -931,16 +922,6 @@ $export($export.S + $export.F * !USE_NATIVE, 'Object', {
   getOwnPropertySymbols: $getOwnPropertySymbols
 });
 
-// Chrome 38 and 39 `Object.getOwnPropertySymbols` fails on primitives
-// https://bugs.chromium.org/p/v8/issues/detail?id=3443
-var FAILS_ON_PRIMITIVES = $fails(function () { $GOPS.f(1); });
-
-$export($export.S + $export.F * FAILS_ON_PRIMITIVES, 'Object', {
-  getOwnPropertySymbols: function getOwnPropertySymbols(it) {
-    return $GOPS.f(toObject(it));
-  }
-});
-
 // 24.3.2 JSON.stringify(value [, replacer [, space]])
 $JSON && $export($export.S + $export.F * (!USE_NATIVE || $fails(function () {
   var S = $Symbol();
@@ -974,7 +955,7 @@ setToStringTag(Math, 'Math', true);
 // 24.3.3 JSON[@@toStringTag]
 setToStringTag(global.JSON, 'JSON', true);
 
-},{"./_global":"../../node_modules/core-js/modules/_global.js","./_has":"../../node_modules/core-js/modules/_has.js","./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_export":"../../node_modules/core-js/modules/_export.js","./_redefine":"../../node_modules/core-js/modules/_redefine.js","./_meta":"../../node_modules/core-js/modules/_meta.js","./_fails":"../../node_modules/core-js/modules/_fails.js","./_shared":"../../node_modules/core-js/modules/_shared.js","./_set-to-string-tag":"../../node_modules/core-js/modules/_set-to-string-tag.js","./_uid":"../../node_modules/core-js/modules/_uid.js","./_wks":"../../node_modules/core-js/modules/_wks.js","./_wks-ext":"../../node_modules/core-js/modules/_wks-ext.js","./_wks-define":"../../node_modules/core-js/modules/_wks-define.js","./_enum-keys":"../../node_modules/core-js/modules/_enum-keys.js","./_is-array":"../../node_modules/core-js/modules/_is-array.js","./_an-object":"../../node_modules/core-js/modules/_an-object.js","./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_to-primitive":"../../node_modules/core-js/modules/_to-primitive.js","./_property-desc":"../../node_modules/core-js/modules/_property-desc.js","./_object-create":"../../node_modules/core-js/modules/_object-create.js","./_object-gopn-ext":"../../node_modules/core-js/modules/_object-gopn-ext.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-dp":"../../node_modules/core-js/modules/_object-dp.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gopn":"../../node_modules/core-js/modules/_object-gopn.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_library":"../../node_modules/core-js/modules/_library.js","./_hide":"../../node_modules/core-js/modules/_hide.js"}],"../../node_modules/core-js/modules/es6.object.create.js":[function(require,module,exports) {
+},{"./_global":"../../node_modules/core-js/modules/_global.js","./_has":"../../node_modules/core-js/modules/_has.js","./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_export":"../../node_modules/core-js/modules/_export.js","./_redefine":"../../node_modules/core-js/modules/_redefine.js","./_meta":"../../node_modules/core-js/modules/_meta.js","./_fails":"../../node_modules/core-js/modules/_fails.js","./_shared":"../../node_modules/core-js/modules/_shared.js","./_set-to-string-tag":"../../node_modules/core-js/modules/_set-to-string-tag.js","./_uid":"../../node_modules/core-js/modules/_uid.js","./_wks":"../../node_modules/core-js/modules/_wks.js","./_wks-ext":"../../node_modules/core-js/modules/_wks-ext.js","./_wks-define":"../../node_modules/core-js/modules/_wks-define.js","./_enum-keys":"../../node_modules/core-js/modules/_enum-keys.js","./_is-array":"../../node_modules/core-js/modules/_is-array.js","./_an-object":"../../node_modules/core-js/modules/_an-object.js","./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_to-primitive":"../../node_modules/core-js/modules/_to-primitive.js","./_property-desc":"../../node_modules/core-js/modules/_property-desc.js","./_object-create":"../../node_modules/core-js/modules/_object-create.js","./_object-gopn-ext":"../../node_modules/core-js/modules/_object-gopn-ext.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-dp":"../../node_modules/core-js/modules/_object-dp.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gopn":"../../node_modules/core-js/modules/_object-gopn.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_library":"../../node_modules/core-js/modules/_library.js","./_hide":"../../node_modules/core-js/modules/_hide.js"}],"../../node_modules/core-js/modules/es6.object.create.js":[function(require,module,exports) {
 var $export = require('./_export');
 // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
 $export($export.S, 'Object', { create: require('./_object-create') });
@@ -1012,7 +993,14 @@ require('./_object-sap')('getOwnPropertyDescriptor', function () {
   };
 });
 
-},{"./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_object-gpo.js":[function(require,module,exports) {
+},{"./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_to-object.js":[function(require,module,exports) {
+// 7.1.13 ToObject(argument)
+var defined = require('./_defined');
+module.exports = function (it) {
+  return Object(defined(it));
+};
+
+},{"./_defined":"../../node_modules/core-js/modules/_defined.js"}],"../../node_modules/core-js/modules/_object-gpo.js":[function(require,module,exports) {
 // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 var has = require('./_has');
 var toObject = require('./_to-object');
@@ -1121,7 +1109,6 @@ require('./_object-sap')('isExtensible', function ($isExtensible) {
 },{"./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_object-assign.js":[function(require,module,exports) {
 'use strict';
 // 19.1.2.1 Object.assign(target, source, ...)
-var DESCRIPTORS = require('./_descriptors');
 var getKeys = require('./_object-keys');
 var gOPS = require('./_object-gops');
 var pIE = require('./_object-pie');
@@ -1151,14 +1138,11 @@ module.exports = !$assign || require('./_fails')(function () {
     var length = keys.length;
     var j = 0;
     var key;
-    while (length > j) {
-      key = keys[j++];
-      if (!DESCRIPTORS || isEnum.call(S, key)) T[key] = S[key];
-    }
+    while (length > j) if (isEnum.call(S, key = keys[j++])) T[key] = S[key];
   } return T;
 } : $assign;
 
-},{"./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_iobject":"../../node_modules/core-js/modules/_iobject.js","./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/es6.object.assign.js":[function(require,module,exports) {
+},{"./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_iobject":"../../node_modules/core-js/modules/_iobject.js","./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/es6.object.assign.js":[function(require,module,exports) {
 // 19.1.3.1 Object.assign(target, source)
 var $export = require('./_export');
 
@@ -6184,7 +6168,6 @@ $export($export.S, 'Object', {
 });
 
 },{"./_export":"../../node_modules/core-js/modules/_export.js","./_own-keys":"../../node_modules/core-js/modules/_own-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_create-property":"../../node_modules/core-js/modules/_create-property.js"}],"../../node_modules/core-js/modules/_object-to-array.js":[function(require,module,exports) {
-var DESCRIPTORS = require('./_descriptors');
 var getKeys = require('./_object-keys');
 var toIObject = require('./_to-iobject');
 var isEnum = require('./_object-pie').f;
@@ -6196,17 +6179,13 @@ module.exports = function (isEntries) {
     var i = 0;
     var result = [];
     var key;
-    while (length > i) {
-      key = keys[i++];
-      if (!DESCRIPTORS || isEnum.call(O, key)) {
-        result.push(isEntries ? [key, O[key]] : O[key]);
-      }
-    }
-    return result;
+    while (length > i) if (isEnum.call(O, key = keys[i++])) {
+      result.push(isEntries ? [key, O[key]] : O[key]);
+    } return result;
   };
 };
 
-},{"./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js"}],"../../node_modules/core-js/modules/es7.object.values.js":[function(require,module,exports) {
+},{"./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js"}],"../../node_modules/core-js/modules/es7.object.values.js":[function(require,module,exports) {
 // https://github.com/tc39/proposal-object-values-entries
 var $export = require('./_export');
 var $values = require('./_object-to-array')(false);
@@ -7324,7 +7303,7 @@ require('./modules/web.immediate');
 require('./modules/web.dom.iterable');
 module.exports = require('./modules/_core');
 
-},{"./modules/es6.symbol":"../../node_modules/core-js/modules/es6.symbol.js","./modules/es6.object.create":"../../node_modules/core-js/modules/es6.object.create.js","./modules/es6.object.define-property":"../../node_modules/core-js/modules/es6.object.define-property.js","./modules/es6.object.define-properties":"../../node_modules/core-js/modules/es6.object.define-properties.js","./modules/es6.object.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.object.get-own-property-descriptor.js","./modules/es6.object.get-prototype-of":"../../node_modules/core-js/modules/es6.object.get-prototype-of.js","./modules/es6.object.keys":"../../node_modules/core-js/modules/es6.object.keys.js","./modules/es6.object.get-own-property-names":"../../node_modules/core-js/modules/es6.object.get-own-property-names.js","./modules/es6.object.freeze":"../../node_modules/core-js/modules/es6.object.freeze.js","./modules/es6.object.seal":"../../node_modules/core-js/modules/es6.object.seal.js","./modules/es6.object.prevent-extensions":"../../node_modules/core-js/modules/es6.object.prevent-extensions.js","./modules/es6.object.is-frozen":"../../node_modules/core-js/modules/es6.object.is-frozen.js","./modules/es6.object.is-sealed":"../../node_modules/core-js/modules/es6.object.is-sealed.js","./modules/es6.object.is-extensible":"../../node_modules/core-js/modules/es6.object.is-extensible.js","./modules/es6.object.assign":"../../node_modules/core-js/modules/es6.object.assign.js","./modules/es6.object.is":"../../node_modules/core-js/modules/es6.object.is.js","./modules/es6.object.set-prototype-of":"../../node_modules/core-js/modules/es6.object.set-prototype-of.js","./modules/es6.object.to-string":"../../node_modules/core-js/modules/es6.object.to-string.js","./modules/es6.function.bind":"../../node_modules/core-js/modules/es6.function.bind.js","./modules/es6.function.name":"../../node_modules/core-js/modules/es6.function.name.js","./modules/es6.function.has-instance":"../../node_modules/core-js/modules/es6.function.has-instance.js","./modules/es6.parse-int":"../../node_modules/core-js/modules/es6.parse-int.js","./modules/es6.parse-float":"../../node_modules/core-js/modules/es6.parse-float.js","./modules/es6.number.constructor":"../../node_modules/core-js/modules/es6.number.constructor.js","./modules/es6.number.to-fixed":"../../node_modules/core-js/modules/es6.number.to-fixed.js","./modules/es6.number.to-precision":"../../node_modules/core-js/modules/es6.number.to-precision.js","./modules/es6.number.epsilon":"../../node_modules/core-js/modules/es6.number.epsilon.js","./modules/es6.number.is-finite":"../../node_modules/core-js/modules/es6.number.is-finite.js","./modules/es6.number.is-integer":"../../node_modules/core-js/modules/es6.number.is-integer.js","./modules/es6.number.is-nan":"../../node_modules/core-js/modules/es6.number.is-nan.js","./modules/es6.number.is-safe-integer":"../../node_modules/core-js/modules/es6.number.is-safe-integer.js","./modules/es6.number.max-safe-integer":"../../node_modules/core-js/modules/es6.number.max-safe-integer.js","./modules/es6.number.min-safe-integer":"../../node_modules/core-js/modules/es6.number.min-safe-integer.js","./modules/es6.number.parse-float":"../../node_modules/core-js/modules/es6.number.parse-float.js","./modules/es6.number.parse-int":"../../node_modules/core-js/modules/es6.number.parse-int.js","./modules/es6.math.acosh":"../../node_modules/core-js/modules/es6.math.acosh.js","./modules/es6.math.asinh":"../../node_modules/core-js/modules/es6.math.asinh.js","./modules/es6.math.atanh":"../../node_modules/core-js/modules/es6.math.atanh.js","./modules/es6.math.cbrt":"../../node_modules/core-js/modules/es6.math.cbrt.js","./modules/es6.math.clz32":"../../node_modules/core-js/modules/es6.math.clz32.js","./modules/es6.math.cosh":"../../node_modules/core-js/modules/es6.math.cosh.js","./modules/es6.math.expm1":"../../node_modules/core-js/modules/es6.math.expm1.js","./modules/es6.math.fround":"../../node_modules/core-js/modules/es6.math.fround.js","./modules/es6.math.hypot":"../../node_modules/core-js/modules/es6.math.hypot.js","./modules/es6.math.imul":"../../node_modules/core-js/modules/es6.math.imul.js","./modules/es6.math.log10":"../../node_modules/core-js/modules/es6.math.log10.js","./modules/es6.math.log1p":"../../node_modules/core-js/modules/es6.math.log1p.js","./modules/es6.math.log2":"../../node_modules/core-js/modules/es6.math.log2.js","./modules/es6.math.sign":"../../node_modules/core-js/modules/es6.math.sign.js","./modules/es6.math.sinh":"../../node_modules/core-js/modules/es6.math.sinh.js","./modules/es6.math.tanh":"../../node_modules/core-js/modules/es6.math.tanh.js","./modules/es6.math.trunc":"../../node_modules/core-js/modules/es6.math.trunc.js","./modules/es6.string.from-code-point":"../../node_modules/core-js/modules/es6.string.from-code-point.js","./modules/es6.string.raw":"../../node_modules/core-js/modules/es6.string.raw.js","./modules/es6.string.trim":"../../node_modules/core-js/modules/es6.string.trim.js","./modules/es6.string.iterator":"../../node_modules/core-js/modules/es6.string.iterator.js","./modules/es6.string.code-point-at":"../../node_modules/core-js/modules/es6.string.code-point-at.js","./modules/es6.string.ends-with":"../../node_modules/core-js/modules/es6.string.ends-with.js","./modules/es6.string.includes":"../../node_modules/core-js/modules/es6.string.includes.js","./modules/es6.string.repeat":"../../node_modules/core-js/modules/es6.string.repeat.js","./modules/es6.string.starts-with":"../../node_modules/core-js/modules/es6.string.starts-with.js","./modules/es6.string.anchor":"../../node_modules/core-js/modules/es6.string.anchor.js","./modules/es6.string.big":"../../node_modules/core-js/modules/es6.string.big.js","./modules/es6.string.blink":"../../node_modules/core-js/modules/es6.string.blink.js","./modules/es6.string.bold":"../../node_modules/core-js/modules/es6.string.bold.js","./modules/es6.string.fixed":"../../node_modules/core-js/modules/es6.string.fixed.js","./modules/es6.string.fontcolor":"../../node_modules/core-js/modules/es6.string.fontcolor.js","./modules/es6.string.fontsize":"../../node_modules/core-js/modules/es6.string.fontsize.js","./modules/es6.string.italics":"../../node_modules/core-js/modules/es6.string.italics.js","./modules/es6.string.link":"../../node_modules/core-js/modules/es6.string.link.js","./modules/es6.string.small":"../../node_modules/core-js/modules/es6.string.small.js","./modules/es6.string.strike":"../../node_modules/core-js/modules/es6.string.strike.js","./modules/es6.string.sub":"../../node_modules/core-js/modules/es6.string.sub.js","./modules/es6.string.sup":"../../node_modules/core-js/modules/es6.string.sup.js","./modules/es6.date.now":"../../node_modules/core-js/modules/es6.date.now.js","./modules/es6.date.to-json":"../../node_modules/core-js/modules/es6.date.to-json.js","./modules/es6.date.to-iso-string":"../../node_modules/core-js/modules/es6.date.to-iso-string.js","./modules/es6.date.to-string":"../../node_modules/core-js/modules/es6.date.to-string.js","./modules/es6.date.to-primitive":"../../node_modules/core-js/modules/es6.date.to-primitive.js","./modules/es6.array.is-array":"../../node_modules/core-js/modules/es6.array.is-array.js","./modules/es6.array.from":"../../node_modules/core-js/modules/es6.array.from.js","./modules/es6.array.of":"../../node_modules/core-js/modules/es6.array.of.js","./modules/es6.array.join":"../../node_modules/core-js/modules/es6.array.join.js","./modules/es6.array.slice":"../../node_modules/core-js/modules/es6.array.slice.js","./modules/es6.array.sort":"../../node_modules/core-js/modules/es6.array.sort.js","./modules/es6.array.for-each":"../../node_modules/core-js/modules/es6.array.for-each.js","./modules/es6.array.map":"../../node_modules/core-js/modules/es6.array.map.js","./modules/es6.array.filter":"../../node_modules/core-js/modules/es6.array.filter.js","./modules/es6.array.some":"../../node_modules/core-js/modules/es6.array.some.js","./modules/es6.array.every":"../../node_modules/core-js/modules/es6.array.every.js","./modules/es6.array.reduce":"../../node_modules/core-js/modules/es6.array.reduce.js","./modules/es6.array.reduce-right":"../../node_modules/core-js/modules/es6.array.reduce-right.js","./modules/es6.array.index-of":"../../node_modules/core-js/modules/es6.array.index-of.js","./modules/es6.array.last-index-of":"../../node_modules/core-js/modules/es6.array.last-index-of.js","./modules/es6.array.copy-within":"../../node_modules/core-js/modules/es6.array.copy-within.js","./modules/es6.array.fill":"../../node_modules/core-js/modules/es6.array.fill.js","./modules/es6.array.find":"../../node_modules/core-js/modules/es6.array.find.js","./modules/es6.array.find-index":"../../node_modules/core-js/modules/es6.array.find-index.js","./modules/es6.array.species":"../../node_modules/core-js/modules/es6.array.species.js","./modules/es6.array.iterator":"../../node_modules/core-js/modules/es6.array.iterator.js","./modules/es6.regexp.constructor":"../../node_modules/core-js/modules/es6.regexp.constructor.js","./modules/es6.regexp.exec":"../../node_modules/core-js/modules/es6.regexp.exec.js","./modules/es6.regexp.to-string":"../../node_modules/core-js/modules/es6.regexp.to-string.js","./modules/es6.regexp.flags":"../../node_modules/core-js/modules/es6.regexp.flags.js","./modules/es6.regexp.match":"../../node_modules/core-js/modules/es6.regexp.match.js","./modules/es6.regexp.replace":"../../node_modules/core-js/modules/es6.regexp.replace.js","./modules/es6.regexp.search":"../../node_modules/core-js/modules/es6.regexp.search.js","./modules/es6.regexp.split":"../../node_modules/core-js/modules/es6.regexp.split.js","./modules/es6.promise":"../../node_modules/core-js/modules/es6.promise.js","./modules/es6.map":"../../node_modules/core-js/modules/es6.map.js","./modules/es6.set":"../../node_modules/core-js/modules/es6.set.js","./modules/es6.weak-map":"../../node_modules/core-js/modules/es6.weak-map.js","./modules/es6.weak-set":"../../node_modules/core-js/modules/es6.weak-set.js","./modules/es6.typed.array-buffer":"../../node_modules/core-js/modules/es6.typed.array-buffer.js","./modules/es6.typed.data-view":"../../node_modules/core-js/modules/es6.typed.data-view.js","./modules/es6.typed.int8-array":"../../node_modules/core-js/modules/es6.typed.int8-array.js","./modules/es6.typed.uint8-array":"../../node_modules/core-js/modules/es6.typed.uint8-array.js","./modules/es6.typed.uint8-clamped-array":"../../node_modules/core-js/modules/es6.typed.uint8-clamped-array.js","./modules/es6.typed.int16-array":"../../node_modules/core-js/modules/es6.typed.int16-array.js","./modules/es6.typed.uint16-array":"../../node_modules/core-js/modules/es6.typed.uint16-array.js","./modules/es6.typed.int32-array":"../../node_modules/core-js/modules/es6.typed.int32-array.js","./modules/es6.typed.uint32-array":"../../node_modules/core-js/modules/es6.typed.uint32-array.js","./modules/es6.typed.float32-array":"../../node_modules/core-js/modules/es6.typed.float32-array.js","./modules/es6.typed.float64-array":"../../node_modules/core-js/modules/es6.typed.float64-array.js","./modules/es6.reflect.apply":"../../node_modules/core-js/modules/es6.reflect.apply.js","./modules/es6.reflect.construct":"../../node_modules/core-js/modules/es6.reflect.construct.js","./modules/es6.reflect.define-property":"../../node_modules/core-js/modules/es6.reflect.define-property.js","./modules/es6.reflect.delete-property":"../../node_modules/core-js/modules/es6.reflect.delete-property.js","./modules/es6.reflect.enumerate":"../../node_modules/core-js/modules/es6.reflect.enumerate.js","./modules/es6.reflect.get":"../../node_modules/core-js/modules/es6.reflect.get.js","./modules/es6.reflect.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.reflect.get-own-property-descriptor.js","./modules/es6.reflect.get-prototype-of":"../../node_modules/core-js/modules/es6.reflect.get-prototype-of.js","./modules/es6.reflect.has":"../../node_modules/core-js/modules/es6.reflect.has.js","./modules/es6.reflect.is-extensible":"../../node_modules/core-js/modules/es6.reflect.is-extensible.js","./modules/es6.reflect.own-keys":"../../node_modules/core-js/modules/es6.reflect.own-keys.js","./modules/es6.reflect.prevent-extensions":"../../node_modules/core-js/modules/es6.reflect.prevent-extensions.js","./modules/es6.reflect.set":"../../node_modules/core-js/modules/es6.reflect.set.js","./modules/es6.reflect.set-prototype-of":"../../node_modules/core-js/modules/es6.reflect.set-prototype-of.js","./modules/es7.array.includes":"../../node_modules/core-js/modules/es7.array.includes.js","./modules/es7.array.flat-map":"../../node_modules/core-js/modules/es7.array.flat-map.js","./modules/es7.array.flatten":"../../node_modules/core-js/modules/es7.array.flatten.js","./modules/es7.string.at":"../../node_modules/core-js/modules/es7.string.at.js","./modules/es7.string.pad-start":"../../node_modules/core-js/modules/es7.string.pad-start.js","./modules/es7.string.pad-end":"../../node_modules/core-js/modules/es7.string.pad-end.js","./modules/es7.string.trim-left":"../../node_modules/core-js/modules/es7.string.trim-left.js","./modules/es7.string.trim-right":"../../node_modules/core-js/modules/es7.string.trim-right.js","./modules/es7.string.match-all":"../../node_modules/core-js/modules/es7.string.match-all.js","./modules/es7.symbol.async-iterator":"../../node_modules/core-js/modules/es7.symbol.async-iterator.js","./modules/es7.symbol.observable":"../../node_modules/core-js/modules/es7.symbol.observable.js","./modules/es7.object.get-own-property-descriptors":"../../node_modules/core-js/modules/es7.object.get-own-property-descriptors.js","./modules/es7.object.values":"../../node_modules/core-js/modules/es7.object.values.js","./modules/es7.object.entries":"../../node_modules/core-js/modules/es7.object.entries.js","./modules/es7.object.define-getter":"../../node_modules/core-js/modules/es7.object.define-getter.js","./modules/es7.object.define-setter":"../../node_modules/core-js/modules/es7.object.define-setter.js","./modules/es7.object.lookup-getter":"../../node_modules/core-js/modules/es7.object.lookup-getter.js","./modules/es7.object.lookup-setter":"../../node_modules/core-js/modules/es7.object.lookup-setter.js","./modules/es7.map.to-json":"../../node_modules/core-js/modules/es7.map.to-json.js","./modules/es7.set.to-json":"../../node_modules/core-js/modules/es7.set.to-json.js","./modules/es7.map.of":"../../node_modules/core-js/modules/es7.map.of.js","./modules/es7.set.of":"../../node_modules/core-js/modules/es7.set.of.js","./modules/es7.weak-map.of":"../../node_modules/core-js/modules/es7.weak-map.of.js","./modules/es7.weak-set.of":"../../node_modules/core-js/modules/es7.weak-set.of.js","./modules/es7.map.from":"../../node_modules/core-js/modules/es7.map.from.js","./modules/es7.set.from":"../../node_modules/core-js/modules/es7.set.from.js","./modules/es7.weak-map.from":"../../node_modules/core-js/modules/es7.weak-map.from.js","./modules/es7.weak-set.from":"../../node_modules/core-js/modules/es7.weak-set.from.js","./modules/es7.global":"../../node_modules/core-js/modules/es7.global.js","./modules/es7.system.global":"../../node_modules/core-js/modules/es7.system.global.js","./modules/es7.error.is-error":"../../node_modules/core-js/modules/es7.error.is-error.js","./modules/es7.math.clamp":"../../node_modules/core-js/modules/es7.math.clamp.js","./modules/es7.math.deg-per-rad":"../../node_modules/core-js/modules/es7.math.deg-per-rad.js","./modules/es7.math.degrees":"../../node_modules/core-js/modules/es7.math.degrees.js","./modules/es7.math.fscale":"../../node_modules/core-js/modules/es7.math.fscale.js","./modules/es7.math.iaddh":"../../node_modules/core-js/modules/es7.math.iaddh.js","./modules/es7.math.isubh":"../../node_modules/core-js/modules/es7.math.isubh.js","./modules/es7.math.imulh":"../../node_modules/core-js/modules/es7.math.imulh.js","./modules/es7.math.rad-per-deg":"../../node_modules/core-js/modules/es7.math.rad-per-deg.js","./modules/es7.math.radians":"../../node_modules/core-js/modules/es7.math.radians.js","./modules/es7.math.scale":"../../node_modules/core-js/modules/es7.math.scale.js","./modules/es7.math.umulh":"../../node_modules/core-js/modules/es7.math.umulh.js","./modules/es7.math.signbit":"../../node_modules/core-js/modules/es7.math.signbit.js","./modules/es7.promise.finally":"../../node_modules/core-js/modules/es7.promise.finally.js","./modules/es7.promise.try":"../../node_modules/core-js/modules/es7.promise.try.js","./modules/es7.reflect.define-metadata":"../../node_modules/core-js/modules/es7.reflect.define-metadata.js","./modules/es7.reflect.delete-metadata":"../../node_modules/core-js/modules/es7.reflect.delete-metadata.js","./modules/es7.reflect.get-metadata":"../../node_modules/core-js/modules/es7.reflect.get-metadata.js","./modules/es7.reflect.get-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-metadata-keys.js","./modules/es7.reflect.get-own-metadata":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata.js","./modules/es7.reflect.get-own-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata-keys.js","./modules/es7.reflect.has-metadata":"../../node_modules/core-js/modules/es7.reflect.has-metadata.js","./modules/es7.reflect.has-own-metadata":"../../node_modules/core-js/modules/es7.reflect.has-own-metadata.js","./modules/es7.reflect.metadata":"../../node_modules/core-js/modules/es7.reflect.metadata.js","./modules/es7.asap":"../../node_modules/core-js/modules/es7.asap.js","./modules/es7.observable":"../../node_modules/core-js/modules/es7.observable.js","./modules/web.timers":"../../node_modules/core-js/modules/web.timers.js","./modules/web.immediate":"../../node_modules/core-js/modules/web.immediate.js","./modules/web.dom.iterable":"../../node_modules/core-js/modules/web.dom.iterable.js","./modules/_core":"../../node_modules/core-js/modules/_core.js"}],"../../node_modules/regenerator-runtime/runtime.js":[function(require,module,exports) {
+},{"./modules/es6.symbol":"../../node_modules/core-js/modules/es6.symbol.js","./modules/es6.object.create":"../../node_modules/core-js/modules/es6.object.create.js","./modules/es6.object.define-property":"../../node_modules/core-js/modules/es6.object.define-property.js","./modules/es6.object.define-properties":"../../node_modules/core-js/modules/es6.object.define-properties.js","./modules/es6.object.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.object.get-own-property-descriptor.js","./modules/es6.object.get-prototype-of":"../../node_modules/core-js/modules/es6.object.get-prototype-of.js","./modules/es6.object.keys":"../../node_modules/core-js/modules/es6.object.keys.js","./modules/es6.object.get-own-property-names":"../../node_modules/core-js/modules/es6.object.get-own-property-names.js","./modules/es6.object.freeze":"../../node_modules/core-js/modules/es6.object.freeze.js","./modules/es6.object.seal":"../../node_modules/core-js/modules/es6.object.seal.js","./modules/es6.object.prevent-extensions":"../../node_modules/core-js/modules/es6.object.prevent-extensions.js","./modules/es6.object.is-frozen":"../../node_modules/core-js/modules/es6.object.is-frozen.js","./modules/es6.object.is-sealed":"../../node_modules/core-js/modules/es6.object.is-sealed.js","./modules/es6.object.is-extensible":"../../node_modules/core-js/modules/es6.object.is-extensible.js","./modules/es6.object.assign":"../../node_modules/core-js/modules/es6.object.assign.js","./modules/es6.object.is":"../../node_modules/core-js/modules/es6.object.is.js","./modules/es6.object.set-prototype-of":"../../node_modules/core-js/modules/es6.object.set-prototype-of.js","./modules/es6.object.to-string":"../../node_modules/core-js/modules/es6.object.to-string.js","./modules/es6.function.bind":"../../node_modules/core-js/modules/es6.function.bind.js","./modules/es6.function.name":"../../node_modules/core-js/modules/es6.function.name.js","./modules/es6.function.has-instance":"../../node_modules/core-js/modules/es6.function.has-instance.js","./modules/es6.parse-int":"../../node_modules/core-js/modules/es6.parse-int.js","./modules/es6.parse-float":"../../node_modules/core-js/modules/es6.parse-float.js","./modules/es6.number.constructor":"../../node_modules/core-js/modules/es6.number.constructor.js","./modules/es6.number.to-fixed":"../../node_modules/core-js/modules/es6.number.to-fixed.js","./modules/es6.number.to-precision":"../../node_modules/core-js/modules/es6.number.to-precision.js","./modules/es6.number.epsilon":"../../node_modules/core-js/modules/es6.number.epsilon.js","./modules/es6.number.is-finite":"../../node_modules/core-js/modules/es6.number.is-finite.js","./modules/es6.number.is-integer":"../../node_modules/core-js/modules/es6.number.is-integer.js","./modules/es6.number.is-nan":"../../node_modules/core-js/modules/es6.number.is-nan.js","./modules/es6.number.is-safe-integer":"../../node_modules/core-js/modules/es6.number.is-safe-integer.js","./modules/es6.number.max-safe-integer":"../../node_modules/core-js/modules/es6.number.max-safe-integer.js","./modules/es6.number.min-safe-integer":"../../node_modules/core-js/modules/es6.number.min-safe-integer.js","./modules/es6.number.parse-float":"../../node_modules/core-js/modules/es6.number.parse-float.js","./modules/es6.number.parse-int":"../../node_modules/core-js/modules/es6.number.parse-int.js","./modules/es6.math.acosh":"../../node_modules/core-js/modules/es6.math.acosh.js","./modules/es6.math.asinh":"../../node_modules/core-js/modules/es6.math.asinh.js","./modules/es6.math.atanh":"../../node_modules/core-js/modules/es6.math.atanh.js","./modules/es6.math.cbrt":"../../node_modules/core-js/modules/es6.math.cbrt.js","./modules/es6.math.clz32":"../../node_modules/core-js/modules/es6.math.clz32.js","./modules/es6.math.cosh":"../../node_modules/core-js/modules/es6.math.cosh.js","./modules/es6.math.expm1":"../../node_modules/core-js/modules/es6.math.expm1.js","./modules/es6.math.fround":"../../node_modules/core-js/modules/es6.math.fround.js","./modules/es6.math.hypot":"../../node_modules/core-js/modules/es6.math.hypot.js","./modules/es6.math.imul":"../../node_modules/core-js/modules/es6.math.imul.js","./modules/es6.math.log10":"../../node_modules/core-js/modules/es6.math.log10.js","./modules/es6.math.log1p":"../../node_modules/core-js/modules/es6.math.log1p.js","./modules/es6.math.log2":"../../node_modules/core-js/modules/es6.math.log2.js","./modules/es6.math.sign":"../../node_modules/core-js/modules/es6.math.sign.js","./modules/es6.math.sinh":"../../node_modules/core-js/modules/es6.math.sinh.js","./modules/es6.math.tanh":"../../node_modules/core-js/modules/es6.math.tanh.js","./modules/es6.math.trunc":"../../node_modules/core-js/modules/es6.math.trunc.js","./modules/es6.string.from-code-point":"../../node_modules/core-js/modules/es6.string.from-code-point.js","./modules/es6.string.raw":"../../node_modules/core-js/modules/es6.string.raw.js","./modules/es6.string.trim":"../../node_modules/core-js/modules/es6.string.trim.js","./modules/es6.string.iterator":"../../node_modules/core-js/modules/es6.string.iterator.js","./modules/es6.string.code-point-at":"../../node_modules/core-js/modules/es6.string.code-point-at.js","./modules/es6.string.ends-with":"../../node_modules/core-js/modules/es6.string.ends-with.js","./modules/es6.string.includes":"../../node_modules/core-js/modules/es6.string.includes.js","./modules/es6.string.repeat":"../../node_modules/core-js/modules/es6.string.repeat.js","./modules/es6.string.starts-with":"../../node_modules/core-js/modules/es6.string.starts-with.js","./modules/es6.string.anchor":"../../node_modules/core-js/modules/es6.string.anchor.js","./modules/es6.string.big":"../../node_modules/core-js/modules/es6.string.big.js","./modules/es6.string.blink":"../../node_modules/core-js/modules/es6.string.blink.js","./modules/es6.string.bold":"../../node_modules/core-js/modules/es6.string.bold.js","./modules/es6.string.fixed":"../../node_modules/core-js/modules/es6.string.fixed.js","./modules/es6.string.fontcolor":"../../node_modules/core-js/modules/es6.string.fontcolor.js","./modules/es6.string.fontsize":"../../node_modules/core-js/modules/es6.string.fontsize.js","./modules/es6.string.italics":"../../node_modules/core-js/modules/es6.string.italics.js","./modules/es6.string.link":"../../node_modules/core-js/modules/es6.string.link.js","./modules/es6.string.small":"../../node_modules/core-js/modules/es6.string.small.js","./modules/es6.string.strike":"../../node_modules/core-js/modules/es6.string.strike.js","./modules/es6.string.sub":"../../node_modules/core-js/modules/es6.string.sub.js","./modules/es6.string.sup":"../../node_modules/core-js/modules/es6.string.sup.js","./modules/es6.date.now":"../../node_modules/core-js/modules/es6.date.now.js","./modules/es6.date.to-json":"../../node_modules/core-js/modules/es6.date.to-json.js","./modules/es6.date.to-iso-string":"../../node_modules/core-js/modules/es6.date.to-iso-string.js","./modules/es6.date.to-string":"../../node_modules/core-js/modules/es6.date.to-string.js","./modules/es6.date.to-primitive":"../../node_modules/core-js/modules/es6.date.to-primitive.js","./modules/es6.array.is-array":"../../node_modules/core-js/modules/es6.array.is-array.js","./modules/es6.array.from":"../../node_modules/core-js/modules/es6.array.from.js","./modules/es6.array.of":"../../node_modules/core-js/modules/es6.array.of.js","./modules/es6.array.join":"../../node_modules/core-js/modules/es6.array.join.js","./modules/es6.array.slice":"../../node_modules/core-js/modules/es6.array.slice.js","./modules/es6.array.sort":"../../node_modules/core-js/modules/es6.array.sort.js","./modules/es6.array.for-each":"../../node_modules/core-js/modules/es6.array.for-each.js","./modules/es6.array.map":"../../node_modules/core-js/modules/es6.array.map.js","./modules/es6.array.filter":"../../node_modules/core-js/modules/es6.array.filter.js","./modules/es6.array.some":"../../node_modules/core-js/modules/es6.array.some.js","./modules/es6.array.every":"../../node_modules/core-js/modules/es6.array.every.js","./modules/es6.array.reduce":"../../node_modules/core-js/modules/es6.array.reduce.js","./modules/es6.array.reduce-right":"../../node_modules/core-js/modules/es6.array.reduce-right.js","./modules/es6.array.index-of":"../../node_modules/core-js/modules/es6.array.index-of.js","./modules/es6.array.last-index-of":"../../node_modules/core-js/modules/es6.array.last-index-of.js","./modules/es6.array.copy-within":"../../node_modules/core-js/modules/es6.array.copy-within.js","./modules/es6.array.fill":"../../node_modules/core-js/modules/es6.array.fill.js","./modules/es6.array.find":"../../node_modules/core-js/modules/es6.array.find.js","./modules/es6.array.find-index":"../../node_modules/core-js/modules/es6.array.find-index.js","./modules/es6.array.species":"../../node_modules/core-js/modules/es6.array.species.js","./modules/es6.array.iterator":"../../node_modules/core-js/modules/es6.array.iterator.js","./modules/es6.regexp.constructor":"../../node_modules/core-js/modules/es6.regexp.constructor.js","./modules/es6.regexp.exec":"../../node_modules/core-js/modules/es6.regexp.exec.js","./modules/es6.regexp.to-string":"../../node_modules/core-js/modules/es6.regexp.to-string.js","./modules/es6.regexp.flags":"../../node_modules/core-js/modules/es6.regexp.flags.js","./modules/es6.regexp.match":"../../node_modules/core-js/modules/es6.regexp.match.js","./modules/es6.regexp.replace":"../../node_modules/core-js/modules/es6.regexp.replace.js","./modules/es6.regexp.search":"../../node_modules/core-js/modules/es6.regexp.search.js","./modules/es6.regexp.split":"../../node_modules/core-js/modules/es6.regexp.split.js","./modules/es6.promise":"../../node_modules/core-js/modules/es6.promise.js","./modules/es6.map":"../../node_modules/core-js/modules/es6.map.js","./modules/es6.set":"../../node_modules/core-js/modules/es6.set.js","./modules/es6.weak-map":"../../node_modules/core-js/modules/es6.weak-map.js","./modules/es6.weak-set":"../../node_modules/core-js/modules/es6.weak-set.js","./modules/es6.typed.array-buffer":"../../node_modules/core-js/modules/es6.typed.array-buffer.js","./modules/es6.typed.data-view":"../../node_modules/core-js/modules/es6.typed.data-view.js","./modules/es6.typed.int8-array":"../../node_modules/core-js/modules/es6.typed.int8-array.js","./modules/es6.typed.uint8-array":"../../node_modules/core-js/modules/es6.typed.uint8-array.js","./modules/es6.typed.uint8-clamped-array":"../../node_modules/core-js/modules/es6.typed.uint8-clamped-array.js","./modules/es6.typed.int16-array":"../../node_modules/core-js/modules/es6.typed.int16-array.js","./modules/es6.typed.uint16-array":"../../node_modules/core-js/modules/es6.typed.uint16-array.js","./modules/es6.typed.int32-array":"../../node_modules/core-js/modules/es6.typed.int32-array.js","./modules/es6.typed.uint32-array":"../../node_modules/core-js/modules/es6.typed.uint32-array.js","./modules/es6.typed.float32-array":"../../node_modules/core-js/modules/es6.typed.float32-array.js","./modules/es6.typed.float64-array":"../../node_modules/core-js/modules/es6.typed.float64-array.js","./modules/es6.reflect.apply":"../../node_modules/core-js/modules/es6.reflect.apply.js","./modules/es6.reflect.construct":"../../node_modules/core-js/modules/es6.reflect.construct.js","./modules/es6.reflect.define-property":"../../node_modules/core-js/modules/es6.reflect.define-property.js","./modules/es6.reflect.delete-property":"../../node_modules/core-js/modules/es6.reflect.delete-property.js","./modules/es6.reflect.enumerate":"../../node_modules/core-js/modules/es6.reflect.enumerate.js","./modules/es6.reflect.get":"../../node_modules/core-js/modules/es6.reflect.get.js","./modules/es6.reflect.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.reflect.get-own-property-descriptor.js","./modules/es6.reflect.get-prototype-of":"../../node_modules/core-js/modules/es6.reflect.get-prototype-of.js","./modules/es6.reflect.has":"../../node_modules/core-js/modules/es6.reflect.has.js","./modules/es6.reflect.is-extensible":"../../node_modules/core-js/modules/es6.reflect.is-extensible.js","./modules/es6.reflect.own-keys":"../../node_modules/core-js/modules/es6.reflect.own-keys.js","./modules/es6.reflect.prevent-extensions":"../../node_modules/core-js/modules/es6.reflect.prevent-extensions.js","./modules/es6.reflect.set":"../../node_modules/core-js/modules/es6.reflect.set.js","./modules/es6.reflect.set-prototype-of":"../../node_modules/core-js/modules/es6.reflect.set-prototype-of.js","./modules/es7.array.includes":"../../node_modules/core-js/modules/es7.array.includes.js","./modules/es7.array.flat-map":"../../node_modules/core-js/modules/es7.array.flat-map.js","./modules/es7.array.flatten":"../../node_modules/core-js/modules/es7.array.flatten.js","./modules/es7.string.at":"../../node_modules/core-js/modules/es7.string.at.js","./modules/es7.string.pad-start":"../../node_modules/core-js/modules/es7.string.pad-start.js","./modules/es7.string.pad-end":"../../node_modules/core-js/modules/es7.string.pad-end.js","./modules/es7.string.trim-left":"../../node_modules/core-js/modules/es7.string.trim-left.js","./modules/es7.string.trim-right":"../../node_modules/core-js/modules/es7.string.trim-right.js","./modules/es7.string.match-all":"../../node_modules/core-js/modules/es7.string.match-all.js","./modules/es7.symbol.async-iterator":"../../node_modules/core-js/modules/es7.symbol.async-iterator.js","./modules/es7.symbol.observable":"../../node_modules/core-js/modules/es7.symbol.observable.js","./modules/es7.object.get-own-property-descriptors":"../../node_modules/core-js/modules/es7.object.get-own-property-descriptors.js","./modules/es7.object.values":"../../node_modules/core-js/modules/es7.object.values.js","./modules/es7.object.entries":"../../node_modules/core-js/modules/es7.object.entries.js","./modules/es7.object.define-getter":"../../node_modules/core-js/modules/es7.object.define-getter.js","./modules/es7.object.define-setter":"../../node_modules/core-js/modules/es7.object.define-setter.js","./modules/es7.object.lookup-getter":"../../node_modules/core-js/modules/es7.object.lookup-getter.js","./modules/es7.object.lookup-setter":"../../node_modules/core-js/modules/es7.object.lookup-setter.js","./modules/es7.map.to-json":"../../node_modules/core-js/modules/es7.map.to-json.js","./modules/es7.set.to-json":"../../node_modules/core-js/modules/es7.set.to-json.js","./modules/es7.map.of":"../../node_modules/core-js/modules/es7.map.of.js","./modules/es7.set.of":"../../node_modules/core-js/modules/es7.set.of.js","./modules/es7.weak-map.of":"../../node_modules/core-js/modules/es7.weak-map.of.js","./modules/es7.weak-set.of":"../../node_modules/core-js/modules/es7.weak-set.of.js","./modules/es7.map.from":"../../node_modules/core-js/modules/es7.map.from.js","./modules/es7.set.from":"../../node_modules/core-js/modules/es7.set.from.js","./modules/es7.weak-map.from":"../../node_modules/core-js/modules/es7.weak-map.from.js","./modules/es7.weak-set.from":"../../node_modules/core-js/modules/es7.weak-set.from.js","./modules/es7.global":"../../node_modules/core-js/modules/es7.global.js","./modules/es7.system.global":"../../node_modules/core-js/modules/es7.system.global.js","./modules/es7.error.is-error":"../../node_modules/core-js/modules/es7.error.is-error.js","./modules/es7.math.clamp":"../../node_modules/core-js/modules/es7.math.clamp.js","./modules/es7.math.deg-per-rad":"../../node_modules/core-js/modules/es7.math.deg-per-rad.js","./modules/es7.math.degrees":"../../node_modules/core-js/modules/es7.math.degrees.js","./modules/es7.math.fscale":"../../node_modules/core-js/modules/es7.math.fscale.js","./modules/es7.math.iaddh":"../../node_modules/core-js/modules/es7.math.iaddh.js","./modules/es7.math.isubh":"../../node_modules/core-js/modules/es7.math.isubh.js","./modules/es7.math.imulh":"../../node_modules/core-js/modules/es7.math.imulh.js","./modules/es7.math.rad-per-deg":"../../node_modules/core-js/modules/es7.math.rad-per-deg.js","./modules/es7.math.radians":"../../node_modules/core-js/modules/es7.math.radians.js","./modules/es7.math.scale":"../../node_modules/core-js/modules/es7.math.scale.js","./modules/es7.math.umulh":"../../node_modules/core-js/modules/es7.math.umulh.js","./modules/es7.math.signbit":"../../node_modules/core-js/modules/es7.math.signbit.js","./modules/es7.promise.finally":"../../node_modules/core-js/modules/es7.promise.finally.js","./modules/es7.promise.try":"../../node_modules/core-js/modules/es7.promise.try.js","./modules/es7.reflect.define-metadata":"../../node_modules/core-js/modules/es7.reflect.define-metadata.js","./modules/es7.reflect.delete-metadata":"../../node_modules/core-js/modules/es7.reflect.delete-metadata.js","./modules/es7.reflect.get-metadata":"../../node_modules/core-js/modules/es7.reflect.get-metadata.js","./modules/es7.reflect.get-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-metadata-keys.js","./modules/es7.reflect.get-own-metadata":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata.js","./modules/es7.reflect.get-own-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata-keys.js","./modules/es7.reflect.has-metadata":"../../node_modules/core-js/modules/es7.reflect.has-metadata.js","./modules/es7.reflect.has-own-metadata":"../../node_modules/core-js/modules/es7.reflect.has-own-metadata.js","./modules/es7.reflect.metadata":"../../node_modules/core-js/modules/es7.reflect.metadata.js","./modules/es7.asap":"../../node_modules/core-js/modules/es7.asap.js","./modules/es7.observable":"../../node_modules/core-js/modules/es7.observable.js","./modules/web.timers":"../../node_modules/core-js/modules/web.timers.js","./modules/web.immediate":"../../node_modules/core-js/modules/web.immediate.js","./modules/web.dom.iterable":"../../node_modules/core-js/modules/web.dom.iterable.js","./modules/_core":"../../node_modules/core-js/modules/_core.js"}],"../../node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 /**
  * Copyright (c) 2014, Facebook, Inc.
@@ -8115,7 +8094,7 @@ define(String.prototype, "padRight", "".padEnd);
 "pop,reverse,shift,keys,values,entries,indexOf,every,some,forEach,map,filter,find,findIndex,includes,join,slice,concat,push,splice,unshift,sort,lastIndexOf,reduce,reduceRight,copyWithin,fill".split(",").forEach(function (key) {
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
-},{"core-js/shim":"../../node_modules/core-js/shim.js","regenerator-runtime/runtime":"../../node_modules/regenerator-runtime/runtime.js","core-js/fn/regexp/escape":"../../node_modules/core-js/fn/regexp/escape.js"}],"../live-tiles/src/map-style/base-style.json":[function(require,module,exports) {
+},{"core-js/shim":"../../node_modules/core-js/shim.js","regenerator-runtime/runtime":"../../node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js","core-js/fn/regexp/escape":"../../node_modules/core-js/fn/regexp/escape.js"}],"../live-tiles/src/map-style/base-style.json":[function(require,module,exports) {
 module.exports = {
   "version": 8,
   "name": "Outdoors Modified",
@@ -10284,7 +10263,7 @@ module.exports = function parseuri(str) {
     return uri;
 };
 
-},{}],"../../node_modules/socket.io-client/node_modules/ms/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/ms/index.js":[function(require,module,exports) {
 /**
  * Helpers.
  */
@@ -10665,7 +10644,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":"../../node_modules/socket.io-client/node_modules/ms/index.js"}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/process/browser.js":[function(require,module,exports) {
+},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/process/browser.js":[function(require,module,exports) {
 
 // shim for using process in browser
 var process = module.exports = {}; // cached from whatever global is present so that test runners that stub it
@@ -11038,7 +11017,7 @@ function localstorage() {
     return window.localStorage;
   } catch (e) {}
 }
-},{"./debug":"../../node_modules/socket.io-client/node_modules/debug/src/debug.js","process":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/process/browser.js"}],"../../node_modules/socket.io-client/lib/url.js":[function(require,module,exports) {
+},{"./debug":"../../node_modules/socket.io-client/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/socket.io-client/lib/url.js":[function(require,module,exports) {
 
 /**
  * Module dependencies.
@@ -11115,161 +11094,7 @@ function url (uri, loc) {
   return obj;
 }
 
-},{"parseuri":"../../node_modules/parseuri/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/socket.io-parser/node_modules/ms/index.js":[function(require,module,exports) {
-/**
- * Helpers.
- */
-
-var s = 1000;
-var m = s * 60;
-var h = m * 60;
-var d = h * 24;
-var y = d * 365.25;
-
-/**
- * Parse or format the given `val`.
- *
- * Options:
- *
- *  - `long` verbose formatting [false]
- *
- * @param {String|Number} val
- * @param {Object} [options]
- * @throws {Error} throw an error if val is not a non-empty string or a number
- * @return {String|Number}
- * @api public
- */
-
-module.exports = function(val, options) {
-  options = options || {};
-  var type = typeof val;
-  if (type === 'string' && val.length > 0) {
-    return parse(val);
-  } else if (type === 'number' && isNaN(val) === false) {
-    return options.long ? fmtLong(val) : fmtShort(val);
-  }
-  throw new Error(
-    'val is not a non-empty string or a valid number. val=' +
-      JSON.stringify(val)
-  );
-};
-
-/**
- * Parse the given `str` and return milliseconds.
- *
- * @param {String} str
- * @return {Number}
- * @api private
- */
-
-function parse(str) {
-  str = String(str);
-  if (str.length > 100) {
-    return;
-  }
-  var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(
-    str
-  );
-  if (!match) {
-    return;
-  }
-  var n = parseFloat(match[1]);
-  var type = (match[2] || 'ms').toLowerCase();
-  switch (type) {
-    case 'years':
-    case 'year':
-    case 'yrs':
-    case 'yr':
-    case 'y':
-      return n * y;
-    case 'days':
-    case 'day':
-    case 'd':
-      return n * d;
-    case 'hours':
-    case 'hour':
-    case 'hrs':
-    case 'hr':
-    case 'h':
-      return n * h;
-    case 'minutes':
-    case 'minute':
-    case 'mins':
-    case 'min':
-    case 'm':
-      return n * m;
-    case 'seconds':
-    case 'second':
-    case 'secs':
-    case 'sec':
-    case 's':
-      return n * s;
-    case 'milliseconds':
-    case 'millisecond':
-    case 'msecs':
-    case 'msec':
-    case 'ms':
-      return n;
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Short format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtShort(ms) {
-  if (ms >= d) {
-    return Math.round(ms / d) + 'd';
-  }
-  if (ms >= h) {
-    return Math.round(ms / h) + 'h';
-  }
-  if (ms >= m) {
-    return Math.round(ms / m) + 'm';
-  }
-  if (ms >= s) {
-    return Math.round(ms / s) + 's';
-  }
-  return ms + 'ms';
-}
-
-/**
- * Long format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtLong(ms) {
-  return plural(ms, d, 'day') ||
-    plural(ms, h, 'hour') ||
-    plural(ms, m, 'minute') ||
-    plural(ms, s, 'second') ||
-    ms + ' ms';
-}
-
-/**
- * Pluralization helper.
- */
-
-function plural(ms, n, name) {
-  if (ms < n) {
-    return;
-  }
-  if (ms < n * 1.5) {
-    return Math.floor(ms / n) + ' ' + name;
-  }
-  return Math.ceil(ms / n) + ' ' + name + 's';
-}
-
-},{}],"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js":[function(require,module,exports) {
+},{"parseuri":"../../node_modules/parseuri/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js":[function(require,module,exports) {
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -11496,7 +11321,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":"../../node_modules/socket.io-parser/node_modules/ms/index.js"}],"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js":[function(require,module,exports) {
+},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js":[function(require,module,exports) {
 var process = require("process");
 /**
  * This is the web browser implementation of `debug()`.
@@ -11660,7 +11485,7 @@ function localstorage() {
     return window.localStorage;
   } catch (e) {}
 }
-},{"./debug":"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js","process":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/process/browser.js"}],"../../node_modules/socket.io-parser/node_modules/component-emitter/index.js":[function(require,module,exports) {
+},{"./debug":"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/component-emitter/index.js":[function(require,module,exports) {
 
 /**
  * Expose `Emitter`.
@@ -11832,7 +11657,7 @@ module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/base64-js/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/base64-js/index.js":[function(require,module,exports) {
 'use strict'
 
 exports.byteLength = byteLength
@@ -11985,7 +11810,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/ieee754/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/ieee754/index.js":[function(require,module,exports) {
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -12071,14 +11896,14 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/isarray/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/isarray/index.js":[function(require,module,exports) {
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/buffer/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/buffer/index.js":[function(require,module,exports) {
 
 var global = arguments[3];
 /*!
@@ -13871,7 +13696,7 @@ function isnan (val) {
   return val !== val // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/base64-js/index.js","ieee754":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/ieee754/index.js","isarray":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/isarray/index.js","buffer":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/is-buffer.js":[function(require,module,exports) {
+},{"base64-js":"../../node_modules/base64-js/index.js","ieee754":"../../node_modules/ieee754/index.js","isarray":"../../node_modules/isarray/index.js","buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/is-buffer.js":[function(require,module,exports) {
 var Buffer = require("buffer").Buffer;
 
 module.exports = isBuf;
@@ -13894,7 +13719,7 @@ function isBuf(obj) {
           (withNativeArrayBuffer && (obj instanceof ArrayBuffer || isView(obj)));
 }
 
-},{"buffer":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/binary.js":[function(require,module,exports) {
+},{"buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/binary.js":[function(require,module,exports) {
 /*global Blob,File*/
 
 /**
@@ -14454,7 +14279,7 @@ function error(msg) {
   };
 }
 
-},{"debug":"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js","component-emitter":"../../node_modules/socket.io-parser/node_modules/component-emitter/index.js","./binary":"../../node_modules/socket.io-parser/binary.js","isarray":"../../node_modules/socket.io-parser/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/has-cors/index.js":[function(require,module,exports) {
+},{"debug":"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js","component-emitter":"../../node_modules/component-emitter/index.js","./binary":"../../node_modules/socket.io-parser/binary.js","isarray":"../../node_modules/socket.io-parser/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/has-cors/index.js":[function(require,module,exports) {
 
 /**
  * Module exports.
@@ -14607,7 +14432,7 @@ function hasBinary (obj) {
   return false;
 }
 
-},{"isarray":"../../node_modules/has-binary2/node_modules/isarray/index.js","buffer":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/buffer/index.js"}],"../../node_modules/arraybuffer.slice/index.js":[function(require,module,exports) {
+},{"isarray":"../../node_modules/has-binary2/node_modules/isarray/index.js","buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/arraybuffer.slice/index.js":[function(require,module,exports) {
 /**
  * An abstraction for slicing an arraybuffer even when
  * ArrayBuffer.prototype.slice is not supported
@@ -15664,172 +15489,7 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
   });
 };
 
-},{"./keys":"../../node_modules/engine.io-parser/lib/keys.js","has-binary2":"../../node_modules/has-binary2/index.js","arraybuffer.slice":"../../node_modules/arraybuffer.slice/index.js","after":"../../node_modules/after/index.js","./utf8":"../../node_modules/engine.io-parser/lib/utf8.js","base64-arraybuffer":"../../node_modules/base64-arraybuffer/lib/base64-arraybuffer.js","blob":"../../node_modules/blob/index.js"}],"../../node_modules/engine.io-client/node_modules/component-emitter/index.js":[function(require,module,exports) {
-
-/**
- * Expose `Emitter`.
- */
-
-if (typeof module !== 'undefined') {
-  module.exports = Emitter;
-}
-
-/**
- * Initialize a new `Emitter`.
- *
- * @api public
- */
-
-function Emitter(obj) {
-  if (obj) return mixin(obj);
-};
-
-/**
- * Mixin the emitter properties.
- *
- * @param {Object} obj
- * @return {Object}
- * @api private
- */
-
-function mixin(obj) {
-  for (var key in Emitter.prototype) {
-    obj[key] = Emitter.prototype[key];
-  }
-  return obj;
-}
-
-/**
- * Listen on the given `event` with `fn`.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.on =
-Emitter.prototype.addEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-  (this._callbacks['$' + event] = this._callbacks['$' + event] || [])
-    .push(fn);
-  return this;
-};
-
-/**
- * Adds an `event` listener that will be invoked a single
- * time then automatically removed.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.once = function(event, fn){
-  function on() {
-    this.off(event, on);
-    fn.apply(this, arguments);
-  }
-
-  on.fn = fn;
-  this.on(event, on);
-  return this;
-};
-
-/**
- * Remove the given callback for `event` or all
- * registered callbacks.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.off =
-Emitter.prototype.removeListener =
-Emitter.prototype.removeAllListeners =
-Emitter.prototype.removeEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-
-  // all
-  if (0 == arguments.length) {
-    this._callbacks = {};
-    return this;
-  }
-
-  // specific event
-  var callbacks = this._callbacks['$' + event];
-  if (!callbacks) return this;
-
-  // remove all handlers
-  if (1 == arguments.length) {
-    delete this._callbacks['$' + event];
-    return this;
-  }
-
-  // remove specific handler
-  var cb;
-  for (var i = 0; i < callbacks.length; i++) {
-    cb = callbacks[i];
-    if (cb === fn || cb.fn === fn) {
-      callbacks.splice(i, 1);
-      break;
-    }
-  }
-  return this;
-};
-
-/**
- * Emit `event` with the given args.
- *
- * @param {String} event
- * @param {Mixed} ...
- * @return {Emitter}
- */
-
-Emitter.prototype.emit = function(event){
-  this._callbacks = this._callbacks || {};
-  var args = [].slice.call(arguments, 1)
-    , callbacks = this._callbacks['$' + event];
-
-  if (callbacks) {
-    callbacks = callbacks.slice(0);
-    for (var i = 0, len = callbacks.length; i < len; ++i) {
-      callbacks[i].apply(this, args);
-    }
-  }
-
-  return this;
-};
-
-/**
- * Return array of callbacks for `event`.
- *
- * @param {String} event
- * @return {Array}
- * @api public
- */
-
-Emitter.prototype.listeners = function(event){
-  this._callbacks = this._callbacks || {};
-  return this._callbacks['$' + event] || [];
-};
-
-/**
- * Check if this emitter has `event` handlers.
- *
- * @param {String} event
- * @return {Boolean}
- * @api public
- */
-
-Emitter.prototype.hasListeners = function(event){
-  return !! this.listeners(event).length;
-};
-
-},{}],"../../node_modules/engine.io-client/lib/transport.js":[function(require,module,exports) {
+},{"./keys":"../../node_modules/engine.io-parser/lib/keys.js","has-binary2":"../../node_modules/has-binary2/index.js","arraybuffer.slice":"../../node_modules/arraybuffer.slice/index.js","after":"../../node_modules/after/index.js","./utf8":"../../node_modules/engine.io-parser/lib/utf8.js","base64-arraybuffer":"../../node_modules/base64-arraybuffer/lib/base64-arraybuffer.js","blob":"../../node_modules/blob/index.js"}],"../../node_modules/engine.io-client/lib/transport.js":[function(require,module,exports) {
 /**
  * Module dependencies.
  */
@@ -15991,7 +15651,7 @@ Transport.prototype.onClose = function () {
   this.emit('close');
 };
 
-},{"engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","component-emitter":"../../node_modules/engine.io-client/node_modules/component-emitter/index.js"}],"../../node_modules/parseqs/index.js":[function(require,module,exports) {
+},{"engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","component-emitter":"../../node_modules/component-emitter/index.js"}],"../../node_modules/parseqs/index.js":[function(require,module,exports) {
 /**
  * Compiles a querystring
  * Returns string representation of the object
@@ -16107,160 +15767,6 @@ for (; i < length; i++) map[alphabet[i]] = i;
 yeast.encode = encode;
 yeast.decode = decode;
 module.exports = yeast;
-
-},{}],"../../node_modules/engine.io-client/node_modules/ms/index.js":[function(require,module,exports) {
-/**
- * Helpers.
- */
-
-var s = 1000;
-var m = s * 60;
-var h = m * 60;
-var d = h * 24;
-var y = d * 365.25;
-
-/**
- * Parse or format the given `val`.
- *
- * Options:
- *
- *  - `long` verbose formatting [false]
- *
- * @param {String|Number} val
- * @param {Object} [options]
- * @throws {Error} throw an error if val is not a non-empty string or a number
- * @return {String|Number}
- * @api public
- */
-
-module.exports = function(val, options) {
-  options = options || {};
-  var type = typeof val;
-  if (type === 'string' && val.length > 0) {
-    return parse(val);
-  } else if (type === 'number' && isNaN(val) === false) {
-    return options.long ? fmtLong(val) : fmtShort(val);
-  }
-  throw new Error(
-    'val is not a non-empty string or a valid number. val=' +
-      JSON.stringify(val)
-  );
-};
-
-/**
- * Parse the given `str` and return milliseconds.
- *
- * @param {String} str
- * @return {Number}
- * @api private
- */
-
-function parse(str) {
-  str = String(str);
-  if (str.length > 100) {
-    return;
-  }
-  var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(
-    str
-  );
-  if (!match) {
-    return;
-  }
-  var n = parseFloat(match[1]);
-  var type = (match[2] || 'ms').toLowerCase();
-  switch (type) {
-    case 'years':
-    case 'year':
-    case 'yrs':
-    case 'yr':
-    case 'y':
-      return n * y;
-    case 'days':
-    case 'day':
-    case 'd':
-      return n * d;
-    case 'hours':
-    case 'hour':
-    case 'hrs':
-    case 'hr':
-    case 'h':
-      return n * h;
-    case 'minutes':
-    case 'minute':
-    case 'mins':
-    case 'min':
-    case 'm':
-      return n * m;
-    case 'seconds':
-    case 'second':
-    case 'secs':
-    case 'sec':
-    case 's':
-      return n * s;
-    case 'milliseconds':
-    case 'millisecond':
-    case 'msecs':
-    case 'msec':
-    case 'ms':
-      return n;
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Short format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtShort(ms) {
-  if (ms >= d) {
-    return Math.round(ms / d) + 'd';
-  }
-  if (ms >= h) {
-    return Math.round(ms / h) + 'h';
-  }
-  if (ms >= m) {
-    return Math.round(ms / m) + 'm';
-  }
-  if (ms >= s) {
-    return Math.round(ms / s) + 's';
-  }
-  return ms + 'ms';
-}
-
-/**
- * Long format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtLong(ms) {
-  return plural(ms, d, 'day') ||
-    plural(ms, h, 'hour') ||
-    plural(ms, m, 'minute') ||
-    plural(ms, s, 'second') ||
-    ms + ' ms';
-}
-
-/**
- * Pluralization helper.
- */
-
-function plural(ms, n, name) {
-  if (ms < n) {
-    return;
-  }
-  if (ms < n * 1.5) {
-    return Math.floor(ms / n) + ' ' + name;
-  }
-  return Math.ceil(ms / n) + ' ' + name + 's';
-}
 
 },{}],"../../node_modules/engine.io-client/node_modules/debug/src/debug.js":[function(require,module,exports) {
 
@@ -16489,7 +15995,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":"../../node_modules/engine.io-client/node_modules/ms/index.js"}],"../../node_modules/engine.io-client/node_modules/debug/src/browser.js":[function(require,module,exports) {
+},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/engine.io-client/node_modules/debug/src/browser.js":[function(require,module,exports) {
 var process = require("process");
 /**
  * This is the web browser implementation of `debug()`.
@@ -16653,7 +16159,7 @@ function localstorage() {
     return window.localStorage;
   } catch (e) {}
 }
-},{"./debug":"../../node_modules/engine.io-client/node_modules/debug/src/debug.js","process":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/process/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling.js":[function(require,module,exports) {
+},{"./debug":"../../node_modules/engine.io-client/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling.js":[function(require,module,exports) {
 /**
  * Module dependencies.
  */
@@ -17317,7 +16823,7 @@ function unloadHandler () {
   }
 }
 
-},{"xmlhttprequest-ssl":"../../node_modules/engine.io-client/lib/xmlhttprequest.js","./polling":"../../node_modules/engine.io-client/lib/transports/polling.js","component-emitter":"../../node_modules/engine.io-client/node_modules/component-emitter/index.js","component-inherit":"../../node_modules/component-inherit/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling-jsonp.js":[function(require,module,exports) {
+},{"xmlhttprequest-ssl":"../../node_modules/engine.io-client/lib/xmlhttprequest.js","./polling":"../../node_modules/engine.io-client/lib/transports/polling.js","component-emitter":"../../node_modules/component-emitter/index.js","component-inherit":"../../node_modules/component-inherit/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling-jsonp.js":[function(require,module,exports) {
 var global = arguments[3];
 /**
  * Module requirements.
@@ -17559,7 +17065,7 @@ JSONPPolling.prototype.doWrite = function (data, fn) {
   }
 };
 
-},{"./polling":"../../node_modules/engine.io-client/lib/transports/polling.js","component-inherit":"../../node_modules/component-inherit/index.js"}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/src/builtins/_empty.js":[function(require,module,exports) {
+},{"./polling":"../../node_modules/engine.io-client/lib/transports/polling.js","component-inherit":"../../node_modules/component-inherit/index.js"}],"../../node_modules/parcel-bundler/src/builtins/_empty.js":[function(require,module,exports) {
 
 },{}],"../../node_modules/engine.io-client/lib/transports/websocket.js":[function(require,module,exports) {
 var Buffer = require("buffer").Buffer;
@@ -17857,7 +17363,7 @@ WS.prototype.check = function () {
   return !!WebSocketImpl && !('__initialize' in WebSocketImpl && this.name === WS.prototype.name);
 };
 
-},{"../transport":"../../node_modules/engine.io-client/lib/transport.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","parseqs":"../../node_modules/parseqs/index.js","component-inherit":"../../node_modules/component-inherit/index.js","yeast":"../../node_modules/yeast/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js","ws":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/src/builtins/_empty.js","buffer":"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/node_modules/buffer/index.js"}],"../../node_modules/engine.io-client/lib/transports/index.js":[function(require,module,exports) {
+},{"../transport":"../../node_modules/engine.io-client/lib/transport.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","parseqs":"../../node_modules/parseqs/index.js","component-inherit":"../../node_modules/component-inherit/index.js","yeast":"../../node_modules/yeast/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js","ws":"../../node_modules/parcel-bundler/src/builtins/_empty.js","buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/engine.io-client/lib/transports/index.js":[function(require,module,exports) {
 /**
  * Module dependencies
  */
@@ -18671,7 +18177,7 @@ Socket.prototype.filterUpgrades = function (upgrades) {
   return filteredUpgrades;
 };
 
-},{"./transports/index":"../../node_modules/engine.io-client/lib/transports/index.js","component-emitter":"../../node_modules/engine.io-client/node_modules/component-emitter/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","parseuri":"../../node_modules/parseuri/index.js","parseqs":"../../node_modules/parseqs/index.js","./transport":"../../node_modules/engine.io-client/lib/transport.js"}],"../../node_modules/engine.io-client/lib/index.js":[function(require,module,exports) {
+},{"./transports/index":"../../node_modules/engine.io-client/lib/transports/index.js","component-emitter":"../../node_modules/component-emitter/index.js","debug":"../../node_modules/engine.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js","parseuri":"../../node_modules/parseuri/index.js","parseqs":"../../node_modules/parseqs/index.js","./transport":"../../node_modules/engine.io-client/lib/transport.js"}],"../../node_modules/engine.io-client/lib/index.js":[function(require,module,exports) {
 
 module.exports = require('./socket');
 
@@ -18683,172 +18189,7 @@ module.exports = require('./socket');
  */
 module.exports.parser = require('engine.io-parser');
 
-},{"./socket":"../../node_modules/engine.io-client/lib/socket.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js"}],"../../node_modules/socket.io-client/node_modules/component-emitter/index.js":[function(require,module,exports) {
-
-/**
- * Expose `Emitter`.
- */
-
-if (typeof module !== 'undefined') {
-  module.exports = Emitter;
-}
-
-/**
- * Initialize a new `Emitter`.
- *
- * @api public
- */
-
-function Emitter(obj) {
-  if (obj) return mixin(obj);
-};
-
-/**
- * Mixin the emitter properties.
- *
- * @param {Object} obj
- * @return {Object}
- * @api private
- */
-
-function mixin(obj) {
-  for (var key in Emitter.prototype) {
-    obj[key] = Emitter.prototype[key];
-  }
-  return obj;
-}
-
-/**
- * Listen on the given `event` with `fn`.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.on =
-Emitter.prototype.addEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-  (this._callbacks['$' + event] = this._callbacks['$' + event] || [])
-    .push(fn);
-  return this;
-};
-
-/**
- * Adds an `event` listener that will be invoked a single
- * time then automatically removed.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.once = function(event, fn){
-  function on() {
-    this.off(event, on);
-    fn.apply(this, arguments);
-  }
-
-  on.fn = fn;
-  this.on(event, on);
-  return this;
-};
-
-/**
- * Remove the given callback for `event` or all
- * registered callbacks.
- *
- * @param {String} event
- * @param {Function} fn
- * @return {Emitter}
- * @api public
- */
-
-Emitter.prototype.off =
-Emitter.prototype.removeListener =
-Emitter.prototype.removeAllListeners =
-Emitter.prototype.removeEventListener = function(event, fn){
-  this._callbacks = this._callbacks || {};
-
-  // all
-  if (0 == arguments.length) {
-    this._callbacks = {};
-    return this;
-  }
-
-  // specific event
-  var callbacks = this._callbacks['$' + event];
-  if (!callbacks) return this;
-
-  // remove all handlers
-  if (1 == arguments.length) {
-    delete this._callbacks['$' + event];
-    return this;
-  }
-
-  // remove specific handler
-  var cb;
-  for (var i = 0; i < callbacks.length; i++) {
-    cb = callbacks[i];
-    if (cb === fn || cb.fn === fn) {
-      callbacks.splice(i, 1);
-      break;
-    }
-  }
-  return this;
-};
-
-/**
- * Emit `event` with the given args.
- *
- * @param {String} event
- * @param {Mixed} ...
- * @return {Emitter}
- */
-
-Emitter.prototype.emit = function(event){
-  this._callbacks = this._callbacks || {};
-  var args = [].slice.call(arguments, 1)
-    , callbacks = this._callbacks['$' + event];
-
-  if (callbacks) {
-    callbacks = callbacks.slice(0);
-    for (var i = 0, len = callbacks.length; i < len; ++i) {
-      callbacks[i].apply(this, args);
-    }
-  }
-
-  return this;
-};
-
-/**
- * Return array of callbacks for `event`.
- *
- * @param {String} event
- * @return {Array}
- * @api public
- */
-
-Emitter.prototype.listeners = function(event){
-  this._callbacks = this._callbacks || {};
-  return this._callbacks['$' + event] || [];
-};
-
-/**
- * Check if this emitter has `event` handlers.
- *
- * @param {String} event
- * @return {Boolean}
- * @api public
- */
-
-Emitter.prototype.hasListeners = function(event){
-  return !! this.listeners(event).length;
-};
-
-},{}],"../../node_modules/to-array/index.js":[function(require,module,exports) {
+},{"./socket":"../../node_modules/engine.io-client/lib/socket.js","engine.io-parser":"../../node_modules/engine.io-parser/lib/browser.js"}],"../../node_modules/to-array/index.js":[function(require,module,exports) {
 module.exports = toArray
 
 function toArray(list, index) {
@@ -19354,7 +18695,7 @@ Socket.prototype.binary = function (binary) {
   return this;
 };
 
-},{"socket.io-parser":"../../node_modules/socket.io-parser/index.js","component-emitter":"../../node_modules/socket.io-client/node_modules/component-emitter/index.js","to-array":"../../node_modules/to-array/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","parseqs":"../../node_modules/parseqs/index.js","has-binary2":"../../node_modules/has-binary2/index.js"}],"../../node_modules/backo2/index.js":[function(require,module,exports) {
+},{"socket.io-parser":"../../node_modules/socket.io-parser/index.js","component-emitter":"../../node_modules/component-emitter/index.js","to-array":"../../node_modules/to-array/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","parseqs":"../../node_modules/parseqs/index.js","has-binary2":"../../node_modules/has-binary2/index.js"}],"../../node_modules/backo2/index.js":[function(require,module,exports) {
 
 /**
  * Expose `Backoff`.
@@ -20016,7 +19357,7 @@ Manager.prototype.onreconnect = function () {
   this.emitAll('reconnect', attempt);
 };
 
-},{"engine.io-client":"../../node_modules/engine.io-client/lib/index.js","./socket":"../../node_modules/socket.io-client/lib/socket.js","component-emitter":"../../node_modules/socket.io-client/node_modules/component-emitter/index.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","backo2":"../../node_modules/backo2/index.js"}],"../../node_modules/socket.io-client/lib/index.js":[function(require,module,exports) {
+},{"engine.io-client":"../../node_modules/engine.io-client/lib/index.js","./socket":"../../node_modules/socket.io-client/lib/socket.js","component-emitter":"../../node_modules/component-emitter/index.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","backo2":"../../node_modules/backo2/index.js"}],"../../node_modules/socket.io-client/lib/index.js":[function(require,module,exports) {
 
 /**
  * Module dependencies.
@@ -20112,7 +19453,1380 @@ exports.connect = lookup;
 exports.Manager = require('./manager');
 exports.Socket = require('./socket');
 
-},{"./url":"../../node_modules/socket.io-client/lib/url.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./manager":"../../node_modules/socket.io-client/lib/manager.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","./socket":"../../node_modules/socket.io-client/lib/socket.js"}],"../../node_modules/underscore/underscore.js":[function(require,module,exports) {
+},{"./url":"../../node_modules/socket.io-client/lib/url.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./manager":"../../node_modules/socket.io-client/lib/manager.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","./socket":"../../node_modules/socket.io-client/lib/socket.js"}],"../../node_modules/axios/lib/helpers/bind.js":[function(require,module,exports) {
+'use strict';
+
+module.exports = function bind(fn, thisArg) {
+  return function wrap() {
+    var args = new Array(arguments.length);
+    for (var i = 0; i < args.length; i++) {
+      args[i] = arguments[i];
+    }
+    return fn.apply(thisArg, args);
+  };
+};
+
+},{}],"../../node_modules/axios/node_modules/is-buffer/index.js":[function(require,module,exports) {
+/*!
+ * Determine if an object is a Buffer
+ *
+ * @author   Feross Aboukhadijeh <https://feross.org>
+ * @license  MIT
+ */
+module.exports = function isBuffer(obj) {
+  return obj != null && obj.constructor != null && typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj);
+};
+},{}],"../../node_modules/axios/lib/utils.js":[function(require,module,exports) {
+'use strict';
+
+var bind = require('./helpers/bind');
+var isBuffer = require('is-buffer');
+
+/*global toString:true*/
+
+// utils is a library of generic helper functions non-specific to axios
+
+var toString = Object.prototype.toString;
+
+/**
+ * Determine if a value is an Array
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is an Array, otherwise false
+ */
+function isArray(val) {
+  return toString.call(val) === '[object Array]';
+}
+
+/**
+ * Determine if a value is an ArrayBuffer
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is an ArrayBuffer, otherwise false
+ */
+function isArrayBuffer(val) {
+  return toString.call(val) === '[object ArrayBuffer]';
+}
+
+/**
+ * Determine if a value is a FormData
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is an FormData, otherwise false
+ */
+function isFormData(val) {
+  return (typeof FormData !== 'undefined') && (val instanceof FormData);
+}
+
+/**
+ * Determine if a value is a view on an ArrayBuffer
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a view on an ArrayBuffer, otherwise false
+ */
+function isArrayBufferView(val) {
+  var result;
+  if ((typeof ArrayBuffer !== 'undefined') && (ArrayBuffer.isView)) {
+    result = ArrayBuffer.isView(val);
+  } else {
+    result = (val) && (val.buffer) && (val.buffer instanceof ArrayBuffer);
+  }
+  return result;
+}
+
+/**
+ * Determine if a value is a String
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a String, otherwise false
+ */
+function isString(val) {
+  return typeof val === 'string';
+}
+
+/**
+ * Determine if a value is a Number
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a Number, otherwise false
+ */
+function isNumber(val) {
+  return typeof val === 'number';
+}
+
+/**
+ * Determine if a value is undefined
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if the value is undefined, otherwise false
+ */
+function isUndefined(val) {
+  return typeof val === 'undefined';
+}
+
+/**
+ * Determine if a value is an Object
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is an Object, otherwise false
+ */
+function isObject(val) {
+  return val !== null && typeof val === 'object';
+}
+
+/**
+ * Determine if a value is a Date
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a Date, otherwise false
+ */
+function isDate(val) {
+  return toString.call(val) === '[object Date]';
+}
+
+/**
+ * Determine if a value is a File
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a File, otherwise false
+ */
+function isFile(val) {
+  return toString.call(val) === '[object File]';
+}
+
+/**
+ * Determine if a value is a Blob
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a Blob, otherwise false
+ */
+function isBlob(val) {
+  return toString.call(val) === '[object Blob]';
+}
+
+/**
+ * Determine if a value is a Function
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a Function, otherwise false
+ */
+function isFunction(val) {
+  return toString.call(val) === '[object Function]';
+}
+
+/**
+ * Determine if a value is a Stream
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a Stream, otherwise false
+ */
+function isStream(val) {
+  return isObject(val) && isFunction(val.pipe);
+}
+
+/**
+ * Determine if a value is a URLSearchParams object
+ *
+ * @param {Object} val The value to test
+ * @returns {boolean} True if value is a URLSearchParams object, otherwise false
+ */
+function isURLSearchParams(val) {
+  return typeof URLSearchParams !== 'undefined' && val instanceof URLSearchParams;
+}
+
+/**
+ * Trim excess whitespace off the beginning and end of a string
+ *
+ * @param {String} str The String to trim
+ * @returns {String} The String freed of excess whitespace
+ */
+function trim(str) {
+  return str.replace(/^\s*/, '').replace(/\s*$/, '');
+}
+
+/**
+ * Determine if we're running in a standard browser environment
+ *
+ * This allows axios to run in a web worker, and react-native.
+ * Both environments support XMLHttpRequest, but not fully standard globals.
+ *
+ * web workers:
+ *  typeof window -> undefined
+ *  typeof document -> undefined
+ *
+ * react-native:
+ *  navigator.product -> 'ReactNative'
+ */
+function isStandardBrowserEnv() {
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    return false;
+  }
+  return (
+    typeof window !== 'undefined' &&
+    typeof document !== 'undefined'
+  );
+}
+
+/**
+ * Iterate over an Array or an Object invoking a function for each item.
+ *
+ * If `obj` is an Array callback will be called passing
+ * the value, index, and complete array for each item.
+ *
+ * If 'obj' is an Object callback will be called passing
+ * the value, key, and complete object for each property.
+ *
+ * @param {Object|Array} obj The object to iterate
+ * @param {Function} fn The callback to invoke for each item
+ */
+function forEach(obj, fn) {
+  // Don't bother if no value provided
+  if (obj === null || typeof obj === 'undefined') {
+    return;
+  }
+
+  // Force an array if not already something iterable
+  if (typeof obj !== 'object') {
+    /*eslint no-param-reassign:0*/
+    obj = [obj];
+  }
+
+  if (isArray(obj)) {
+    // Iterate over array values
+    for (var i = 0, l = obj.length; i < l; i++) {
+      fn.call(null, obj[i], i, obj);
+    }
+  } else {
+    // Iterate over object keys
+    for (var key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        fn.call(null, obj[key], key, obj);
+      }
+    }
+  }
+}
+
+/**
+ * Accepts varargs expecting each argument to be an object, then
+ * immutably merges the properties of each object and returns result.
+ *
+ * When multiple objects contain the same key the later object in
+ * the arguments list will take precedence.
+ *
+ * Example:
+ *
+ * ```js
+ * var result = merge({foo: 123}, {foo: 456});
+ * console.log(result.foo); // outputs 456
+ * ```
+ *
+ * @param {Object} obj1 Object to merge
+ * @returns {Object} Result of all merge properties
+ */
+function merge(/* obj1, obj2, obj3, ... */) {
+  var result = {};
+  function assignValue(val, key) {
+    if (typeof result[key] === 'object' && typeof val === 'object') {
+      result[key] = merge(result[key], val);
+    } else {
+      result[key] = val;
+    }
+  }
+
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    forEach(arguments[i], assignValue);
+  }
+  return result;
+}
+
+/**
+ * Extends object a by mutably adding to it the properties of object b.
+ *
+ * @param {Object} a The object to be extended
+ * @param {Object} b The object to copy properties from
+ * @param {Object} thisArg The object to bind function to
+ * @return {Object} The resulting value of object a
+ */
+function extend(a, b, thisArg) {
+  forEach(b, function assignValue(val, key) {
+    if (thisArg && typeof val === 'function') {
+      a[key] = bind(val, thisArg);
+    } else {
+      a[key] = val;
+    }
+  });
+  return a;
+}
+
+module.exports = {
+  isArray: isArray,
+  isArrayBuffer: isArrayBuffer,
+  isBuffer: isBuffer,
+  isFormData: isFormData,
+  isArrayBufferView: isArrayBufferView,
+  isString: isString,
+  isNumber: isNumber,
+  isObject: isObject,
+  isUndefined: isUndefined,
+  isDate: isDate,
+  isFile: isFile,
+  isBlob: isBlob,
+  isFunction: isFunction,
+  isStream: isStream,
+  isURLSearchParams: isURLSearchParams,
+  isStandardBrowserEnv: isStandardBrowserEnv,
+  forEach: forEach,
+  merge: merge,
+  extend: extend,
+  trim: trim
+};
+
+},{"./helpers/bind":"../../node_modules/axios/lib/helpers/bind.js","is-buffer":"../../node_modules/axios/node_modules/is-buffer/index.js"}],"../../node_modules/axios/lib/helpers/normalizeHeaderName.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('../utils');
+
+module.exports = function normalizeHeaderName(headers, normalizedName) {
+  utils.forEach(headers, function processHeader(value, name) {
+    if (name !== normalizedName && name.toUpperCase() === normalizedName.toUpperCase()) {
+      headers[normalizedName] = value;
+      delete headers[name];
+    }
+  });
+};
+
+},{"../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/core/enhanceError.js":[function(require,module,exports) {
+'use strict';
+
+/**
+ * Update an Error with the specified config, error code, and response.
+ *
+ * @param {Error} error The error to update.
+ * @param {Object} config The config.
+ * @param {string} [code] The error code (for example, 'ECONNABORTED').
+ * @param {Object} [request] The request.
+ * @param {Object} [response] The response.
+ * @returns {Error} The error.
+ */
+module.exports = function enhanceError(error, config, code, request, response) {
+  error.config = config;
+  if (code) {
+    error.code = code;
+  }
+  error.request = request;
+  error.response = response;
+  return error;
+};
+
+},{}],"../../node_modules/axios/lib/core/createError.js":[function(require,module,exports) {
+'use strict';
+
+var enhanceError = require('./enhanceError');
+
+/**
+ * Create an Error with the specified message, config, error code, request and response.
+ *
+ * @param {string} message The error message.
+ * @param {Object} config The config.
+ * @param {string} [code] The error code (for example, 'ECONNABORTED').
+ * @param {Object} [request] The request.
+ * @param {Object} [response] The response.
+ * @returns {Error} The created error.
+ */
+module.exports = function createError(message, config, code, request, response) {
+  var error = new Error(message);
+  return enhanceError(error, config, code, request, response);
+};
+
+},{"./enhanceError":"../../node_modules/axios/lib/core/enhanceError.js"}],"../../node_modules/axios/lib/core/settle.js":[function(require,module,exports) {
+'use strict';
+
+var createError = require('./createError');
+
+/**
+ * Resolve or reject a Promise based on response status.
+ *
+ * @param {Function} resolve A function that resolves the promise.
+ * @param {Function} reject A function that rejects the promise.
+ * @param {object} response The response.
+ */
+module.exports = function settle(resolve, reject, response) {
+  var validateStatus = response.config.validateStatus;
+  // Note: status is not exposed by XDomainRequest
+  if (!response.status || !validateStatus || validateStatus(response.status)) {
+    resolve(response);
+  } else {
+    reject(createError(
+      'Request failed with status code ' + response.status,
+      response.config,
+      null,
+      response.request,
+      response
+    ));
+  }
+};
+
+},{"./createError":"../../node_modules/axios/lib/core/createError.js"}],"../../node_modules/axios/lib/helpers/buildURL.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+function encode(val) {
+  return encodeURIComponent(val).
+    replace(/%40/gi, '@').
+    replace(/%3A/gi, ':').
+    replace(/%24/g, '$').
+    replace(/%2C/gi, ',').
+    replace(/%20/g, '+').
+    replace(/%5B/gi, '[').
+    replace(/%5D/gi, ']');
+}
+
+/**
+ * Build a URL by appending params to the end
+ *
+ * @param {string} url The base of the url (e.g., http://www.google.com)
+ * @param {object} [params] The params to be appended
+ * @returns {string} The formatted url
+ */
+module.exports = function buildURL(url, params, paramsSerializer) {
+  /*eslint no-param-reassign:0*/
+  if (!params) {
+    return url;
+  }
+
+  var serializedParams;
+  if (paramsSerializer) {
+    serializedParams = paramsSerializer(params);
+  } else if (utils.isURLSearchParams(params)) {
+    serializedParams = params.toString();
+  } else {
+    var parts = [];
+
+    utils.forEach(params, function serialize(val, key) {
+      if (val === null || typeof val === 'undefined') {
+        return;
+      }
+
+      if (utils.isArray(val)) {
+        key = key + '[]';
+      } else {
+        val = [val];
+      }
+
+      utils.forEach(val, function parseValue(v) {
+        if (utils.isDate(v)) {
+          v = v.toISOString();
+        } else if (utils.isObject(v)) {
+          v = JSON.stringify(v);
+        }
+        parts.push(encode(key) + '=' + encode(v));
+      });
+    });
+
+    serializedParams = parts.join('&');
+  }
+
+  if (serializedParams) {
+    url += (url.indexOf('?') === -1 ? '?' : '&') + serializedParams;
+  }
+
+  return url;
+};
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/helpers/parseHeaders.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+// Headers whose duplicates are ignored by node
+// c.f. https://nodejs.org/api/http.html#http_message_headers
+var ignoreDuplicateOf = [
+  'age', 'authorization', 'content-length', 'content-type', 'etag',
+  'expires', 'from', 'host', 'if-modified-since', 'if-unmodified-since',
+  'last-modified', 'location', 'max-forwards', 'proxy-authorization',
+  'referer', 'retry-after', 'user-agent'
+];
+
+/**
+ * Parse headers into an object
+ *
+ * ```
+ * Date: Wed, 27 Aug 2014 08:58:49 GMT
+ * Content-Type: application/json
+ * Connection: keep-alive
+ * Transfer-Encoding: chunked
+ * ```
+ *
+ * @param {String} headers Headers needing to be parsed
+ * @returns {Object} Headers parsed into an object
+ */
+module.exports = function parseHeaders(headers) {
+  var parsed = {};
+  var key;
+  var val;
+  var i;
+
+  if (!headers) { return parsed; }
+
+  utils.forEach(headers.split('\n'), function parser(line) {
+    i = line.indexOf(':');
+    key = utils.trim(line.substr(0, i)).toLowerCase();
+    val = utils.trim(line.substr(i + 1));
+
+    if (key) {
+      if (parsed[key] && ignoreDuplicateOf.indexOf(key) >= 0) {
+        return;
+      }
+      if (key === 'set-cookie') {
+        parsed[key] = (parsed[key] ? parsed[key] : []).concat([val]);
+      } else {
+        parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
+      }
+    }
+  });
+
+  return parsed;
+};
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/helpers/isURLSameOrigin.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+module.exports = (
+  utils.isStandardBrowserEnv() ?
+
+  // Standard browser envs have full support of the APIs needed to test
+  // whether the request URL is of the same origin as current location.
+  (function standardBrowserEnv() {
+    var msie = /(msie|trident)/i.test(navigator.userAgent);
+    var urlParsingNode = document.createElement('a');
+    var originURL;
+
+    /**
+    * Parse a URL to discover it's components
+    *
+    * @param {String} url The URL to be parsed
+    * @returns {Object}
+    */
+    function resolveURL(url) {
+      var href = url;
+
+      if (msie) {
+        // IE needs attribute set twice to normalize properties
+        urlParsingNode.setAttribute('href', href);
+        href = urlParsingNode.href;
+      }
+
+      urlParsingNode.setAttribute('href', href);
+
+      // urlParsingNode provides the UrlUtils interface - http://url.spec.whatwg.org/#urlutils
+      return {
+        href: urlParsingNode.href,
+        protocol: urlParsingNode.protocol ? urlParsingNode.protocol.replace(/:$/, '') : '',
+        host: urlParsingNode.host,
+        search: urlParsingNode.search ? urlParsingNode.search.replace(/^\?/, '') : '',
+        hash: urlParsingNode.hash ? urlParsingNode.hash.replace(/^#/, '') : '',
+        hostname: urlParsingNode.hostname,
+        port: urlParsingNode.port,
+        pathname: (urlParsingNode.pathname.charAt(0) === '/') ?
+                  urlParsingNode.pathname :
+                  '/' + urlParsingNode.pathname
+      };
+    }
+
+    originURL = resolveURL(window.location.href);
+
+    /**
+    * Determine if a URL shares the same origin as the current location
+    *
+    * @param {String} requestURL The URL to test
+    * @returns {boolean} True if URL shares the same origin, otherwise false
+    */
+    return function isURLSameOrigin(requestURL) {
+      var parsed = (utils.isString(requestURL)) ? resolveURL(requestURL) : requestURL;
+      return (parsed.protocol === originURL.protocol &&
+            parsed.host === originURL.host);
+    };
+  })() :
+
+  // Non standard browser envs (web workers, react-native) lack needed support.
+  (function nonStandardBrowserEnv() {
+    return function isURLSameOrigin() {
+      return true;
+    };
+  })()
+);
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/helpers/cookies.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+module.exports = (
+  utils.isStandardBrowserEnv() ?
+
+  // Standard browser envs support document.cookie
+  (function standardBrowserEnv() {
+    return {
+      write: function write(name, value, expires, path, domain, secure) {
+        var cookie = [];
+        cookie.push(name + '=' + encodeURIComponent(value));
+
+        if (utils.isNumber(expires)) {
+          cookie.push('expires=' + new Date(expires).toGMTString());
+        }
+
+        if (utils.isString(path)) {
+          cookie.push('path=' + path);
+        }
+
+        if (utils.isString(domain)) {
+          cookie.push('domain=' + domain);
+        }
+
+        if (secure === true) {
+          cookie.push('secure');
+        }
+
+        document.cookie = cookie.join('; ');
+      },
+
+      read: function read(name) {
+        var match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+        return (match ? decodeURIComponent(match[3]) : null);
+      },
+
+      remove: function remove(name) {
+        this.write(name, '', Date.now() - 86400000);
+      }
+    };
+  })() :
+
+  // Non standard browser env (web workers, react-native) lack needed support.
+  (function nonStandardBrowserEnv() {
+    return {
+      write: function write() {},
+      read: function read() { return null; },
+      remove: function remove() {}
+    };
+  })()
+);
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/adapters/xhr.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+var settle = require('./../core/settle');
+var buildURL = require('./../helpers/buildURL');
+var parseHeaders = require('./../helpers/parseHeaders');
+var isURLSameOrigin = require('./../helpers/isURLSameOrigin');
+var createError = require('../core/createError');
+
+module.exports = function xhrAdapter(config) {
+  return new Promise(function dispatchXhrRequest(resolve, reject) {
+    var requestData = config.data;
+    var requestHeaders = config.headers;
+
+    if (utils.isFormData(requestData)) {
+      delete requestHeaders['Content-Type']; // Let the browser set it
+    }
+
+    var request = new XMLHttpRequest();
+
+    // HTTP basic authentication
+    if (config.auth) {
+      var username = config.auth.username || '';
+      var password = config.auth.password || '';
+      requestHeaders.Authorization = 'Basic ' + btoa(username + ':' + password);
+    }
+
+    request.open(config.method.toUpperCase(), buildURL(config.url, config.params, config.paramsSerializer), true);
+
+    // Set the request timeout in MS
+    request.timeout = config.timeout;
+
+    // Listen for ready state
+    request.onreadystatechange = function handleLoad() {
+      if (!request || request.readyState !== 4) {
+        return;
+      }
+
+      // The request errored out and we didn't get a response, this will be
+      // handled by onerror instead
+      // With one exception: request that using file: protocol, most browsers
+      // will return status as 0 even though it's a successful request
+      if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf('file:') === 0)) {
+        return;
+      }
+
+      // Prepare the response
+      var responseHeaders = 'getAllResponseHeaders' in request ? parseHeaders(request.getAllResponseHeaders()) : null;
+      var responseData = !config.responseType || config.responseType === 'text' ? request.responseText : request.response;
+      var response = {
+        data: responseData,
+        status: request.status,
+        statusText: request.statusText,
+        headers: responseHeaders,
+        config: config,
+        request: request
+      };
+
+      settle(resolve, reject, response);
+
+      // Clean up request
+      request = null;
+    };
+
+    // Handle low level network errors
+    request.onerror = function handleError() {
+      // Real errors are hidden from us by the browser
+      // onerror should only fire if it's a network error
+      reject(createError('Network Error', config, null, request));
+
+      // Clean up request
+      request = null;
+    };
+
+    // Handle timeout
+    request.ontimeout = function handleTimeout() {
+      reject(createError('timeout of ' + config.timeout + 'ms exceeded', config, 'ECONNABORTED',
+        request));
+
+      // Clean up request
+      request = null;
+    };
+
+    // Add xsrf header
+    // This is only done if running in a standard browser environment.
+    // Specifically not if we're in a web worker, or react-native.
+    if (utils.isStandardBrowserEnv()) {
+      var cookies = require('./../helpers/cookies');
+
+      // Add xsrf header
+      var xsrfValue = (config.withCredentials || isURLSameOrigin(config.url)) && config.xsrfCookieName ?
+          cookies.read(config.xsrfCookieName) :
+          undefined;
+
+      if (xsrfValue) {
+        requestHeaders[config.xsrfHeaderName] = xsrfValue;
+      }
+    }
+
+    // Add headers to the request
+    if ('setRequestHeader' in request) {
+      utils.forEach(requestHeaders, function setRequestHeader(val, key) {
+        if (typeof requestData === 'undefined' && key.toLowerCase() === 'content-type') {
+          // Remove Content-Type if data is undefined
+          delete requestHeaders[key];
+        } else {
+          // Otherwise add header to the request
+          request.setRequestHeader(key, val);
+        }
+      });
+    }
+
+    // Add withCredentials to request if needed
+    if (config.withCredentials) {
+      request.withCredentials = true;
+    }
+
+    // Add responseType to request if needed
+    if (config.responseType) {
+      try {
+        request.responseType = config.responseType;
+      } catch (e) {
+        // Expected DOMException thrown by browsers not compatible XMLHttpRequest Level 2.
+        // But, this can be suppressed for 'json' type as it can be parsed by default 'transformResponse' function.
+        if (config.responseType !== 'json') {
+          throw e;
+        }
+      }
+    }
+
+    // Handle progress if needed
+    if (typeof config.onDownloadProgress === 'function') {
+      request.addEventListener('progress', config.onDownloadProgress);
+    }
+
+    // Not all browsers support upload events
+    if (typeof config.onUploadProgress === 'function' && request.upload) {
+      request.upload.addEventListener('progress', config.onUploadProgress);
+    }
+
+    if (config.cancelToken) {
+      // Handle cancellation
+      config.cancelToken.promise.then(function onCanceled(cancel) {
+        if (!request) {
+          return;
+        }
+
+        request.abort();
+        reject(cancel);
+        // Clean up request
+        request = null;
+      });
+    }
+
+    if (requestData === undefined) {
+      requestData = null;
+    }
+
+    // Send the request
+    request.send(requestData);
+  });
+};
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js","./../core/settle":"../../node_modules/axios/lib/core/settle.js","./../helpers/buildURL":"../../node_modules/axios/lib/helpers/buildURL.js","./../helpers/parseHeaders":"../../node_modules/axios/lib/helpers/parseHeaders.js","./../helpers/isURLSameOrigin":"../../node_modules/axios/lib/helpers/isURLSameOrigin.js","../core/createError":"../../node_modules/axios/lib/core/createError.js","./../helpers/cookies":"../../node_modules/axios/lib/helpers/cookies.js"}],"../../node_modules/axios/lib/defaults.js":[function(require,module,exports) {
+var process = require("process");
+'use strict';
+
+var utils = require('./utils');
+var normalizeHeaderName = require('./helpers/normalizeHeaderName');
+
+var DEFAULT_CONTENT_TYPE = {
+  'Content-Type': 'application/x-www-form-urlencoded'
+};
+
+function setContentTypeIfUnset(headers, value) {
+  if (!utils.isUndefined(headers) && utils.isUndefined(headers['Content-Type'])) {
+    headers['Content-Type'] = value;
+  }
+}
+
+function getDefaultAdapter() {
+  var adapter;
+  if (typeof XMLHttpRequest !== 'undefined') {
+    // For browsers use XHR adapter
+    adapter = require('./adapters/xhr');
+  } else if (typeof process !== 'undefined') {
+    // For node use HTTP adapter
+    adapter = require('./adapters/http');
+  }
+  return adapter;
+}
+
+var defaults = {
+  adapter: getDefaultAdapter(),
+
+  transformRequest: [function transformRequest(data, headers) {
+    normalizeHeaderName(headers, 'Content-Type');
+    if (utils.isFormData(data) ||
+      utils.isArrayBuffer(data) ||
+      utils.isBuffer(data) ||
+      utils.isStream(data) ||
+      utils.isFile(data) ||
+      utils.isBlob(data)
+    ) {
+      return data;
+    }
+    if (utils.isArrayBufferView(data)) {
+      return data.buffer;
+    }
+    if (utils.isURLSearchParams(data)) {
+      setContentTypeIfUnset(headers, 'application/x-www-form-urlencoded;charset=utf-8');
+      return data.toString();
+    }
+    if (utils.isObject(data)) {
+      setContentTypeIfUnset(headers, 'application/json;charset=utf-8');
+      return JSON.stringify(data);
+    }
+    return data;
+  }],
+
+  transformResponse: [function transformResponse(data) {
+    /*eslint no-param-reassign:0*/
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch (e) { /* Ignore */ }
+    }
+    return data;
+  }],
+
+  /**
+   * A timeout in milliseconds to abort a request. If set to 0 (default) a
+   * timeout is not created.
+   */
+  timeout: 0,
+
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
+
+  maxContentLength: -1,
+
+  validateStatus: function validateStatus(status) {
+    return status >= 200 && status < 300;
+  }
+};
+
+defaults.headers = {
+  common: {
+    'Accept': 'application/json, text/plain, */*'
+  }
+};
+
+utils.forEach(['delete', 'get', 'head'], function forEachMethodNoData(method) {
+  defaults.headers[method] = {};
+});
+
+utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
+  defaults.headers[method] = utils.merge(DEFAULT_CONTENT_TYPE);
+});
+
+module.exports = defaults;
+
+},{"./utils":"../../node_modules/axios/lib/utils.js","./helpers/normalizeHeaderName":"../../node_modules/axios/lib/helpers/normalizeHeaderName.js","./adapters/xhr":"../../node_modules/axios/lib/adapters/xhr.js","./adapters/http":"../../node_modules/axios/lib/adapters/xhr.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/axios/lib/core/InterceptorManager.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+function InterceptorManager() {
+  this.handlers = [];
+}
+
+/**
+ * Add a new interceptor to the stack
+ *
+ * @param {Function} fulfilled The function to handle `then` for a `Promise`
+ * @param {Function} rejected The function to handle `reject` for a `Promise`
+ *
+ * @return {Number} An ID used to remove interceptor later
+ */
+InterceptorManager.prototype.use = function use(fulfilled, rejected) {
+  this.handlers.push({
+    fulfilled: fulfilled,
+    rejected: rejected
+  });
+  return this.handlers.length - 1;
+};
+
+/**
+ * Remove an interceptor from the stack
+ *
+ * @param {Number} id The ID that was returned by `use`
+ */
+InterceptorManager.prototype.eject = function eject(id) {
+  if (this.handlers[id]) {
+    this.handlers[id] = null;
+  }
+};
+
+/**
+ * Iterate over all the registered interceptors
+ *
+ * This method is particularly useful for skipping over any
+ * interceptors that may have become `null` calling `eject`.
+ *
+ * @param {Function} fn The function to call for each interceptor
+ */
+InterceptorManager.prototype.forEach = function forEach(fn) {
+  utils.forEach(this.handlers, function forEachHandler(h) {
+    if (h !== null) {
+      fn(h);
+    }
+  });
+};
+
+module.exports = InterceptorManager;
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/core/transformData.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+
+/**
+ * Transform the data for a request or a response
+ *
+ * @param {Object|String} data The data to be transformed
+ * @param {Array} headers The headers for the request or response
+ * @param {Array|Function} fns A single function or Array of functions
+ * @returns {*} The resulting transformed data
+ */
+module.exports = function transformData(data, headers, fns) {
+  /*eslint no-param-reassign:0*/
+  utils.forEach(fns, function transform(fn) {
+    data = fn(data, headers);
+  });
+
+  return data;
+};
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js"}],"../../node_modules/axios/lib/cancel/isCancel.js":[function(require,module,exports) {
+'use strict';
+
+module.exports = function isCancel(value) {
+  return !!(value && value.__CANCEL__);
+};
+
+},{}],"../../node_modules/axios/lib/helpers/isAbsoluteURL.js":[function(require,module,exports) {
+'use strict';
+
+/**
+ * Determines whether the specified URL is absolute
+ *
+ * @param {string} url The URL to test
+ * @returns {boolean} True if the specified URL is absolute, otherwise false
+ */
+module.exports = function isAbsoluteURL(url) {
+  // A URL is considered absolute if it begins with "<scheme>://" or "//" (protocol-relative URL).
+  // RFC 3986 defines scheme name as a sequence of characters beginning with a letter and followed
+  // by any combination of letters, digits, plus, period, or hyphen.
+  return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
+};
+
+},{}],"../../node_modules/axios/lib/helpers/combineURLs.js":[function(require,module,exports) {
+'use strict';
+
+/**
+ * Creates a new URL by combining the specified URLs
+ *
+ * @param {string} baseURL The base URL
+ * @param {string} relativeURL The relative URL
+ * @returns {string} The combined URL
+ */
+module.exports = function combineURLs(baseURL, relativeURL) {
+  return relativeURL
+    ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '')
+    : baseURL;
+};
+
+},{}],"../../node_modules/axios/lib/core/dispatchRequest.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./../utils');
+var transformData = require('./transformData');
+var isCancel = require('../cancel/isCancel');
+var defaults = require('../defaults');
+var isAbsoluteURL = require('./../helpers/isAbsoluteURL');
+var combineURLs = require('./../helpers/combineURLs');
+
+/**
+ * Throws a `Cancel` if cancellation has been requested.
+ */
+function throwIfCancellationRequested(config) {
+  if (config.cancelToken) {
+    config.cancelToken.throwIfRequested();
+  }
+}
+
+/**
+ * Dispatch a request to the server using the configured adapter.
+ *
+ * @param {object} config The config that is to be used for the request
+ * @returns {Promise} The Promise to be fulfilled
+ */
+module.exports = function dispatchRequest(config) {
+  throwIfCancellationRequested(config);
+
+  // Support baseURL config
+  if (config.baseURL && !isAbsoluteURL(config.url)) {
+    config.url = combineURLs(config.baseURL, config.url);
+  }
+
+  // Ensure headers exist
+  config.headers = config.headers || {};
+
+  // Transform request data
+  config.data = transformData(
+    config.data,
+    config.headers,
+    config.transformRequest
+  );
+
+  // Flatten headers
+  config.headers = utils.merge(
+    config.headers.common || {},
+    config.headers[config.method] || {},
+    config.headers || {}
+  );
+
+  utils.forEach(
+    ['delete', 'get', 'head', 'post', 'put', 'patch', 'common'],
+    function cleanHeaderConfig(method) {
+      delete config.headers[method];
+    }
+  );
+
+  var adapter = config.adapter || defaults.adapter;
+
+  return adapter(config).then(function onAdapterResolution(response) {
+    throwIfCancellationRequested(config);
+
+    // Transform response data
+    response.data = transformData(
+      response.data,
+      response.headers,
+      config.transformResponse
+    );
+
+    return response;
+  }, function onAdapterRejection(reason) {
+    if (!isCancel(reason)) {
+      throwIfCancellationRequested(config);
+
+      // Transform response data
+      if (reason && reason.response) {
+        reason.response.data = transformData(
+          reason.response.data,
+          reason.response.headers,
+          config.transformResponse
+        );
+      }
+    }
+
+    return Promise.reject(reason);
+  });
+};
+
+},{"./../utils":"../../node_modules/axios/lib/utils.js","./transformData":"../../node_modules/axios/lib/core/transformData.js","../cancel/isCancel":"../../node_modules/axios/lib/cancel/isCancel.js","../defaults":"../../node_modules/axios/lib/defaults.js","./../helpers/isAbsoluteURL":"../../node_modules/axios/lib/helpers/isAbsoluteURL.js","./../helpers/combineURLs":"../../node_modules/axios/lib/helpers/combineURLs.js"}],"../../node_modules/axios/lib/core/Axios.js":[function(require,module,exports) {
+'use strict';
+
+var defaults = require('./../defaults');
+var utils = require('./../utils');
+var InterceptorManager = require('./InterceptorManager');
+var dispatchRequest = require('./dispatchRequest');
+
+/**
+ * Create a new instance of Axios
+ *
+ * @param {Object} instanceConfig The default config for the instance
+ */
+function Axios(instanceConfig) {
+  this.defaults = instanceConfig;
+  this.interceptors = {
+    request: new InterceptorManager(),
+    response: new InterceptorManager()
+  };
+}
+
+/**
+ * Dispatch a request
+ *
+ * @param {Object} config The config specific for this request (merged with this.defaults)
+ */
+Axios.prototype.request = function request(config) {
+  /*eslint no-param-reassign:0*/
+  // Allow for axios('example/url'[, config]) a la fetch API
+  if (typeof config === 'string') {
+    config = utils.merge({
+      url: arguments[0]
+    }, arguments[1]);
+  }
+
+  config = utils.merge(defaults, {method: 'get'}, this.defaults, config);
+  config.method = config.method.toLowerCase();
+
+  // Hook up interceptors middleware
+  var chain = [dispatchRequest, undefined];
+  var promise = Promise.resolve(config);
+
+  this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
+    chain.unshift(interceptor.fulfilled, interceptor.rejected);
+  });
+
+  this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
+    chain.push(interceptor.fulfilled, interceptor.rejected);
+  });
+
+  while (chain.length) {
+    promise = promise.then(chain.shift(), chain.shift());
+  }
+
+  return promise;
+};
+
+// Provide aliases for supported request methods
+utils.forEach(['delete', 'get', 'head', 'options'], function forEachMethodNoData(method) {
+  /*eslint func-names:0*/
+  Axios.prototype[method] = function(url, config) {
+    return this.request(utils.merge(config || {}, {
+      method: method,
+      url: url
+    }));
+  };
+});
+
+utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
+  /*eslint func-names:0*/
+  Axios.prototype[method] = function(url, data, config) {
+    return this.request(utils.merge(config || {}, {
+      method: method,
+      url: url,
+      data: data
+    }));
+  };
+});
+
+module.exports = Axios;
+
+},{"./../defaults":"../../node_modules/axios/lib/defaults.js","./../utils":"../../node_modules/axios/lib/utils.js","./InterceptorManager":"../../node_modules/axios/lib/core/InterceptorManager.js","./dispatchRequest":"../../node_modules/axios/lib/core/dispatchRequest.js"}],"../../node_modules/axios/lib/cancel/Cancel.js":[function(require,module,exports) {
+'use strict';
+
+/**
+ * A `Cancel` is an object that is thrown when an operation is canceled.
+ *
+ * @class
+ * @param {string=} message The message.
+ */
+function Cancel(message) {
+  this.message = message;
+}
+
+Cancel.prototype.toString = function toString() {
+  return 'Cancel' + (this.message ? ': ' + this.message : '');
+};
+
+Cancel.prototype.__CANCEL__ = true;
+
+module.exports = Cancel;
+
+},{}],"../../node_modules/axios/lib/cancel/CancelToken.js":[function(require,module,exports) {
+'use strict';
+
+var Cancel = require('./Cancel');
+
+/**
+ * A `CancelToken` is an object that can be used to request cancellation of an operation.
+ *
+ * @class
+ * @param {Function} executor The executor function.
+ */
+function CancelToken(executor) {
+  if (typeof executor !== 'function') {
+    throw new TypeError('executor must be a function.');
+  }
+
+  var resolvePromise;
+  this.promise = new Promise(function promiseExecutor(resolve) {
+    resolvePromise = resolve;
+  });
+
+  var token = this;
+  executor(function cancel(message) {
+    if (token.reason) {
+      // Cancellation has already been requested
+      return;
+    }
+
+    token.reason = new Cancel(message);
+    resolvePromise(token.reason);
+  });
+}
+
+/**
+ * Throws a `Cancel` if cancellation has been requested.
+ */
+CancelToken.prototype.throwIfRequested = function throwIfRequested() {
+  if (this.reason) {
+    throw this.reason;
+  }
+};
+
+/**
+ * Returns an object that contains a new `CancelToken` and a function that, when called,
+ * cancels the `CancelToken`.
+ */
+CancelToken.source = function source() {
+  var cancel;
+  var token = new CancelToken(function executor(c) {
+    cancel = c;
+  });
+  return {
+    token: token,
+    cancel: cancel
+  };
+};
+
+module.exports = CancelToken;
+
+},{"./Cancel":"../../node_modules/axios/lib/cancel/Cancel.js"}],"../../node_modules/axios/lib/helpers/spread.js":[function(require,module,exports) {
+'use strict';
+
+/**
+ * Syntactic sugar for invoking a function and expanding an array for arguments.
+ *
+ * Common use case would be to use `Function.prototype.apply`.
+ *
+ *  ```js
+ *  function f(x, y, z) {}
+ *  var args = [1, 2, 3];
+ *  f.apply(null, args);
+ *  ```
+ *
+ * With `spread` this example can be re-written.
+ *
+ *  ```js
+ *  spread(function(x, y, z) {})([1, 2, 3]);
+ *  ```
+ *
+ * @param {Function} callback
+ * @returns {Function}
+ */
+module.exports = function spread(callback) {
+  return function wrap(arr) {
+    return callback.apply(null, arr);
+  };
+};
+
+},{}],"../../node_modules/axios/lib/axios.js":[function(require,module,exports) {
+'use strict';
+
+var utils = require('./utils');
+var bind = require('./helpers/bind');
+var Axios = require('./core/Axios');
+var defaults = require('./defaults');
+
+/**
+ * Create an instance of Axios
+ *
+ * @param {Object} defaultConfig The default config for the instance
+ * @return {Axios} A new instance of Axios
+ */
+function createInstance(defaultConfig) {
+  var context = new Axios(defaultConfig);
+  var instance = bind(Axios.prototype.request, context);
+
+  // Copy axios.prototype to instance
+  utils.extend(instance, Axios.prototype, context);
+
+  // Copy context to instance
+  utils.extend(instance, context);
+
+  return instance;
+}
+
+// Create the default instance to be exported
+var axios = createInstance(defaults);
+
+// Expose Axios class to allow class inheritance
+axios.Axios = Axios;
+
+// Factory for creating new instances
+axios.create = function create(instanceConfig) {
+  return createInstance(utils.merge(defaults, instanceConfig));
+};
+
+// Expose Cancel & CancelToken
+axios.Cancel = require('./cancel/Cancel');
+axios.CancelToken = require('./cancel/CancelToken');
+axios.isCancel = require('./cancel/isCancel');
+
+// Expose all/spread
+axios.all = function all(promises) {
+  return Promise.all(promises);
+};
+axios.spread = require('./helpers/spread');
+
+module.exports = axios;
+
+// Allow use of default import syntax in TypeScript
+module.exports.default = axios;
+
+},{"./utils":"../../node_modules/axios/lib/utils.js","./helpers/bind":"../../node_modules/axios/lib/helpers/bind.js","./core/Axios":"../../node_modules/axios/lib/core/Axios.js","./defaults":"../../node_modules/axios/lib/defaults.js","./cancel/Cancel":"../../node_modules/axios/lib/cancel/Cancel.js","./cancel/CancelToken":"../../node_modules/axios/lib/cancel/CancelToken.js","./cancel/isCancel":"../../node_modules/axios/lib/cancel/isCancel.js","./helpers/spread":"../../node_modules/axios/lib/helpers/spread.js"}],"../../node_modules/axios/index.js":[function(require,module,exports) {
+module.exports = require('./lib/axios');
+},{"./lib/axios":"../../node_modules/axios/lib/axios.js"}],"../../node_modules/underscore/underscore.js":[function(require,module,exports) {
 var global = arguments[3];
 var define;
 //     Underscore.js 1.9.1
@@ -23302,6 +24016,8 @@ var _mapStyle = require("../live-tiles/src/map-style");
 
 var _socket = _interopRequireDefault(require("socket.io-client"));
 
+var _axios = require("axios");
+
 var _underscore = require("underscore");
 
 var _mapboxGlUtils = _interopRequireDefault(require("mapbox-gl-utils"));
@@ -23338,7 +24054,7 @@ regeneratorRuntime.mark(function _callee() {
       switch (_context.prev = _context.next) {
         case 0:
           _context.next = 2;
-          return get("/polygon/types");
+          return (0, _axios.get)("/polygon/types");
 
         case 2:
           _ref2 = _context.sent;
@@ -23372,7 +24088,7 @@ regeneratorRuntime.mark(function _callee() {
     }
   }, _callee);
 }))();
-},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","axios":"../../node_modules/axios/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -23400,7 +24116,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58338" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "61187" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -23575,5 +24291,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../../../../../../../../usr/local/var/nodenv/versions/8.6.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js","index.coffee"], null)
+},{}]},{},["../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","index.coffee"], null)
 //# sourceMappingURL=/web.9d9889e0.js.map
