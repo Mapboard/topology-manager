@@ -1,5 +1,5 @@
 import 'babel-polyfill'
-import {createStyle, createGeologySource} from './map-style'
+import {createStyle, createGeologySource} from '../live-tiles/src/map-style'
 import io from 'socket.io-client'
 import {debounce} from 'underscore'
 import mbxUtils from 'mapbox-gl-utils'
@@ -26,7 +26,8 @@ reloadGeologySource = (map)->
   oldID = newID
 
 do ->
-  style = await createStyle()
+  {data: polygonTypes} = await get "/polygon/types"
+  style = createStyle(polygonTypes)
 
   map = new mapboxgl.Map {
     container: 'map',

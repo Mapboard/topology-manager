@@ -1,5 +1,4 @@
-import {get} from 'axios'
-import baseStyle from './base-style.json'
+baseStyle = require './base-style.json'
 
 createGeologySource = ->
   {
@@ -11,11 +10,9 @@ createGeologySource = ->
     minzoom: 5
   }
 
-createStyle = ->
-
-  {data} = await get "/polygon/types"
+createStyle = (polygonTypes)->
   colors = {}
-  for d in data
+  for d in polygonTypes
     colors[d.id] = d.color
 
   geologyLayers = [
@@ -93,4 +90,4 @@ createStyle = ->
   return style
 
 
-export {createStyle, createGeologySource}
+module.exports = {createStyle, createGeologySource}

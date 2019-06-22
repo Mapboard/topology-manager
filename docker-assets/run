@@ -27,4 +27,4 @@ cat /app/docker-assets/demo-units/polygon-types.csv \
 COPY tmp_polygon_type (id,name,color,topology)
 FROM STDIN DELIMITER ',' CSV HEADER;"
 
-/app/bin/geologic-map serve -v
+/app/bin/geologic-map serve
