@@ -10135,21 +10135,30 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 (function () {
   var baseStyle, createGeologySource, createStyle;
   baseStyle = require('./base-style.json');
 
-  createGeologySource = function createGeologySource() {
+  createGeologySource = function createGeologySource(host) {
     return {
       type: "vector",
-      tiles: ["http://localhost:3006/live-tiles/map-data/{z}/{x}/{y}.pbf"],
+      tiles: ["".concat(host, "/live-tiles/map-data/{z}/{x}/{y}.pbf")],
       maxzoom: 15,
       minzoom: 5
     };
   };
 
-  createStyle = function createStyle(polygonTypes) {
+  createStyle = function createStyle(polygonTypes, hostName) {
     var colors, d, geologyLayers, i, len, style;
+
+    if (hostName == null) {
+      hostName = 'http://localhost:3006';
+    }
+
     colors = {};
 
     for (i = 0, len = polygonTypes.length; i < len; i++) {
@@ -10170,11 +10179,15 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
       "source": "geology",
       "source-layer": "contact",
       "type": "line",
-      "paint": {
-        "line-color": "#000000"
+      "layout": {
+        "line-cap": "round"
       },
-      filter: ["!=", "surficial", ["get", "type"]]
+      "paint": {
+        "line-color": "#000000",
+        "line-width": ['interpolate', ['exponential', 2], ['zoom'], 10, ["*", 3, ["^", 2, -6]], 24, ["*", 3, ["^", 2, 8]]]
+      }
     }, {
+      //filter: ["!", ["match", "surficial", ["get", "type"]]]
       "id": "surface",
       "source": "geology",
       "source-layer": "surficial",
@@ -10183,21 +10196,23 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
       }
     }, {
-      "id": "surficial-contact",
-      "source": "geology",
-      "source-layer": "contact",
-      "type": "line",
-      "paint": {
-        "line-color": "#ffbe17"
-      },
-      filter: ["==", "surficial", ["get", "type"]]
-    }, {
+      // {
+      //   "id": "surficial-contact",
+      //   "source": "geology",
+      //   "source-layer": "contact",
+      //   "type": "line",
+      //   "paint": {
+      //     "line-color": "#ffbe17"
+      //   }
+      //   filter: ["match", "surficial", ["get", "type"]]
+      // }
       "id": "watercourse",
       "source": "geology",
       "source-layer": "line",
       "type": "line",
       "paint": {
-        "line-color": "#3574AC"
+        "line-color": "#3574AC",
+        "line-width": 1
       },
       filter: ["==", "watercourse", ["get", "type"]]
     }, {
@@ -10206,14 +10221,14 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
       "source-layer": "line",
       "type": "line",
       "paint": {
-        "line-color": "#000000"
+        "line-color": "#cccccc"
       },
       filter: ["!=", "watercourse", ["get", "type"]]
     }];
-    style = baseStyle;
-    style.sources.geology = createGeologySource();
-    style.layers = [].concat(_toConsumableArray(baseStyle.layers), _toConsumableArray(geologyLayers));
-    style.geologyLayers = geologyLayers;
+    style = _objectSpread({}, baseStyle);
+    style.sources.geology = createGeologySource(hostName);
+    style.layers = [].concat(_toConsumableArray(baseStyle.layers), _toConsumableArray(geologyLayers)); //style.geologyLayers = geologyLayers
+
     return style;
   };
 
@@ -24116,7 +24131,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "61187" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49926" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

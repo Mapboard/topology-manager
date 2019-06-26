@@ -1,16 +1,18 @@
 baseStyle = require './base-style.json'
 
-createGeologySource = ->
+createGeologySource = (host)->
   {
     type: "vector",
     tiles: [
-      "http://localhost:3006/live-tiles/map-data/{z}/{x}/{y}.pbf",
+      "#{host}/live-tiles/map-data/{z}/{x}/{y}.pbf",
     ],
     maxzoom: 15
     minzoom: 5
   }
 
-createStyle = (polygonTypes)->
+createStyle = (polygonTypes, hostName)->
+  hostName ?= 'http://localhost:3006'
+
   colors = {}
   for d in polygonTypes
     colors[d.id] = d.color
@@ -30,10 +32,20 @@ createStyle = (polygonTypes)->
       "source": "geology",
       "source-layer": "contact",
       "type": "line",
+      "layout": {
+        "line-cap": "round"
+      }
       "paint": {
         "line-color": "#000000"
+        "line-width": [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            10, ["*", 3, ["^", 2, -6]],
+            24, ["*", 3, ["^", 2, 8]]
+        ]
       }
-      filter: ["!=", "surficial", ["get", "type"]]
+      #filter: ["!", ["match", "surficial", ["get", "type"]]]
     }
     {
       "id": "surface",
@@ -44,16 +56,16 @@ createStyle = (polygonTypes)->
         "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
       }
     }
-    {
-      "id": "surficial-contact",
-      "source": "geology",
-      "source-layer": "contact",
-      "type": "line",
-      "paint": {
-        "line-color": "#ffbe17"
-      }
-      filter: ["==", "surficial", ["get", "type"]]
-    }
+    # {
+    #   "id": "surficial-contact",
+    #   "source": "geology",
+    #   "source-layer": "contact",
+    #   "type": "line",
+    #   "paint": {
+    #     "line-color": "#ffbe17"
+    #   }
+    #   filter: ["match", "surficial", ["get", "type"]]
+    # }
     {
       "id": "watercourse",
       "source": "geology",
@@ -61,6 +73,7 @@ createStyle = (polygonTypes)->
       "type": "line",
       "paint": {
         "line-color": "#3574AC"
+        "line-width": 1
       }
       filter: ["==", "watercourse", ["get", "type"]]
     }
@@ -70,22 +83,24 @@ createStyle = (polygonTypes)->
       "source-layer": "line",
       "type": "line",
       "paint": {
-        "line-color": "#000000"
+        "line-color": "#cccccc"
       }
       filter: ["!=", "watercourse", ["get", "type"]]
     }
   ]
 
-  style = baseStyle
+  style = {baseStyle...}
 
-  style.sources.geology = createGeologySource()
+  style.sources.geology = createGeologySource(hostName)
 
   style.layers = [
     baseStyle.layers...
     geologyLayers...
   ]
 
-  style.geologyLayers = geologyLayers
+  #style.geologyLayers = geologyLayers
+
+
 
   return style
 

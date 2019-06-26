@@ -49,7 +49,7 @@ liveTileServer = (cfg)->
   app.get "/style.json", (req, res)->
     fn = require.resolve("../server/map-digitizer-server/sql/get-feature-types.sql")
     polygonTypes = await db.query sql(fn), {schema: 'map_digitizer', table: 'polygon_type'}
-    res.json(createStyle(polygonTypes))
+    res.json(createStyle(polygonTypes, "http://Daven-Quinn.local:3006"))
 
   return app
 
