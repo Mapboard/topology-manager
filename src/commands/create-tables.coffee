@@ -62,5 +62,3 @@ handler = (argv)->
   process.exit()
 
 module.exports = {command, describe, handler}
-
-

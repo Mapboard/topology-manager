@@ -7,7 +7,7 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "linklocal",
+    "preinstall": "git submodule update --init; npm install -D linklocal; linklocal",
     "start": "./bin/geologic-map-serve-dev"
   },
   "browserslist": [
@@ -57,6 +57,7 @@
   "devDependencies": {
     "coffeescript": "^2.4.1",
     "cssnano": "^4.1.10",
+    "linklocal": "^2.8.2",
     "parcel-bundler": "^1.12.3",
     "stylus": "^0.54.5"
   }
