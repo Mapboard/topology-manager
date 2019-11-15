@@ -24103,7 +24103,7 @@ regeneratorRuntime.mark(function _callee() {
     }
   }, _callee);
 }))();
-},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","axios":"../../node_modules/axios/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","axios":"../../node_modules/axios/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../../../../../../../../usr/local/var/nodenv/versions/10.11.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -24131,7 +24131,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49926" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58919" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -24306,5 +24306,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","index.coffee"], null)
+},{}]},{},["../../../../../../../../../usr/local/var/nodenv/versions/10.11.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js","index.coffee"], null)
 //# sourceMappingURL=/web.9d9889e0.js.map
