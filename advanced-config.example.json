@@ -1,0 +1,30 @@
+{
+  "database": "Naukluft",
+  "topo_schema": "map_topology",
+  "data_schema": "map_digitizer",
+  "srid": 32733,
+  "tolerance": 1,
+  "asset_directory": "../Products/map-patterns",
+  "web": {
+    "access-token": "Insert a "
+  },
+  "extensions": {
+    "live-tiles": "live-tiles",
+    "geologic-map-display": "geologic-map-display",
+    "stratigraphy-views": "file:stratigraphy-views",
+    "geologic-map-fill-patterns": "file:../deps/geologic-map-fill-patterns",
+    "geologic-map-nappes": "file:../deps/geologic-map-nappes"
+  },
+  "live-tiles": {
+    "zoomRange": [5,15],
+    "bounds": [15.75, -24.60, 16.60, -23.7]
+  },
+  "server": {
+    "tiles": {
+      "/satellite": "mbtiles:///Users/Daven/Projects/Naukluft/data/tilesets/Naukluft-satellite.mbtiles",
+      "/geology": "mapnik:///Users/Daven/Projects/Naukluft/versioned/local-packages/map-styles/compiled/geology.mercator.xml?tileSize=512&scale=2",
+      "/geology-256": "mapnik:///Users/Daven/Projects/Naukluft/versioned/local-packages/map-styles/compiled/geology.mercator.xml?tileSize=256&scale=2"
+    },
+    "port": 3006
+  }
+}
