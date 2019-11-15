@@ -7,7 +7,7 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "git submodule update --init; npm install -D linklocal; linklocal",
+    "preinstall": "npm install -D linklocal; linklocal",
     "start": "./bin/geologic-map-serve-dev"
   },
   "browserslist": [
@@ -24,6 +24,7 @@
     "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
+    "cli-progress": "^3.4.0",
     "colors": "^1.1.2",
     "express": "^4.16.4",
     "glob": "^7.1.2",

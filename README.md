@@ -45,13 +45,27 @@ particular the Mapboard GIS iPad application.
 
 ## Installation
 
-For now, installation from source is required. Installation using
-Docker and `docker-compose` is being tested, as is encapsulation
-of the watcher executable with [**zeit/pkg**](https://github.com/zeit/pkg).
-However, these processes are in development and aren't yet fully supported.
+For now, installation from source is required. Encapsulation
+of the watcher executable with [**zeit/pkg**](https://github.com/zeit/pkg)
+is in development.
+
+### Preliminary steps
 
 #. Clone this repository: `git clone https://github.com/davenquinn/postgis-geologic-map.git`
 #. Update Git submodules: `git submodule update --init`.
+#. `cd` to the repository directory (obviously)...
+
+### Docker installation
+
+#. Make sure Docker and `docker-compose` are installed using the
+   [instructions for your platform](https://docs.docker.com/install/).
+#. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
+#. Connect to the `geologic_map` database on local port `54321`.
+
+
+
+### Local installation
+
 #. Install node dependencies with `npm install`.
 #. Create a new PostgreSQL database to hold the mapping data (or you can specify an existing one!).
 #. Create a configuration JSON file using [`geologic-map-config.example.json`](geologic-map-config.example.json)
@@ -98,4 +112,5 @@ of the software around it needs much improvement.
 - [ ] Improve configurability and stability of Docker version
 - [ ] Move `map_topology.subtopology` table to `map_digitizer` schema
       (it currently breaks rule of no dependencies between the schemas).
-- [ ] Stabilize and document vector-tile generation functionality
+- [ ] Stabilize and document vector-tile generation functionality.
+- [ ] TESTS!

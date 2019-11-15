@@ -6,5 +6,5 @@ while ! $(psql -h db -p 5432 -U postgres geologic_map > /dev/null 2>&1) ; do
 done
 
 /app/bin/geologic-map create-tables --all
-/app/bin/geologic-maps create-demo-units
+/app/bin/geologic-map create-demo-units
 /app/bin/geologic-map serve

@@ -5,17 +5,8 @@ RUN apt-get update \
 
 RUN mkdir /app
 
-WORKDIR /app
+COPY ./ /app/
 
-RUN npm install -g linklocal && \
-  mkdir -p /app/extensions/server/map-digitizer-server
-
-COPY package.json /app/
-COPY ./extensions/server/map-digitizer-server/*.* \
-  /app/extensions/server/map-digitizer-server/
-
-RUN linklocal && npm install
-
-COPY . /app/
-
+WORKDIR /app/
+RUN npm install -g linklocal & linklocal & npm install
 CMD /app/docker-assets/run
