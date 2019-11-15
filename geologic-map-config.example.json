@@ -5,6 +5,6 @@
   "srid": 32733,
   "tolerance": 1,
   "extensions": {
-    "demo-units": "file:./extensions/demo-units"
+    "demo-units": "demo-units"
   }
 }

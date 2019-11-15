@@ -16,7 +16,8 @@
   "extensions": {
     "geologic-map-display": "file:./extensions/display",
     "fill-patterns": "file:./extensions/fill-patterns",
-    "live-tiles": "file:./extensions/live-tiles"
+    "live-tiles": "file:./extensions/live-tiles",
+    "demo-units": "file:./extensions/demo-units"
   },
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
