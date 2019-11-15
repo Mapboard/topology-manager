@@ -51,34 +51,34 @@ is in development.
 
 ### Preliminary steps
 
-#. Clone this repository: `git clone https://github.com/davenquinn/postgis-geologic-map.git`
-#. Update Git submodules: `git submodule update --init`.
-#. `cd` to the repository directory (obviously)...
+1. Clone this repository: `git clone https://github.com/davenquinn/postgis-geologic-map.git`
+2. Update Git submodules: `git submodule update --init`.
+3. `cd` to the repository directory (obviously)...
 
 ### Docker installation
 
-#. Make sure Docker and `docker-compose` are installed using the
+1. Make sure Docker and `docker-compose` are installed using the
    [instructions for your platform](https://docs.docker.com/install/).
-#. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
-#. Connect to the `geologic_map` database on local port `54321`.
+2. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
+3. Connect to the `geologic_map` database on local port `54321`.
 
 
 
 ### Local installation
 
-#. Install node dependencies with `npm install`.
-#. Create a new PostgreSQL database to hold the mapping data (or you can specify an existing one!).
-#. Create a configuration JSON file using [`geologic-map-config.example.json`](geologic-map-config.example.json)
+1. Install node dependencies with `npm install`.
+2. Create a new PostgreSQL database to hold the mapping data (or you can specify an existing one!).
+3. Create a configuration JSON file using [`geologic-map-config.example.json`](geologic-map-config.example.json)
    as a template. Make sure to change
    the database connection info to the right values for your PostgreSQL connection,
    using [`the semantics of `pg-promise`](https://github.com/vitaly-t/pg-promise/wiki/Connection-Syntax).
    Optionally, export the full path to your config file to the `GEOLOGIC_MAP_CONFIG` environment variable.
-#. Run the application with `bin/geologic-map`. This will show a help page listing
+4. Run the application with `bin/geologic-map`. This will show a help page listing
    the commands available. This will use the configuration file
    defined by the `GEOLOGIC_MAP_CONFIG` environment variable, or passed in by the `-c`
    flag at runtime. You can optionally add the `bin` directory to your path.
-#. Create tables: `geologic-map create-tables --all`.
-#. Optionally, create demo units and topologies: `geologic-map create-demo-units`.
+5. Create tables: `geologic-map create-tables --all`.
+6. Optionally, create demo units and topologies: `geologic-map create-demo-units`.
 
 ## Running
 
