@@ -33,6 +33,7 @@ do ->
   map = new mapboxgl.Map {
     container: 'map',
     style
+    hash: true
     center: [16.1987, -24.2254]
     zoom: 10
   }

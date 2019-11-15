@@ -8,15 +8,18 @@ tilelive = cache(require("@mapbox/tilelive"))
 sql = (id)->
   __sql require.resolve("../procedures/#{id}.sql")
 
-interfaceFactory = (name, buildTile)->
+interfaceFactory = (name, opts, buildTile)->
+  {silent} = opts
+  silent ?= false
+  log = if silent then -> else console.log
   {id: layer_id, content_type, format} = await db.one sql('get-tile-metadata'), {name}
   q = sql 'get-tile'
   q2 = sql 'set-tile'
   getTile = (tileArgs)->
-    {z,x,y, layer_id} = tileArgs
-    {tile} = await db.oneOrNone(q, tileArgs) or {}
+    {z,x,y} = tileArgs
+    {tile} = await db.oneOrNone(q, {tileArgs..., layer_id}) or {}
     if not tile?
-      console.log "Creating tile (#{z},#{x},#{y}) for layer #{name}"
+      log "Creating tile (#{z},#{x},#{y}) for layer #{name}"
       tile = await buildTile(tileArgs)
       db.none(q2, {z,x,y,tile,layer_id})
     return tile
@@ -34,9 +37,9 @@ tileliveInterface = (name, uri)->
     {z,x,y} = tileArgs
     await getTile(z,x,y)
 
-vectorTileInterface = (layer)->
+vectorTileInterface = (layer, opts={})->
   q = sql 'get-vector-tile'
-  interfaceFactory layer, (tileArgs)->
+  interfaceFactory layer, opts, (tileArgs)->
     {tile} = await db.one q, tileArgs
     return tile
 

@@ -148,7 +148,7 @@ module.exports = !require('./_fails')(function () {
 });
 
 },{"./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/_core.js":[function(require,module,exports) {
-var core = module.exports = { version: '2.6.5' };
+var core = module.exports = { version: '2.6.10' };
 if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 
 },{}],"../../node_modules/core-js/modules/_is-object.js":[function(require,module,exports) {
@@ -608,7 +608,14 @@ module.exports = Array.isArray || function isArray(arg) {
   return cof(arg) == 'Array';
 };
 
-},{"./_cof":"../../node_modules/core-js/modules/_cof.js"}],"../../node_modules/core-js/modules/_object-dps.js":[function(require,module,exports) {
+},{"./_cof":"../../node_modules/core-js/modules/_cof.js"}],"../../node_modules/core-js/modules/_to-object.js":[function(require,module,exports) {
+// 7.1.13 ToObject(argument)
+var defined = require('./_defined');
+module.exports = function (it) {
+  return Object(defined(it));
+};
+
+},{"./_defined":"../../node_modules/core-js/modules/_defined.js"}],"../../node_modules/core-js/modules/_object-dps.js":[function(require,module,exports) {
 var dP = require('./_object-dp');
 var anObject = require('./_an-object');
 var getKeys = require('./_object-keys');
@@ -739,12 +746,14 @@ var enumKeys = require('./_enum-keys');
 var isArray = require('./_is-array');
 var anObject = require('./_an-object');
 var isObject = require('./_is-object');
+var toObject = require('./_to-object');
 var toIObject = require('./_to-iobject');
 var toPrimitive = require('./_to-primitive');
 var createDesc = require('./_property-desc');
 var _create = require('./_object-create');
 var gOPNExt = require('./_object-gopn-ext');
 var $GOPD = require('./_object-gopd');
+var $GOPS = require('./_object-gops');
 var $DP = require('./_object-dp');
 var $keys = require('./_object-keys');
 var gOPD = $GOPD.f;
@@ -761,7 +770,7 @@ var SymbolRegistry = shared('symbol-registry');
 var AllSymbols = shared('symbols');
 var OPSymbols = shared('op-symbols');
 var ObjectProto = Object[PROTOTYPE];
-var USE_NATIVE = typeof $Symbol == 'function';
+var USE_NATIVE = typeof $Symbol == 'function' && !!$GOPS.f;
 var QObject = global.QObject;
 // Don't use setters in Qt Script, https://github.com/zloirock/core-js/issues/173
 var setter = !QObject || !QObject[PROTOTYPE] || !QObject[PROTOTYPE].findChild;
@@ -871,7 +880,7 @@ if (!USE_NATIVE) {
   $DP.f = $defineProperty;
   require('./_object-gopn').f = gOPNExt.f = $getOwnPropertyNames;
   require('./_object-pie').f = $propertyIsEnumerable;
-  require('./_object-gops').f = $getOwnPropertySymbols;
+  $GOPS.f = $getOwnPropertySymbols;
 
   if (DESCRIPTORS && !require('./_library')) {
     redefine(ObjectProto, 'propertyIsEnumerable', $propertyIsEnumerable, true);
@@ -922,6 +931,16 @@ $export($export.S + $export.F * !USE_NATIVE, 'Object', {
   getOwnPropertySymbols: $getOwnPropertySymbols
 });
 
+// Chrome 38 and 39 `Object.getOwnPropertySymbols` fails on primitives
+// https://bugs.chromium.org/p/v8/issues/detail?id=3443
+var FAILS_ON_PRIMITIVES = $fails(function () { $GOPS.f(1); });
+
+$export($export.S + $export.F * FAILS_ON_PRIMITIVES, 'Object', {
+  getOwnPropertySymbols: function getOwnPropertySymbols(it) {
+    return $GOPS.f(toObject(it));
+  }
+});
+
 // 24.3.2 JSON.stringify(value [, replacer [, space]])
 $JSON && $export($export.S + $export.F * (!USE_NATIVE || $fails(function () {
   var S = $Symbol();
@@ -955,7 +974,7 @@ setToStringTag(Math, 'Math', true);
 // 24.3.3 JSON[@@toStringTag]
 setToStringTag(global.JSON, 'JSON', true);
 
-},{"./_global":"../../node_modules/core-js/modules/_global.js","./_has":"../../node_modules/core-js/modules/_has.js","./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_export":"../../node_modules/core-js/modules/_export.js","./_redefine":"../../node_modules/core-js/modules/_redefine.js","./_meta":"../../node_modules/core-js/modules/_meta.js","./_fails":"../../node_modules/core-js/modules/_fails.js","./_shared":"../../node_modules/core-js/modules/_shared.js","./_set-to-string-tag":"../../node_modules/core-js/modules/_set-to-string-tag.js","./_uid":"../../node_modules/core-js/modules/_uid.js","./_wks":"../../node_modules/core-js/modules/_wks.js","./_wks-ext":"../../node_modules/core-js/modules/_wks-ext.js","./_wks-define":"../../node_modules/core-js/modules/_wks-define.js","./_enum-keys":"../../node_modules/core-js/modules/_enum-keys.js","./_is-array":"../../node_modules/core-js/modules/_is-array.js","./_an-object":"../../node_modules/core-js/modules/_an-object.js","./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_to-primitive":"../../node_modules/core-js/modules/_to-primitive.js","./_property-desc":"../../node_modules/core-js/modules/_property-desc.js","./_object-create":"../../node_modules/core-js/modules/_object-create.js","./_object-gopn-ext":"../../node_modules/core-js/modules/_object-gopn-ext.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-dp":"../../node_modules/core-js/modules/_object-dp.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gopn":"../../node_modules/core-js/modules/_object-gopn.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_library":"../../node_modules/core-js/modules/_library.js","./_hide":"../../node_modules/core-js/modules/_hide.js"}],"../../node_modules/core-js/modules/es6.object.create.js":[function(require,module,exports) {
+},{"./_global":"../../node_modules/core-js/modules/_global.js","./_has":"../../node_modules/core-js/modules/_has.js","./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_export":"../../node_modules/core-js/modules/_export.js","./_redefine":"../../node_modules/core-js/modules/_redefine.js","./_meta":"../../node_modules/core-js/modules/_meta.js","./_fails":"../../node_modules/core-js/modules/_fails.js","./_shared":"../../node_modules/core-js/modules/_shared.js","./_set-to-string-tag":"../../node_modules/core-js/modules/_set-to-string-tag.js","./_uid":"../../node_modules/core-js/modules/_uid.js","./_wks":"../../node_modules/core-js/modules/_wks.js","./_wks-ext":"../../node_modules/core-js/modules/_wks-ext.js","./_wks-define":"../../node_modules/core-js/modules/_wks-define.js","./_enum-keys":"../../node_modules/core-js/modules/_enum-keys.js","./_is-array":"../../node_modules/core-js/modules/_is-array.js","./_an-object":"../../node_modules/core-js/modules/_an-object.js","./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_to-primitive":"../../node_modules/core-js/modules/_to-primitive.js","./_property-desc":"../../node_modules/core-js/modules/_property-desc.js","./_object-create":"../../node_modules/core-js/modules/_object-create.js","./_object-gopn-ext":"../../node_modules/core-js/modules/_object-gopn-ext.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-dp":"../../node_modules/core-js/modules/_object-dp.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gopn":"../../node_modules/core-js/modules/_object-gopn.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_library":"../../node_modules/core-js/modules/_library.js","./_hide":"../../node_modules/core-js/modules/_hide.js"}],"../../node_modules/core-js/modules/es6.object.create.js":[function(require,module,exports) {
 var $export = require('./_export');
 // 19.1.2.2 / 15.2.3.5 Object.create(O [, Properties])
 $export($export.S, 'Object', { create: require('./_object-create') });
@@ -993,14 +1012,7 @@ require('./_object-sap')('getOwnPropertyDescriptor', function () {
   };
 });
 
-},{"./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_to-object.js":[function(require,module,exports) {
-// 7.1.13 ToObject(argument)
-var defined = require('./_defined');
-module.exports = function (it) {
-  return Object(defined(it));
-};
-
-},{"./_defined":"../../node_modules/core-js/modules/_defined.js"}],"../../node_modules/core-js/modules/_object-gpo.js":[function(require,module,exports) {
+},{"./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_object-gpo.js":[function(require,module,exports) {
 // 19.1.2.9 / 15.2.3.2 Object.getPrototypeOf(O)
 var has = require('./_has');
 var toObject = require('./_to-object');
@@ -1109,6 +1121,7 @@ require('./_object-sap')('isExtensible', function ($isExtensible) {
 },{"./_is-object":"../../node_modules/core-js/modules/_is-object.js","./_object-sap":"../../node_modules/core-js/modules/_object-sap.js"}],"../../node_modules/core-js/modules/_object-assign.js":[function(require,module,exports) {
 'use strict';
 // 19.1.2.1 Object.assign(target, source, ...)
+var DESCRIPTORS = require('./_descriptors');
 var getKeys = require('./_object-keys');
 var gOPS = require('./_object-gops');
 var pIE = require('./_object-pie');
@@ -1138,11 +1151,14 @@ module.exports = !$assign || require('./_fails')(function () {
     var length = keys.length;
     var j = 0;
     var key;
-    while (length > j) if (isEnum.call(S, key = keys[j++])) T[key] = S[key];
+    while (length > j) {
+      key = keys[j++];
+      if (!DESCRIPTORS || isEnum.call(S, key)) T[key] = S[key];
+    }
   } return T;
 } : $assign;
 
-},{"./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_iobject":"../../node_modules/core-js/modules/_iobject.js","./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/es6.object.assign.js":[function(require,module,exports) {
+},{"./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_object-gops":"../../node_modules/core-js/modules/_object-gops.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js","./_to-object":"../../node_modules/core-js/modules/_to-object.js","./_iobject":"../../node_modules/core-js/modules/_iobject.js","./_fails":"../../node_modules/core-js/modules/_fails.js"}],"../../node_modules/core-js/modules/es6.object.assign.js":[function(require,module,exports) {
 // 19.1.3.1 Object.assign(target, source)
 var $export = require('./_export');
 
@@ -6168,6 +6184,7 @@ $export($export.S, 'Object', {
 });
 
 },{"./_export":"../../node_modules/core-js/modules/_export.js","./_own-keys":"../../node_modules/core-js/modules/_own-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-gopd":"../../node_modules/core-js/modules/_object-gopd.js","./_create-property":"../../node_modules/core-js/modules/_create-property.js"}],"../../node_modules/core-js/modules/_object-to-array.js":[function(require,module,exports) {
+var DESCRIPTORS = require('./_descriptors');
 var getKeys = require('./_object-keys');
 var toIObject = require('./_to-iobject');
 var isEnum = require('./_object-pie').f;
@@ -6179,13 +6196,17 @@ module.exports = function (isEntries) {
     var i = 0;
     var result = [];
     var key;
-    while (length > i) if (isEnum.call(O, key = keys[i++])) {
-      result.push(isEntries ? [key, O[key]] : O[key]);
-    } return result;
+    while (length > i) {
+      key = keys[i++];
+      if (!DESCRIPTORS || isEnum.call(O, key)) {
+        result.push(isEntries ? [key, O[key]] : O[key]);
+      }
+    }
+    return result;
   };
 };
 
-},{"./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js"}],"../../node_modules/core-js/modules/es7.object.values.js":[function(require,module,exports) {
+},{"./_descriptors":"../../node_modules/core-js/modules/_descriptors.js","./_object-keys":"../../node_modules/core-js/modules/_object-keys.js","./_to-iobject":"../../node_modules/core-js/modules/_to-iobject.js","./_object-pie":"../../node_modules/core-js/modules/_object-pie.js"}],"../../node_modules/core-js/modules/es7.object.values.js":[function(require,module,exports) {
 // https://github.com/tc39/proposal-object-values-entries
 var $export = require('./_export');
 var $values = require('./_object-to-array')(false);
@@ -7303,7 +7324,7 @@ require('./modules/web.immediate');
 require('./modules/web.dom.iterable');
 module.exports = require('./modules/_core');
 
-},{"./modules/es6.symbol":"../../node_modules/core-js/modules/es6.symbol.js","./modules/es6.object.create":"../../node_modules/core-js/modules/es6.object.create.js","./modules/es6.object.define-property":"../../node_modules/core-js/modules/es6.object.define-property.js","./modules/es6.object.define-properties":"../../node_modules/core-js/modules/es6.object.define-properties.js","./modules/es6.object.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.object.get-own-property-descriptor.js","./modules/es6.object.get-prototype-of":"../../node_modules/core-js/modules/es6.object.get-prototype-of.js","./modules/es6.object.keys":"../../node_modules/core-js/modules/es6.object.keys.js","./modules/es6.object.get-own-property-names":"../../node_modules/core-js/modules/es6.object.get-own-property-names.js","./modules/es6.object.freeze":"../../node_modules/core-js/modules/es6.object.freeze.js","./modules/es6.object.seal":"../../node_modules/core-js/modules/es6.object.seal.js","./modules/es6.object.prevent-extensions":"../../node_modules/core-js/modules/es6.object.prevent-extensions.js","./modules/es6.object.is-frozen":"../../node_modules/core-js/modules/es6.object.is-frozen.js","./modules/es6.object.is-sealed":"../../node_modules/core-js/modules/es6.object.is-sealed.js","./modules/es6.object.is-extensible":"../../node_modules/core-js/modules/es6.object.is-extensible.js","./modules/es6.object.assign":"../../node_modules/core-js/modules/es6.object.assign.js","./modules/es6.object.is":"../../node_modules/core-js/modules/es6.object.is.js","./modules/es6.object.set-prototype-of":"../../node_modules/core-js/modules/es6.object.set-prototype-of.js","./modules/es6.object.to-string":"../../node_modules/core-js/modules/es6.object.to-string.js","./modules/es6.function.bind":"../../node_modules/core-js/modules/es6.function.bind.js","./modules/es6.function.name":"../../node_modules/core-js/modules/es6.function.name.js","./modules/es6.function.has-instance":"../../node_modules/core-js/modules/es6.function.has-instance.js","./modules/es6.parse-int":"../../node_modules/core-js/modules/es6.parse-int.js","./modules/es6.parse-float":"../../node_modules/core-js/modules/es6.parse-float.js","./modules/es6.number.constructor":"../../node_modules/core-js/modules/es6.number.constructor.js","./modules/es6.number.to-fixed":"../../node_modules/core-js/modules/es6.number.to-fixed.js","./modules/es6.number.to-precision":"../../node_modules/core-js/modules/es6.number.to-precision.js","./modules/es6.number.epsilon":"../../node_modules/core-js/modules/es6.number.epsilon.js","./modules/es6.number.is-finite":"../../node_modules/core-js/modules/es6.number.is-finite.js","./modules/es6.number.is-integer":"../../node_modules/core-js/modules/es6.number.is-integer.js","./modules/es6.number.is-nan":"../../node_modules/core-js/modules/es6.number.is-nan.js","./modules/es6.number.is-safe-integer":"../../node_modules/core-js/modules/es6.number.is-safe-integer.js","./modules/es6.number.max-safe-integer":"../../node_modules/core-js/modules/es6.number.max-safe-integer.js","./modules/es6.number.min-safe-integer":"../../node_modules/core-js/modules/es6.number.min-safe-integer.js","./modules/es6.number.parse-float":"../../node_modules/core-js/modules/es6.number.parse-float.js","./modules/es6.number.parse-int":"../../node_modules/core-js/modules/es6.number.parse-int.js","./modules/es6.math.acosh":"../../node_modules/core-js/modules/es6.math.acosh.js","./modules/es6.math.asinh":"../../node_modules/core-js/modules/es6.math.asinh.js","./modules/es6.math.atanh":"../../node_modules/core-js/modules/es6.math.atanh.js","./modules/es6.math.cbrt":"../../node_modules/core-js/modules/es6.math.cbrt.js","./modules/es6.math.clz32":"../../node_modules/core-js/modules/es6.math.clz32.js","./modules/es6.math.cosh":"../../node_modules/core-js/modules/es6.math.cosh.js","./modules/es6.math.expm1":"../../node_modules/core-js/modules/es6.math.expm1.js","./modules/es6.math.fround":"../../node_modules/core-js/modules/es6.math.fround.js","./modules/es6.math.hypot":"../../node_modules/core-js/modules/es6.math.hypot.js","./modules/es6.math.imul":"../../node_modules/core-js/modules/es6.math.imul.js","./modules/es6.math.log10":"../../node_modules/core-js/modules/es6.math.log10.js","./modules/es6.math.log1p":"../../node_modules/core-js/modules/es6.math.log1p.js","./modules/es6.math.log2":"../../node_modules/core-js/modules/es6.math.log2.js","./modules/es6.math.sign":"../../node_modules/core-js/modules/es6.math.sign.js","./modules/es6.math.sinh":"../../node_modules/core-js/modules/es6.math.sinh.js","./modules/es6.math.tanh":"../../node_modules/core-js/modules/es6.math.tanh.js","./modules/es6.math.trunc":"../../node_modules/core-js/modules/es6.math.trunc.js","./modules/es6.string.from-code-point":"../../node_modules/core-js/modules/es6.string.from-code-point.js","./modules/es6.string.raw":"../../node_modules/core-js/modules/es6.string.raw.js","./modules/es6.string.trim":"../../node_modules/core-js/modules/es6.string.trim.js","./modules/es6.string.iterator":"../../node_modules/core-js/modules/es6.string.iterator.js","./modules/es6.string.code-point-at":"../../node_modules/core-js/modules/es6.string.code-point-at.js","./modules/es6.string.ends-with":"../../node_modules/core-js/modules/es6.string.ends-with.js","./modules/es6.string.includes":"../../node_modules/core-js/modules/es6.string.includes.js","./modules/es6.string.repeat":"../../node_modules/core-js/modules/es6.string.repeat.js","./modules/es6.string.starts-with":"../../node_modules/core-js/modules/es6.string.starts-with.js","./modules/es6.string.anchor":"../../node_modules/core-js/modules/es6.string.anchor.js","./modules/es6.string.big":"../../node_modules/core-js/modules/es6.string.big.js","./modules/es6.string.blink":"../../node_modules/core-js/modules/es6.string.blink.js","./modules/es6.string.bold":"../../node_modules/core-js/modules/es6.string.bold.js","./modules/es6.string.fixed":"../../node_modules/core-js/modules/es6.string.fixed.js","./modules/es6.string.fontcolor":"../../node_modules/core-js/modules/es6.string.fontcolor.js","./modules/es6.string.fontsize":"../../node_modules/core-js/modules/es6.string.fontsize.js","./modules/es6.string.italics":"../../node_modules/core-js/modules/es6.string.italics.js","./modules/es6.string.link":"../../node_modules/core-js/modules/es6.string.link.js","./modules/es6.string.small":"../../node_modules/core-js/modules/es6.string.small.js","./modules/es6.string.strike":"../../node_modules/core-js/modules/es6.string.strike.js","./modules/es6.string.sub":"../../node_modules/core-js/modules/es6.string.sub.js","./modules/es6.string.sup":"../../node_modules/core-js/modules/es6.string.sup.js","./modules/es6.date.now":"../../node_modules/core-js/modules/es6.date.now.js","./modules/es6.date.to-json":"../../node_modules/core-js/modules/es6.date.to-json.js","./modules/es6.date.to-iso-string":"../../node_modules/core-js/modules/es6.date.to-iso-string.js","./modules/es6.date.to-string":"../../node_modules/core-js/modules/es6.date.to-string.js","./modules/es6.date.to-primitive":"../../node_modules/core-js/modules/es6.date.to-primitive.js","./modules/es6.array.is-array":"../../node_modules/core-js/modules/es6.array.is-array.js","./modules/es6.array.from":"../../node_modules/core-js/modules/es6.array.from.js","./modules/es6.array.of":"../../node_modules/core-js/modules/es6.array.of.js","./modules/es6.array.join":"../../node_modules/core-js/modules/es6.array.join.js","./modules/es6.array.slice":"../../node_modules/core-js/modules/es6.array.slice.js","./modules/es6.array.sort":"../../node_modules/core-js/modules/es6.array.sort.js","./modules/es6.array.for-each":"../../node_modules/core-js/modules/es6.array.for-each.js","./modules/es6.array.map":"../../node_modules/core-js/modules/es6.array.map.js","./modules/es6.array.filter":"../../node_modules/core-js/modules/es6.array.filter.js","./modules/es6.array.some":"../../node_modules/core-js/modules/es6.array.some.js","./modules/es6.array.every":"../../node_modules/core-js/modules/es6.array.every.js","./modules/es6.array.reduce":"../../node_modules/core-js/modules/es6.array.reduce.js","./modules/es6.array.reduce-right":"../../node_modules/core-js/modules/es6.array.reduce-right.js","./modules/es6.array.index-of":"../../node_modules/core-js/modules/es6.array.index-of.js","./modules/es6.array.last-index-of":"../../node_modules/core-js/modules/es6.array.last-index-of.js","./modules/es6.array.copy-within":"../../node_modules/core-js/modules/es6.array.copy-within.js","./modules/es6.array.fill":"../../node_modules/core-js/modules/es6.array.fill.js","./modules/es6.array.find":"../../node_modules/core-js/modules/es6.array.find.js","./modules/es6.array.find-index":"../../node_modules/core-js/modules/es6.array.find-index.js","./modules/es6.array.species":"../../node_modules/core-js/modules/es6.array.species.js","./modules/es6.array.iterator":"../../node_modules/core-js/modules/es6.array.iterator.js","./modules/es6.regexp.constructor":"../../node_modules/core-js/modules/es6.regexp.constructor.js","./modules/es6.regexp.exec":"../../node_modules/core-js/modules/es6.regexp.exec.js","./modules/es6.regexp.to-string":"../../node_modules/core-js/modules/es6.regexp.to-string.js","./modules/es6.regexp.flags":"../../node_modules/core-js/modules/es6.regexp.flags.js","./modules/es6.regexp.match":"../../node_modules/core-js/modules/es6.regexp.match.js","./modules/es6.regexp.replace":"../../node_modules/core-js/modules/es6.regexp.replace.js","./modules/es6.regexp.search":"../../node_modules/core-js/modules/es6.regexp.search.js","./modules/es6.regexp.split":"../../node_modules/core-js/modules/es6.regexp.split.js","./modules/es6.promise":"../../node_modules/core-js/modules/es6.promise.js","./modules/es6.map":"../../node_modules/core-js/modules/es6.map.js","./modules/es6.set":"../../node_modules/core-js/modules/es6.set.js","./modules/es6.weak-map":"../../node_modules/core-js/modules/es6.weak-map.js","./modules/es6.weak-set":"../../node_modules/core-js/modules/es6.weak-set.js","./modules/es6.typed.array-buffer":"../../node_modules/core-js/modules/es6.typed.array-buffer.js","./modules/es6.typed.data-view":"../../node_modules/core-js/modules/es6.typed.data-view.js","./modules/es6.typed.int8-array":"../../node_modules/core-js/modules/es6.typed.int8-array.js","./modules/es6.typed.uint8-array":"../../node_modules/core-js/modules/es6.typed.uint8-array.js","./modules/es6.typed.uint8-clamped-array":"../../node_modules/core-js/modules/es6.typed.uint8-clamped-array.js","./modules/es6.typed.int16-array":"../../node_modules/core-js/modules/es6.typed.int16-array.js","./modules/es6.typed.uint16-array":"../../node_modules/core-js/modules/es6.typed.uint16-array.js","./modules/es6.typed.int32-array":"../../node_modules/core-js/modules/es6.typed.int32-array.js","./modules/es6.typed.uint32-array":"../../node_modules/core-js/modules/es6.typed.uint32-array.js","./modules/es6.typed.float32-array":"../../node_modules/core-js/modules/es6.typed.float32-array.js","./modules/es6.typed.float64-array":"../../node_modules/core-js/modules/es6.typed.float64-array.js","./modules/es6.reflect.apply":"../../node_modules/core-js/modules/es6.reflect.apply.js","./modules/es6.reflect.construct":"../../node_modules/core-js/modules/es6.reflect.construct.js","./modules/es6.reflect.define-property":"../../node_modules/core-js/modules/es6.reflect.define-property.js","./modules/es6.reflect.delete-property":"../../node_modules/core-js/modules/es6.reflect.delete-property.js","./modules/es6.reflect.enumerate":"../../node_modules/core-js/modules/es6.reflect.enumerate.js","./modules/es6.reflect.get":"../../node_modules/core-js/modules/es6.reflect.get.js","./modules/es6.reflect.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.reflect.get-own-property-descriptor.js","./modules/es6.reflect.get-prototype-of":"../../node_modules/core-js/modules/es6.reflect.get-prototype-of.js","./modules/es6.reflect.has":"../../node_modules/core-js/modules/es6.reflect.has.js","./modules/es6.reflect.is-extensible":"../../node_modules/core-js/modules/es6.reflect.is-extensible.js","./modules/es6.reflect.own-keys":"../../node_modules/core-js/modules/es6.reflect.own-keys.js","./modules/es6.reflect.prevent-extensions":"../../node_modules/core-js/modules/es6.reflect.prevent-extensions.js","./modules/es6.reflect.set":"../../node_modules/core-js/modules/es6.reflect.set.js","./modules/es6.reflect.set-prototype-of":"../../node_modules/core-js/modules/es6.reflect.set-prototype-of.js","./modules/es7.array.includes":"../../node_modules/core-js/modules/es7.array.includes.js","./modules/es7.array.flat-map":"../../node_modules/core-js/modules/es7.array.flat-map.js","./modules/es7.array.flatten":"../../node_modules/core-js/modules/es7.array.flatten.js","./modules/es7.string.at":"../../node_modules/core-js/modules/es7.string.at.js","./modules/es7.string.pad-start":"../../node_modules/core-js/modules/es7.string.pad-start.js","./modules/es7.string.pad-end":"../../node_modules/core-js/modules/es7.string.pad-end.js","./modules/es7.string.trim-left":"../../node_modules/core-js/modules/es7.string.trim-left.js","./modules/es7.string.trim-right":"../../node_modules/core-js/modules/es7.string.trim-right.js","./modules/es7.string.match-all":"../../node_modules/core-js/modules/es7.string.match-all.js","./modules/es7.symbol.async-iterator":"../../node_modules/core-js/modules/es7.symbol.async-iterator.js","./modules/es7.symbol.observable":"../../node_modules/core-js/modules/es7.symbol.observable.js","./modules/es7.object.get-own-property-descriptors":"../../node_modules/core-js/modules/es7.object.get-own-property-descriptors.js","./modules/es7.object.values":"../../node_modules/core-js/modules/es7.object.values.js","./modules/es7.object.entries":"../../node_modules/core-js/modules/es7.object.entries.js","./modules/es7.object.define-getter":"../../node_modules/core-js/modules/es7.object.define-getter.js","./modules/es7.object.define-setter":"../../node_modules/core-js/modules/es7.object.define-setter.js","./modules/es7.object.lookup-getter":"../../node_modules/core-js/modules/es7.object.lookup-getter.js","./modules/es7.object.lookup-setter":"../../node_modules/core-js/modules/es7.object.lookup-setter.js","./modules/es7.map.to-json":"../../node_modules/core-js/modules/es7.map.to-json.js","./modules/es7.set.to-json":"../../node_modules/core-js/modules/es7.set.to-json.js","./modules/es7.map.of":"../../node_modules/core-js/modules/es7.map.of.js","./modules/es7.set.of":"../../node_modules/core-js/modules/es7.set.of.js","./modules/es7.weak-map.of":"../../node_modules/core-js/modules/es7.weak-map.of.js","./modules/es7.weak-set.of":"../../node_modules/core-js/modules/es7.weak-set.of.js","./modules/es7.map.from":"../../node_modules/core-js/modules/es7.map.from.js","./modules/es7.set.from":"../../node_modules/core-js/modules/es7.set.from.js","./modules/es7.weak-map.from":"../../node_modules/core-js/modules/es7.weak-map.from.js","./modules/es7.weak-set.from":"../../node_modules/core-js/modules/es7.weak-set.from.js","./modules/es7.global":"../../node_modules/core-js/modules/es7.global.js","./modules/es7.system.global":"../../node_modules/core-js/modules/es7.system.global.js","./modules/es7.error.is-error":"../../node_modules/core-js/modules/es7.error.is-error.js","./modules/es7.math.clamp":"../../node_modules/core-js/modules/es7.math.clamp.js","./modules/es7.math.deg-per-rad":"../../node_modules/core-js/modules/es7.math.deg-per-rad.js","./modules/es7.math.degrees":"../../node_modules/core-js/modules/es7.math.degrees.js","./modules/es7.math.fscale":"../../node_modules/core-js/modules/es7.math.fscale.js","./modules/es7.math.iaddh":"../../node_modules/core-js/modules/es7.math.iaddh.js","./modules/es7.math.isubh":"../../node_modules/core-js/modules/es7.math.isubh.js","./modules/es7.math.imulh":"../../node_modules/core-js/modules/es7.math.imulh.js","./modules/es7.math.rad-per-deg":"../../node_modules/core-js/modules/es7.math.rad-per-deg.js","./modules/es7.math.radians":"../../node_modules/core-js/modules/es7.math.radians.js","./modules/es7.math.scale":"../../node_modules/core-js/modules/es7.math.scale.js","./modules/es7.math.umulh":"../../node_modules/core-js/modules/es7.math.umulh.js","./modules/es7.math.signbit":"../../node_modules/core-js/modules/es7.math.signbit.js","./modules/es7.promise.finally":"../../node_modules/core-js/modules/es7.promise.finally.js","./modules/es7.promise.try":"../../node_modules/core-js/modules/es7.promise.try.js","./modules/es7.reflect.define-metadata":"../../node_modules/core-js/modules/es7.reflect.define-metadata.js","./modules/es7.reflect.delete-metadata":"../../node_modules/core-js/modules/es7.reflect.delete-metadata.js","./modules/es7.reflect.get-metadata":"../../node_modules/core-js/modules/es7.reflect.get-metadata.js","./modules/es7.reflect.get-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-metadata-keys.js","./modules/es7.reflect.get-own-metadata":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata.js","./modules/es7.reflect.get-own-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata-keys.js","./modules/es7.reflect.has-metadata":"../../node_modules/core-js/modules/es7.reflect.has-metadata.js","./modules/es7.reflect.has-own-metadata":"../../node_modules/core-js/modules/es7.reflect.has-own-metadata.js","./modules/es7.reflect.metadata":"../../node_modules/core-js/modules/es7.reflect.metadata.js","./modules/es7.asap":"../../node_modules/core-js/modules/es7.asap.js","./modules/es7.observable":"../../node_modules/core-js/modules/es7.observable.js","./modules/web.timers":"../../node_modules/core-js/modules/web.timers.js","./modules/web.immediate":"../../node_modules/core-js/modules/web.immediate.js","./modules/web.dom.iterable":"../../node_modules/core-js/modules/web.dom.iterable.js","./modules/_core":"../../node_modules/core-js/modules/_core.js"}],"../../node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js":[function(require,module,exports) {
+},{"./modules/es6.symbol":"../../node_modules/core-js/modules/es6.symbol.js","./modules/es6.object.create":"../../node_modules/core-js/modules/es6.object.create.js","./modules/es6.object.define-property":"../../node_modules/core-js/modules/es6.object.define-property.js","./modules/es6.object.define-properties":"../../node_modules/core-js/modules/es6.object.define-properties.js","./modules/es6.object.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.object.get-own-property-descriptor.js","./modules/es6.object.get-prototype-of":"../../node_modules/core-js/modules/es6.object.get-prototype-of.js","./modules/es6.object.keys":"../../node_modules/core-js/modules/es6.object.keys.js","./modules/es6.object.get-own-property-names":"../../node_modules/core-js/modules/es6.object.get-own-property-names.js","./modules/es6.object.freeze":"../../node_modules/core-js/modules/es6.object.freeze.js","./modules/es6.object.seal":"../../node_modules/core-js/modules/es6.object.seal.js","./modules/es6.object.prevent-extensions":"../../node_modules/core-js/modules/es6.object.prevent-extensions.js","./modules/es6.object.is-frozen":"../../node_modules/core-js/modules/es6.object.is-frozen.js","./modules/es6.object.is-sealed":"../../node_modules/core-js/modules/es6.object.is-sealed.js","./modules/es6.object.is-extensible":"../../node_modules/core-js/modules/es6.object.is-extensible.js","./modules/es6.object.assign":"../../node_modules/core-js/modules/es6.object.assign.js","./modules/es6.object.is":"../../node_modules/core-js/modules/es6.object.is.js","./modules/es6.object.set-prototype-of":"../../node_modules/core-js/modules/es6.object.set-prototype-of.js","./modules/es6.object.to-string":"../../node_modules/core-js/modules/es6.object.to-string.js","./modules/es6.function.bind":"../../node_modules/core-js/modules/es6.function.bind.js","./modules/es6.function.name":"../../node_modules/core-js/modules/es6.function.name.js","./modules/es6.function.has-instance":"../../node_modules/core-js/modules/es6.function.has-instance.js","./modules/es6.parse-int":"../../node_modules/core-js/modules/es6.parse-int.js","./modules/es6.parse-float":"../../node_modules/core-js/modules/es6.parse-float.js","./modules/es6.number.constructor":"../../node_modules/core-js/modules/es6.number.constructor.js","./modules/es6.number.to-fixed":"../../node_modules/core-js/modules/es6.number.to-fixed.js","./modules/es6.number.to-precision":"../../node_modules/core-js/modules/es6.number.to-precision.js","./modules/es6.number.epsilon":"../../node_modules/core-js/modules/es6.number.epsilon.js","./modules/es6.number.is-finite":"../../node_modules/core-js/modules/es6.number.is-finite.js","./modules/es6.number.is-integer":"../../node_modules/core-js/modules/es6.number.is-integer.js","./modules/es6.number.is-nan":"../../node_modules/core-js/modules/es6.number.is-nan.js","./modules/es6.number.is-safe-integer":"../../node_modules/core-js/modules/es6.number.is-safe-integer.js","./modules/es6.number.max-safe-integer":"../../node_modules/core-js/modules/es6.number.max-safe-integer.js","./modules/es6.number.min-safe-integer":"../../node_modules/core-js/modules/es6.number.min-safe-integer.js","./modules/es6.number.parse-float":"../../node_modules/core-js/modules/es6.number.parse-float.js","./modules/es6.number.parse-int":"../../node_modules/core-js/modules/es6.number.parse-int.js","./modules/es6.math.acosh":"../../node_modules/core-js/modules/es6.math.acosh.js","./modules/es6.math.asinh":"../../node_modules/core-js/modules/es6.math.asinh.js","./modules/es6.math.atanh":"../../node_modules/core-js/modules/es6.math.atanh.js","./modules/es6.math.cbrt":"../../node_modules/core-js/modules/es6.math.cbrt.js","./modules/es6.math.clz32":"../../node_modules/core-js/modules/es6.math.clz32.js","./modules/es6.math.cosh":"../../node_modules/core-js/modules/es6.math.cosh.js","./modules/es6.math.expm1":"../../node_modules/core-js/modules/es6.math.expm1.js","./modules/es6.math.fround":"../../node_modules/core-js/modules/es6.math.fround.js","./modules/es6.math.hypot":"../../node_modules/core-js/modules/es6.math.hypot.js","./modules/es6.math.imul":"../../node_modules/core-js/modules/es6.math.imul.js","./modules/es6.math.log10":"../../node_modules/core-js/modules/es6.math.log10.js","./modules/es6.math.log1p":"../../node_modules/core-js/modules/es6.math.log1p.js","./modules/es6.math.log2":"../../node_modules/core-js/modules/es6.math.log2.js","./modules/es6.math.sign":"../../node_modules/core-js/modules/es6.math.sign.js","./modules/es6.math.sinh":"../../node_modules/core-js/modules/es6.math.sinh.js","./modules/es6.math.tanh":"../../node_modules/core-js/modules/es6.math.tanh.js","./modules/es6.math.trunc":"../../node_modules/core-js/modules/es6.math.trunc.js","./modules/es6.string.from-code-point":"../../node_modules/core-js/modules/es6.string.from-code-point.js","./modules/es6.string.raw":"../../node_modules/core-js/modules/es6.string.raw.js","./modules/es6.string.trim":"../../node_modules/core-js/modules/es6.string.trim.js","./modules/es6.string.iterator":"../../node_modules/core-js/modules/es6.string.iterator.js","./modules/es6.string.code-point-at":"../../node_modules/core-js/modules/es6.string.code-point-at.js","./modules/es6.string.ends-with":"../../node_modules/core-js/modules/es6.string.ends-with.js","./modules/es6.string.includes":"../../node_modules/core-js/modules/es6.string.includes.js","./modules/es6.string.repeat":"../../node_modules/core-js/modules/es6.string.repeat.js","./modules/es6.string.starts-with":"../../node_modules/core-js/modules/es6.string.starts-with.js","./modules/es6.string.anchor":"../../node_modules/core-js/modules/es6.string.anchor.js","./modules/es6.string.big":"../../node_modules/core-js/modules/es6.string.big.js","./modules/es6.string.blink":"../../node_modules/core-js/modules/es6.string.blink.js","./modules/es6.string.bold":"../../node_modules/core-js/modules/es6.string.bold.js","./modules/es6.string.fixed":"../../node_modules/core-js/modules/es6.string.fixed.js","./modules/es6.string.fontcolor":"../../node_modules/core-js/modules/es6.string.fontcolor.js","./modules/es6.string.fontsize":"../../node_modules/core-js/modules/es6.string.fontsize.js","./modules/es6.string.italics":"../../node_modules/core-js/modules/es6.string.italics.js","./modules/es6.string.link":"../../node_modules/core-js/modules/es6.string.link.js","./modules/es6.string.small":"../../node_modules/core-js/modules/es6.string.small.js","./modules/es6.string.strike":"../../node_modules/core-js/modules/es6.string.strike.js","./modules/es6.string.sub":"../../node_modules/core-js/modules/es6.string.sub.js","./modules/es6.string.sup":"../../node_modules/core-js/modules/es6.string.sup.js","./modules/es6.date.now":"../../node_modules/core-js/modules/es6.date.now.js","./modules/es6.date.to-json":"../../node_modules/core-js/modules/es6.date.to-json.js","./modules/es6.date.to-iso-string":"../../node_modules/core-js/modules/es6.date.to-iso-string.js","./modules/es6.date.to-string":"../../node_modules/core-js/modules/es6.date.to-string.js","./modules/es6.date.to-primitive":"../../node_modules/core-js/modules/es6.date.to-primitive.js","./modules/es6.array.is-array":"../../node_modules/core-js/modules/es6.array.is-array.js","./modules/es6.array.from":"../../node_modules/core-js/modules/es6.array.from.js","./modules/es6.array.of":"../../node_modules/core-js/modules/es6.array.of.js","./modules/es6.array.join":"../../node_modules/core-js/modules/es6.array.join.js","./modules/es6.array.slice":"../../node_modules/core-js/modules/es6.array.slice.js","./modules/es6.array.sort":"../../node_modules/core-js/modules/es6.array.sort.js","./modules/es6.array.for-each":"../../node_modules/core-js/modules/es6.array.for-each.js","./modules/es6.array.map":"../../node_modules/core-js/modules/es6.array.map.js","./modules/es6.array.filter":"../../node_modules/core-js/modules/es6.array.filter.js","./modules/es6.array.some":"../../node_modules/core-js/modules/es6.array.some.js","./modules/es6.array.every":"../../node_modules/core-js/modules/es6.array.every.js","./modules/es6.array.reduce":"../../node_modules/core-js/modules/es6.array.reduce.js","./modules/es6.array.reduce-right":"../../node_modules/core-js/modules/es6.array.reduce-right.js","./modules/es6.array.index-of":"../../node_modules/core-js/modules/es6.array.index-of.js","./modules/es6.array.last-index-of":"../../node_modules/core-js/modules/es6.array.last-index-of.js","./modules/es6.array.copy-within":"../../node_modules/core-js/modules/es6.array.copy-within.js","./modules/es6.array.fill":"../../node_modules/core-js/modules/es6.array.fill.js","./modules/es6.array.find":"../../node_modules/core-js/modules/es6.array.find.js","./modules/es6.array.find-index":"../../node_modules/core-js/modules/es6.array.find-index.js","./modules/es6.array.species":"../../node_modules/core-js/modules/es6.array.species.js","./modules/es6.array.iterator":"../../node_modules/core-js/modules/es6.array.iterator.js","./modules/es6.regexp.constructor":"../../node_modules/core-js/modules/es6.regexp.constructor.js","./modules/es6.regexp.exec":"../../node_modules/core-js/modules/es6.regexp.exec.js","./modules/es6.regexp.to-string":"../../node_modules/core-js/modules/es6.regexp.to-string.js","./modules/es6.regexp.flags":"../../node_modules/core-js/modules/es6.regexp.flags.js","./modules/es6.regexp.match":"../../node_modules/core-js/modules/es6.regexp.match.js","./modules/es6.regexp.replace":"../../node_modules/core-js/modules/es6.regexp.replace.js","./modules/es6.regexp.search":"../../node_modules/core-js/modules/es6.regexp.search.js","./modules/es6.regexp.split":"../../node_modules/core-js/modules/es6.regexp.split.js","./modules/es6.promise":"../../node_modules/core-js/modules/es6.promise.js","./modules/es6.map":"../../node_modules/core-js/modules/es6.map.js","./modules/es6.set":"../../node_modules/core-js/modules/es6.set.js","./modules/es6.weak-map":"../../node_modules/core-js/modules/es6.weak-map.js","./modules/es6.weak-set":"../../node_modules/core-js/modules/es6.weak-set.js","./modules/es6.typed.array-buffer":"../../node_modules/core-js/modules/es6.typed.array-buffer.js","./modules/es6.typed.data-view":"../../node_modules/core-js/modules/es6.typed.data-view.js","./modules/es6.typed.int8-array":"../../node_modules/core-js/modules/es6.typed.int8-array.js","./modules/es6.typed.uint8-array":"../../node_modules/core-js/modules/es6.typed.uint8-array.js","./modules/es6.typed.uint8-clamped-array":"../../node_modules/core-js/modules/es6.typed.uint8-clamped-array.js","./modules/es6.typed.int16-array":"../../node_modules/core-js/modules/es6.typed.int16-array.js","./modules/es6.typed.uint16-array":"../../node_modules/core-js/modules/es6.typed.uint16-array.js","./modules/es6.typed.int32-array":"../../node_modules/core-js/modules/es6.typed.int32-array.js","./modules/es6.typed.uint32-array":"../../node_modules/core-js/modules/es6.typed.uint32-array.js","./modules/es6.typed.float32-array":"../../node_modules/core-js/modules/es6.typed.float32-array.js","./modules/es6.typed.float64-array":"../../node_modules/core-js/modules/es6.typed.float64-array.js","./modules/es6.reflect.apply":"../../node_modules/core-js/modules/es6.reflect.apply.js","./modules/es6.reflect.construct":"../../node_modules/core-js/modules/es6.reflect.construct.js","./modules/es6.reflect.define-property":"../../node_modules/core-js/modules/es6.reflect.define-property.js","./modules/es6.reflect.delete-property":"../../node_modules/core-js/modules/es6.reflect.delete-property.js","./modules/es6.reflect.enumerate":"../../node_modules/core-js/modules/es6.reflect.enumerate.js","./modules/es6.reflect.get":"../../node_modules/core-js/modules/es6.reflect.get.js","./modules/es6.reflect.get-own-property-descriptor":"../../node_modules/core-js/modules/es6.reflect.get-own-property-descriptor.js","./modules/es6.reflect.get-prototype-of":"../../node_modules/core-js/modules/es6.reflect.get-prototype-of.js","./modules/es6.reflect.has":"../../node_modules/core-js/modules/es6.reflect.has.js","./modules/es6.reflect.is-extensible":"../../node_modules/core-js/modules/es6.reflect.is-extensible.js","./modules/es6.reflect.own-keys":"../../node_modules/core-js/modules/es6.reflect.own-keys.js","./modules/es6.reflect.prevent-extensions":"../../node_modules/core-js/modules/es6.reflect.prevent-extensions.js","./modules/es6.reflect.set":"../../node_modules/core-js/modules/es6.reflect.set.js","./modules/es6.reflect.set-prototype-of":"../../node_modules/core-js/modules/es6.reflect.set-prototype-of.js","./modules/es7.array.includes":"../../node_modules/core-js/modules/es7.array.includes.js","./modules/es7.array.flat-map":"../../node_modules/core-js/modules/es7.array.flat-map.js","./modules/es7.array.flatten":"../../node_modules/core-js/modules/es7.array.flatten.js","./modules/es7.string.at":"../../node_modules/core-js/modules/es7.string.at.js","./modules/es7.string.pad-start":"../../node_modules/core-js/modules/es7.string.pad-start.js","./modules/es7.string.pad-end":"../../node_modules/core-js/modules/es7.string.pad-end.js","./modules/es7.string.trim-left":"../../node_modules/core-js/modules/es7.string.trim-left.js","./modules/es7.string.trim-right":"../../node_modules/core-js/modules/es7.string.trim-right.js","./modules/es7.string.match-all":"../../node_modules/core-js/modules/es7.string.match-all.js","./modules/es7.symbol.async-iterator":"../../node_modules/core-js/modules/es7.symbol.async-iterator.js","./modules/es7.symbol.observable":"../../node_modules/core-js/modules/es7.symbol.observable.js","./modules/es7.object.get-own-property-descriptors":"../../node_modules/core-js/modules/es7.object.get-own-property-descriptors.js","./modules/es7.object.values":"../../node_modules/core-js/modules/es7.object.values.js","./modules/es7.object.entries":"../../node_modules/core-js/modules/es7.object.entries.js","./modules/es7.object.define-getter":"../../node_modules/core-js/modules/es7.object.define-getter.js","./modules/es7.object.define-setter":"../../node_modules/core-js/modules/es7.object.define-setter.js","./modules/es7.object.lookup-getter":"../../node_modules/core-js/modules/es7.object.lookup-getter.js","./modules/es7.object.lookup-setter":"../../node_modules/core-js/modules/es7.object.lookup-setter.js","./modules/es7.map.to-json":"../../node_modules/core-js/modules/es7.map.to-json.js","./modules/es7.set.to-json":"../../node_modules/core-js/modules/es7.set.to-json.js","./modules/es7.map.of":"../../node_modules/core-js/modules/es7.map.of.js","./modules/es7.set.of":"../../node_modules/core-js/modules/es7.set.of.js","./modules/es7.weak-map.of":"../../node_modules/core-js/modules/es7.weak-map.of.js","./modules/es7.weak-set.of":"../../node_modules/core-js/modules/es7.weak-set.of.js","./modules/es7.map.from":"../../node_modules/core-js/modules/es7.map.from.js","./modules/es7.set.from":"../../node_modules/core-js/modules/es7.set.from.js","./modules/es7.weak-map.from":"../../node_modules/core-js/modules/es7.weak-map.from.js","./modules/es7.weak-set.from":"../../node_modules/core-js/modules/es7.weak-set.from.js","./modules/es7.global":"../../node_modules/core-js/modules/es7.global.js","./modules/es7.system.global":"../../node_modules/core-js/modules/es7.system.global.js","./modules/es7.error.is-error":"../../node_modules/core-js/modules/es7.error.is-error.js","./modules/es7.math.clamp":"../../node_modules/core-js/modules/es7.math.clamp.js","./modules/es7.math.deg-per-rad":"../../node_modules/core-js/modules/es7.math.deg-per-rad.js","./modules/es7.math.degrees":"../../node_modules/core-js/modules/es7.math.degrees.js","./modules/es7.math.fscale":"../../node_modules/core-js/modules/es7.math.fscale.js","./modules/es7.math.iaddh":"../../node_modules/core-js/modules/es7.math.iaddh.js","./modules/es7.math.isubh":"../../node_modules/core-js/modules/es7.math.isubh.js","./modules/es7.math.imulh":"../../node_modules/core-js/modules/es7.math.imulh.js","./modules/es7.math.rad-per-deg":"../../node_modules/core-js/modules/es7.math.rad-per-deg.js","./modules/es7.math.radians":"../../node_modules/core-js/modules/es7.math.radians.js","./modules/es7.math.scale":"../../node_modules/core-js/modules/es7.math.scale.js","./modules/es7.math.umulh":"../../node_modules/core-js/modules/es7.math.umulh.js","./modules/es7.math.signbit":"../../node_modules/core-js/modules/es7.math.signbit.js","./modules/es7.promise.finally":"../../node_modules/core-js/modules/es7.promise.finally.js","./modules/es7.promise.try":"../../node_modules/core-js/modules/es7.promise.try.js","./modules/es7.reflect.define-metadata":"../../node_modules/core-js/modules/es7.reflect.define-metadata.js","./modules/es7.reflect.delete-metadata":"../../node_modules/core-js/modules/es7.reflect.delete-metadata.js","./modules/es7.reflect.get-metadata":"../../node_modules/core-js/modules/es7.reflect.get-metadata.js","./modules/es7.reflect.get-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-metadata-keys.js","./modules/es7.reflect.get-own-metadata":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata.js","./modules/es7.reflect.get-own-metadata-keys":"../../node_modules/core-js/modules/es7.reflect.get-own-metadata-keys.js","./modules/es7.reflect.has-metadata":"../../node_modules/core-js/modules/es7.reflect.has-metadata.js","./modules/es7.reflect.has-own-metadata":"../../node_modules/core-js/modules/es7.reflect.has-own-metadata.js","./modules/es7.reflect.metadata":"../../node_modules/core-js/modules/es7.reflect.metadata.js","./modules/es7.asap":"../../node_modules/core-js/modules/es7.asap.js","./modules/es7.observable":"../../node_modules/core-js/modules/es7.observable.js","./modules/web.timers":"../../node_modules/core-js/modules/web.timers.js","./modules/web.immediate":"../../node_modules/core-js/modules/web.immediate.js","./modules/web.dom.iterable":"../../node_modules/core-js/modules/web.dom.iterable.js","./modules/_core":"../../node_modules/core-js/modules/_core.js"}],"../../node_modules/regenerator-runtime/runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 /**
  * Copyright (c) 2014, Facebook, Inc.
@@ -8094,7 +8115,7 @@ define(String.prototype, "padRight", "".padEnd);
 "pop,reverse,shift,keys,values,entries,indexOf,every,some,forEach,map,filter,find,findIndex,includes,join,slice,concat,push,splice,unshift,sort,lastIndexOf,reduce,reduceRight,copyWithin,fill".split(",").forEach(function (key) {
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
-},{"core-js/shim":"../../node_modules/core-js/shim.js","regenerator-runtime/runtime":"../../node_modules/babel-polyfill/node_modules/regenerator-runtime/runtime.js","core-js/fn/regexp/escape":"../../node_modules/core-js/fn/regexp/escape.js"}],"../live-tiles/src/map-style/base-style.json":[function(require,module,exports) {
+},{"core-js/shim":"../../node_modules/core-js/shim.js","regenerator-runtime/runtime":"../../node_modules/regenerator-runtime/runtime.js","core-js/fn/regexp/escape":"../../node_modules/core-js/fn/regexp/escape.js"}],"../live-tiles/src/map-style/base-style.json":[function(require,module,exports) {
 module.exports = {
   "version": 8,
   "name": "Outdoors Modified",
@@ -10135,7 +10156,9 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
@@ -10278,7 +10301,7 @@ module.exports = function parseuri(str) {
     return uri;
 };
 
-},{}],"../../node_modules/ms/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/socket.io-client/node_modules/ms/index.js":[function(require,module,exports) {
 /**
  * Helpers.
  */
@@ -10287,6 +10310,7 @@ var s = 1000;
 var m = s * 60;
 var h = m * 60;
 var d = h * 24;
+var w = d * 7;
 var y = d * 365.25;
 
 /**
@@ -10308,7 +10332,7 @@ module.exports = function(val, options) {
   var type = typeof val;
   if (type === 'string' && val.length > 0) {
     return parse(val);
-  } else if (type === 'number' && isNaN(val) === false) {
+  } else if (type === 'number' && isFinite(val)) {
     return options.long ? fmtLong(val) : fmtShort(val);
   }
   throw new Error(
@@ -10330,7 +10354,7 @@ function parse(str) {
   if (str.length > 100) {
     return;
   }
-  var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(
+  var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
     str
   );
   if (!match) {
@@ -10345,6 +10369,10 @@ function parse(str) {
     case 'yr':
     case 'y':
       return n * y;
+    case 'weeks':
+    case 'week':
+    case 'w':
+      return n * w;
     case 'days':
     case 'day':
     case 'd':
@@ -10387,16 +10415,17 @@ function parse(str) {
  */
 
 function fmtShort(ms) {
-  if (ms >= d) {
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
     return Math.round(ms / d) + 'd';
   }
-  if (ms >= h) {
+  if (msAbs >= h) {
     return Math.round(ms / h) + 'h';
   }
-  if (ms >= m) {
+  if (msAbs >= m) {
     return Math.round(ms / m) + 'm';
   }
-  if (ms >= s) {
+  if (msAbs >= s) {
     return Math.round(ms / s) + 's';
   }
   return ms + 'ms';
@@ -10411,255 +10440,300 @@ function fmtShort(ms) {
  */
 
 function fmtLong(ms) {
-  return plural(ms, d, 'day') ||
-    plural(ms, h, 'hour') ||
-    plural(ms, m, 'minute') ||
-    plural(ms, s, 'second') ||
-    ms + ' ms';
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
+    return plural(ms, msAbs, d, 'day');
+  }
+  if (msAbs >= h) {
+    return plural(ms, msAbs, h, 'hour');
+  }
+  if (msAbs >= m) {
+    return plural(ms, msAbs, m, 'minute');
+  }
+  if (msAbs >= s) {
+    return plural(ms, msAbs, s, 'second');
+  }
+  return ms + ' ms';
 }
 
 /**
  * Pluralization helper.
  */
 
-function plural(ms, n, name) {
-  if (ms < n) {
-    return;
-  }
-  if (ms < n * 1.5) {
-    return Math.floor(ms / n) + ' ' + name;
-  }
-  return Math.ceil(ms / n) + ' ' + name + 's';
+function plural(ms, msAbs, n, name) {
+  var isPlural = msAbs >= n * 1.5;
+  return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
 }
 
-},{}],"../../node_modules/socket.io-client/node_modules/debug/src/debug.js":[function(require,module,exports) {
+},{}],"../../node_modules/socket.io-client/node_modules/debug/src/common.js":[function(require,module,exports) {
 
 /**
  * This is the common logic for both the Node.js and web browser
  * implementations of `debug()`.
- *
- * Expose `debug()` as the module.
  */
 
-exports = module.exports = createDebug.debug = createDebug['default'] = createDebug;
-exports.coerce = coerce;
-exports.disable = disable;
-exports.enable = enable;
-exports.enabled = enabled;
-exports.humanize = require('ms');
+function setup(env) {
+	createDebug.debug = createDebug;
+	createDebug.default = createDebug;
+	createDebug.coerce = coerce;
+	createDebug.disable = disable;
+	createDebug.enable = enable;
+	createDebug.enabled = enabled;
+	createDebug.humanize = require('ms');
 
-/**
- * Active `debug` instances.
- */
-exports.instances = [];
+	Object.keys(env).forEach(key => {
+		createDebug[key] = env[key];
+	});
 
-/**
- * The currently active debug mode names, and names to skip.
- */
+	/**
+	* Active `debug` instances.
+	*/
+	createDebug.instances = [];
 
-exports.names = [];
-exports.skips = [];
+	/**
+	* The currently active debug mode names, and names to skip.
+	*/
 
-/**
- * Map of special "%n" handling functions, for the debug "format" argument.
- *
- * Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
- */
+	createDebug.names = [];
+	createDebug.skips = [];
 
-exports.formatters = {};
+	/**
+	* Map of special "%n" handling functions, for the debug "format" argument.
+	*
+	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+	*/
+	createDebug.formatters = {};
 
-/**
- * Select a color.
- * @param {String} namespace
- * @return {Number}
- * @api private
- */
+	/**
+	* Selects a color for a debug namespace
+	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @return {Number|String} An ANSI color code for the given namespace
+	* @api private
+	*/
+	function selectColor(namespace) {
+		let hash = 0;
 
-function selectColor(namespace) {
-  var hash = 0, i;
+		for (let i = 0; i < namespace.length; i++) {
+			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+			hash |= 0; // Convert to 32bit integer
+		}
 
-  for (i in namespace) {
-    hash  = ((hash << 5) - hash) + namespace.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
-  }
+		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+	}
+	createDebug.selectColor = selectColor;
 
-  return exports.colors[Math.abs(hash) % exports.colors.length];
+	/**
+	* Create a debugger with the given `namespace`.
+	*
+	* @param {String} namespace
+	* @return {Function}
+	* @api public
+	*/
+	function createDebug(namespace) {
+		let prevTime;
+
+		function debug(...args) {
+			// Disabled?
+			if (!debug.enabled) {
+				return;
+			}
+
+			const self = debug;
+
+			// Set `diff` timestamp
+			const curr = Number(new Date());
+			const ms = curr - (prevTime || curr);
+			self.diff = ms;
+			self.prev = prevTime;
+			self.curr = curr;
+			prevTime = curr;
+
+			args[0] = createDebug.coerce(args[0]);
+
+			if (typeof args[0] !== 'string') {
+				// Anything else let's inspect with %O
+				args.unshift('%O');
+			}
+
+			// Apply any `formatters` transformations
+			let index = 0;
+			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+				// If we encounter an escaped % then don't increase the array index
+				if (match === '%%') {
+					return match;
+				}
+				index++;
+				const formatter = createDebug.formatters[format];
+				if (typeof formatter === 'function') {
+					const val = args[index];
+					match = formatter.call(self, val);
+
+					// Now we need to remove `args[index]` since it's inlined in the `format`
+					args.splice(index, 1);
+					index--;
+				}
+				return match;
+			});
+
+			// Apply env-specific formatting (colors, etc.)
+			createDebug.formatArgs.call(self, args);
+
+			const logFn = self.log || createDebug.log;
+			logFn.apply(self, args);
+		}
+
+		debug.namespace = namespace;
+		debug.enabled = createDebug.enabled(namespace);
+		debug.useColors = createDebug.useColors();
+		debug.color = selectColor(namespace);
+		debug.destroy = destroy;
+		debug.extend = extend;
+		// Debug.formatArgs = formatArgs;
+		// debug.rawLog = rawLog;
+
+		// env-specific initialization logic for debug instances
+		if (typeof createDebug.init === 'function') {
+			createDebug.init(debug);
+		}
+
+		createDebug.instances.push(debug);
+
+		return debug;
+	}
+
+	function destroy() {
+		const index = createDebug.instances.indexOf(this);
+		if (index !== -1) {
+			createDebug.instances.splice(index, 1);
+			return true;
+		}
+		return false;
+	}
+
+	function extend(namespace, delimiter) {
+		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+		newDebug.log = this.log;
+		return newDebug;
+	}
+
+	/**
+	* Enables a debug mode by namespaces. This can include modes
+	* separated by a colon and wildcards.
+	*
+	* @param {String} namespaces
+	* @api public
+	*/
+	function enable(namespaces) {
+		createDebug.save(namespaces);
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		let i;
+		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+		const len = split.length;
+
+		for (i = 0; i < len; i++) {
+			if (!split[i]) {
+				// ignore empty strings
+				continue;
+			}
+
+			namespaces = split[i].replace(/\*/g, '.*?');
+
+			if (namespaces[0] === '-') {
+				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+			} else {
+				createDebug.names.push(new RegExp('^' + namespaces + '$'));
+			}
+		}
+
+		for (i = 0; i < createDebug.instances.length; i++) {
+			const instance = createDebug.instances[i];
+			instance.enabled = createDebug.enabled(instance.namespace);
+		}
+	}
+
+	/**
+	* Disable debug output.
+	*
+	* @return {String} namespaces
+	* @api public
+	*/
+	function disable() {
+		const namespaces = [
+			...createDebug.names.map(toNamespace),
+			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+		].join(',');
+		createDebug.enable('');
+		return namespaces;
+	}
+
+	/**
+	* Returns true if the given mode name is enabled, false otherwise.
+	*
+	* @param {String} name
+	* @return {Boolean}
+	* @api public
+	*/
+	function enabled(name) {
+		if (name[name.length - 1] === '*') {
+			return true;
+		}
+
+		let i;
+		let len;
+
+		for (i = 0, len = createDebug.skips.length; i < len; i++) {
+			if (createDebug.skips[i].test(name)) {
+				return false;
+			}
+		}
+
+		for (i = 0, len = createDebug.names.length; i < len; i++) {
+			if (createDebug.names[i].test(name)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Convert regexp to namespace
+	*
+	* @param {RegExp} regxep
+	* @return {String} namespace
+	* @api private
+	*/
+	function toNamespace(regexp) {
+		return regexp.toString()
+			.substring(2, regexp.toString().length - 2)
+			.replace(/\.\*\?$/, '*');
+	}
+
+	/**
+	* Coerce `val`.
+	*
+	* @param {Mixed} val
+	* @return {Mixed}
+	* @api private
+	*/
+	function coerce(val) {
+		if (val instanceof Error) {
+			return val.stack || val.message;
+		}
+		return val;
+	}
+
+	createDebug.enable(createDebug.load());
+
+	return createDebug;
 }
 
-/**
- * Create a debugger with the given `namespace`.
- *
- * @param {String} namespace
- * @return {Function}
- * @api public
- */
+module.exports = setup;
 
-function createDebug(namespace) {
-
-  var prevTime;
-
-  function debug() {
-    // disabled?
-    if (!debug.enabled) return;
-
-    var self = debug;
-
-    // set `diff` timestamp
-    var curr = +new Date();
-    var ms = curr - (prevTime || curr);
-    self.diff = ms;
-    self.prev = prevTime;
-    self.curr = curr;
-    prevTime = curr;
-
-    // turn the `arguments` into a proper Array
-    var args = new Array(arguments.length);
-    for (var i = 0; i < args.length; i++) {
-      args[i] = arguments[i];
-    }
-
-    args[0] = exports.coerce(args[0]);
-
-    if ('string' !== typeof args[0]) {
-      // anything else let's inspect with %O
-      args.unshift('%O');
-    }
-
-    // apply any `formatters` transformations
-    var index = 0;
-    args[0] = args[0].replace(/%([a-zA-Z%])/g, function(match, format) {
-      // if we encounter an escaped % then don't increase the array index
-      if (match === '%%') return match;
-      index++;
-      var formatter = exports.formatters[format];
-      if ('function' === typeof formatter) {
-        var val = args[index];
-        match = formatter.call(self, val);
-
-        // now we need to remove `args[index]` since it's inlined in the `format`
-        args.splice(index, 1);
-        index--;
-      }
-      return match;
-    });
-
-    // apply env-specific formatting (colors, etc.)
-    exports.formatArgs.call(self, args);
-
-    var logFn = debug.log || exports.log || console.log.bind(console);
-    logFn.apply(self, args);
-  }
-
-  debug.namespace = namespace;
-  debug.enabled = exports.enabled(namespace);
-  debug.useColors = exports.useColors();
-  debug.color = selectColor(namespace);
-  debug.destroy = destroy;
-
-  // env-specific initialization logic for debug instances
-  if ('function' === typeof exports.init) {
-    exports.init(debug);
-  }
-
-  exports.instances.push(debug);
-
-  return debug;
-}
-
-function destroy () {
-  var index = exports.instances.indexOf(this);
-  if (index !== -1) {
-    exports.instances.splice(index, 1);
-    return true;
-  } else {
-    return false;
-  }
-}
-
-/**
- * Enables a debug mode by namespaces. This can include modes
- * separated by a colon and wildcards.
- *
- * @param {String} namespaces
- * @api public
- */
-
-function enable(namespaces) {
-  exports.save(namespaces);
-
-  exports.names = [];
-  exports.skips = [];
-
-  var i;
-  var split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-  var len = split.length;
-
-  for (i = 0; i < len; i++) {
-    if (!split[i]) continue; // ignore empty strings
-    namespaces = split[i].replace(/\*/g, '.*?');
-    if (namespaces[0] === '-') {
-      exports.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
-    } else {
-      exports.names.push(new RegExp('^' + namespaces + '$'));
-    }
-  }
-
-  for (i = 0; i < exports.instances.length; i++) {
-    var instance = exports.instances[i];
-    instance.enabled = exports.enabled(instance.namespace);
-  }
-}
-
-/**
- * Disable debug output.
- *
- * @api public
- */
-
-function disable() {
-  exports.enable('');
-}
-
-/**
- * Returns true if the given mode name is enabled, false otherwise.
- *
- * @param {String} name
- * @return {Boolean}
- * @api public
- */
-
-function enabled(name) {
-  if (name[name.length - 1] === '*') {
-    return true;
-  }
-  var i, len;
-  for (i = 0, len = exports.skips.length; i < len; i++) {
-    if (exports.skips[i].test(name)) {
-      return false;
-    }
-  }
-  for (i = 0, len = exports.names.length; i < len; i++) {
-    if (exports.names[i].test(name)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Coerce `val`.
- *
- * @param {Mixed} val
- * @return {Mixed}
- * @api private
- */
-
-function coerce(val) {
-  if (val instanceof Error) return val.stack || val.message;
-  return val;
-}
-
-},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/process/browser.js":[function(require,module,exports) {
+},{"ms":"../../node_modules/socket.io-client/node_modules/ms/index.js"}],"../../node_modules/process/browser.js":[function(require,module,exports) {
 
 // shim for using process in browser
 var process = module.exports = {}; // cached from whatever global is present so that test runners that stub it
@@ -10870,18 +10944,17 @@ process.umask = function () {
 };
 },{}],"../../node_modules/socket.io-client/node_modules/debug/src/browser.js":[function(require,module,exports) {
 var process = require("process");
+/* eslint-env browser */
+
 /**
  * This is the web browser implementation of `debug()`.
- *
- * Expose `debug()` as the module.
  */
-exports = module.exports = require('./debug');
 exports.log = log;
 exports.formatArgs = formatArgs;
 exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
-exports.storage = 'undefined' != typeof chrome && 'undefined' != typeof chrome.storage ? chrome.storage.local : localstorage();
+exports.storage = localstorage();
 /**
  * Colors.
  */
@@ -10894,40 +10967,29 @@ exports.colors = ['#0000CC', '#0000FF', '#0033CC', '#0033FF', '#0066CC', '#0066F
  *
  * TODO: add a `localStorage` variable to explicitly enable/disable colors
  */
+// eslint-disable-next-line complexity
 
 function useColors() {
   // NB: In an Electron preload script, document will be defined but not fully
   // initialized. Since we know we're in Chrome, we'll just detect this case
   // explicitly
-  if (typeof window !== 'undefined' && window.process && window.process.type === 'renderer') {
+  if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
     return true;
   } // Internet Explorer and Edge do not support colors.
 
 
   if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
     return false;
-  } // is webkit? http://stackoverflow.com/a/16459606/376773
+  } // Is webkit? http://stackoverflow.com/a/16459606/376773
   // document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
 
 
-  return typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // is firebug? http://stackoverflow.com/a/398120/376773
-  typeof window !== 'undefined' && window.console && (window.console.firebug || window.console.exception && window.console.table) || // is firefox >= v31?
+  return typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
+  typeof window !== 'undefined' && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
   // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // double check webkit in userAgent just in case we are in a worker
+  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
   typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
 }
-/**
- * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
- */
-
-
-exports.formatters.j = function (v) {
-  try {
-    return JSON.stringify(v);
-  } catch (err) {
-    return '[UnexpectedJSONParseError]: ' + err.message;
-  }
-};
 /**
  * Colorize log arguments if enabled.
  *
@@ -10936,22 +10998,28 @@ exports.formatters.j = function (v) {
 
 
 function formatArgs(args) {
-  var useColors = this.useColors;
-  args[0] = (useColors ? '%c' : '') + this.namespace + (useColors ? ' %c' : ' ') + args[0] + (useColors ? '%c ' : ' ') + '+' + exports.humanize(this.diff);
-  if (!useColors) return;
-  var c = 'color: ' + this.color;
-  args.splice(1, 0, c, 'color: inherit'); // the final "%c" is somewhat tricky, because there could be other
+  args[0] = (this.useColors ? '%c' : '') + this.namespace + (this.useColors ? ' %c' : ' ') + args[0] + (this.useColors ? '%c ' : ' ') + '+' + module.exports.humanize(this.diff);
+
+  if (!this.useColors) {
+    return;
+  }
+
+  const c = 'color: ' + this.color;
+  args.splice(1, 0, c, 'color: inherit'); // The final "%c" is somewhat tricky, because there could be other
   // arguments passed either before or after the %c, so we need to
   // figure out the correct index to insert the CSS into
 
-  var index = 0;
-  var lastC = 0;
-  args[0].replace(/%[a-zA-Z%]/g, function (match) {
-    if ('%%' === match) return;
+  let index = 0;
+  let lastC = 0;
+  args[0].replace(/%[a-zA-Z%]/g, match => {
+    if (match === '%%') {
+      return;
+    }
+
     index++;
 
-    if ('%c' === match) {
-      // we only are interested in the *last* %c
+    if (match === '%c') {
+      // We only are interested in the *last* %c
       // (the user may have provided their own)
       lastC = index;
     }
@@ -10966,10 +11034,10 @@ function formatArgs(args) {
  */
 
 
-function log() {
-  // this hackery is required for IE8/9, where
+function log(...args) {
+  // This hackery is required for IE8/9, where
   // the `console.log` function doesn't have 'apply'
-  return 'object' === typeof console && console.log && Function.prototype.apply.call(console.log, console, arguments);
+  return typeof console === 'object' && console.log && console.log(...args);
 }
 /**
  * Save `namespaces`.
@@ -10981,12 +11049,14 @@ function log() {
 
 function save(namespaces) {
   try {
-    if (null == namespaces) {
-      exports.storage.removeItem('debug');
+    if (namespaces) {
+      exports.storage.setItem('debug', namespaces);
     } else {
-      exports.storage.debug = namespaces;
+      exports.storage.removeItem('debug');
     }
-  } catch (e) {}
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
 }
 /**
  * Load `namespaces`.
@@ -10997,11 +11067,13 @@ function save(namespaces) {
 
 
 function load() {
-  var r;
+  let r;
 
   try {
-    r = exports.storage.debug;
-  } catch (e) {} // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+    r = exports.storage.getItem('debug');
+  } catch (error) {} // Swallow
+  // XXX (@Qix-) should we be logging these?
+  // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
 
 
   if (!r && typeof process !== 'undefined' && 'env' in process) {
@@ -11010,12 +11082,6 @@ function load() {
 
   return r;
 }
-/**
- * Enable namespaces listed in `localStorage.debug` initially.
- */
-
-
-exports.enable(load());
 /**
  * Localstorage attempts to return the localstorage.
  *
@@ -11027,12 +11093,33 @@ exports.enable(load());
  * @api private
  */
 
+
 function localstorage() {
   try {
-    return window.localStorage;
-  } catch (e) {}
+    // TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+    // The Browser also has localStorage in the global context.
+    return localStorage;
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
 }
-},{"./debug":"../../node_modules/socket.io-client/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/socket.io-client/lib/url.js":[function(require,module,exports) {
+
+module.exports = require('./common')(exports);
+const {
+  formatters
+} = module.exports;
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+  try {
+    return JSON.stringify(v);
+  } catch (error) {
+    return '[UnexpectedJSONParseError]: ' + error.message;
+  }
+};
+},{"./common":"../../node_modules/socket.io-client/node_modules/debug/src/common.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/socket.io-client/lib/url.js":[function(require,module,exports) {
 
 /**
  * Module dependencies.
@@ -11109,7 +11196,161 @@ function url (uri, loc) {
   return obj;
 }
 
-},{"parseuri":"../../node_modules/parseuri/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js":[function(require,module,exports) {
+},{"parseuri":"../../node_modules/parseuri/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js"}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/ms/index.js":[function(require,module,exports) {
+/**
+ * Helpers.
+ */
+
+var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var y = d * 365.25;
+
+/**
+ * Parse or format the given `val`.
+ *
+ * Options:
+ *
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} [options]
+ * @throws {Error} throw an error if val is not a non-empty string or a number
+ * @return {String|Number}
+ * @api public
+ */
+
+module.exports = function(val, options) {
+  options = options || {};
+  var type = typeof val;
+  if (type === 'string' && val.length > 0) {
+    return parse(val);
+  } else if (type === 'number' && isNaN(val) === false) {
+    return options.long ? fmtLong(val) : fmtShort(val);
+  }
+  throw new Error(
+    'val is not a non-empty string or a valid number. val=' +
+      JSON.stringify(val)
+  );
+};
+
+/**
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */
+
+function parse(str) {
+  str = String(str);
+  if (str.length > 100) {
+    return;
+  }
+  var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(
+    str
+  );
+  if (!match) {
+    return;
+  }
+  var n = parseFloat(match[1]);
+  var type = (match[2] || 'ms').toLowerCase();
+  switch (type) {
+    case 'years':
+    case 'year':
+    case 'yrs':
+    case 'yr':
+    case 'y':
+      return n * y;
+    case 'days':
+    case 'day':
+    case 'd':
+      return n * d;
+    case 'hours':
+    case 'hour':
+    case 'hrs':
+    case 'hr':
+    case 'h':
+      return n * h;
+    case 'minutes':
+    case 'minute':
+    case 'mins':
+    case 'min':
+    case 'm':
+      return n * m;
+    case 'seconds':
+    case 'second':
+    case 'secs':
+    case 'sec':
+    case 's':
+      return n * s;
+    case 'milliseconds':
+    case 'millisecond':
+    case 'msecs':
+    case 'msec':
+    case 'ms':
+      return n;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Short format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function fmtShort(ms) {
+  if (ms >= d) {
+    return Math.round(ms / d) + 'd';
+  }
+  if (ms >= h) {
+    return Math.round(ms / h) + 'h';
+  }
+  if (ms >= m) {
+    return Math.round(ms / m) + 'm';
+  }
+  if (ms >= s) {
+    return Math.round(ms / s) + 's';
+  }
+  return ms + 'ms';
+}
+
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function fmtLong(ms) {
+  return plural(ms, d, 'day') ||
+    plural(ms, h, 'hour') ||
+    plural(ms, m, 'minute') ||
+    plural(ms, s, 'second') ||
+    ms + ' ms';
+}
+
+/**
+ * Pluralization helper.
+ */
+
+function plural(ms, n, name) {
+  if (ms < n) {
+    return;
+  }
+  if (ms < n * 1.5) {
+    return Math.floor(ms / n) + ' ' + name;
+  }
+  return Math.ceil(ms / n) + ' ' + name + 's';
+}
+
+},{}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/debug/src/debug.js":[function(require,module,exports) {
 
 /**
  * This is the common logic for both the Node.js and web browser
@@ -11336,7 +11577,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js":[function(require,module,exports) {
+},{"ms":"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/ms/index.js"}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/debug/src/browser.js":[function(require,module,exports) {
 var process = require("process");
 /**
  * This is the web browser implementation of `debug()`.
@@ -11500,7 +11741,7 @@ function localstorage() {
     return window.localStorage;
   } catch (e) {}
 }
-},{"./debug":"../../node_modules/socket.io-parser/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/component-emitter/index.js":[function(require,module,exports) {
+},{"./debug":"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/component-emitter/index.js":[function(require,module,exports) {
 
 /**
  * Expose `Emitter`.
@@ -11665,7 +11906,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],"../../node_modules/socket.io-parser/node_modules/isarray/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/socket.io-client/node_modules/isarray/index.js":[function(require,module,exports) {
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
@@ -11740,7 +11981,8 @@ function toByteArray (b64) {
     ? validLen - 4
     : validLen
 
-  for (var i = 0; i < len; i += 4) {
+  var i
+  for (i = 0; i < len; i += 4) {
     tmp =
       (revLookup[b64.charCodeAt(i)] << 18) |
       (revLookup[b64.charCodeAt(i + 1)] << 12) |
@@ -11924,7 +12166,7 @@ var global = arguments[3];
 /*!
  * The buffer module from node.js, for the browser.
  *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @author   Feross Aboukhadijeh <http://feross.org>
  * @license  MIT
  */
 /* eslint-disable no-proto */
@@ -13711,7 +13953,7 @@ function isnan (val) {
   return val !== val // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":"../../node_modules/base64-js/index.js","ieee754":"../../node_modules/ieee754/index.js","isarray":"../../node_modules/isarray/index.js","buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/is-buffer.js":[function(require,module,exports) {
+},{"base64-js":"../../node_modules/base64-js/index.js","ieee754":"../../node_modules/ieee754/index.js","isarray":"../../node_modules/isarray/index.js","buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/is-buffer.js":[function(require,module,exports) {
 var Buffer = require("buffer").Buffer;
 
 module.exports = isBuf;
@@ -13734,7 +13976,7 @@ function isBuf(obj) {
           (withNativeArrayBuffer && (obj instanceof ArrayBuffer || isView(obj)));
 }
 
-},{"buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-parser/binary.js":[function(require,module,exports) {
+},{"buffer":"../../node_modules/buffer/index.js"}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/binary.js":[function(require,module,exports) {
 /*global Blob,File*/
 
 /**
@@ -13877,7 +14119,7 @@ exports.removeBlobs = function(data, callback) {
   }
 };
 
-},{"isarray":"../../node_modules/socket.io-parser/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/socket.io-parser/index.js":[function(require,module,exports) {
+},{"isarray":"../../node_modules/socket.io-client/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-client/node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/socket.io-client/node_modules/socket.io-parser/index.js":[function(require,module,exports) {
 
 /**
  * Module dependencies.
@@ -14294,7 +14536,7 @@ function error(msg) {
   };
 }
 
-},{"debug":"../../node_modules/socket.io-parser/node_modules/debug/src/browser.js","component-emitter":"../../node_modules/component-emitter/index.js","./binary":"../../node_modules/socket.io-parser/binary.js","isarray":"../../node_modules/socket.io-parser/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/has-cors/index.js":[function(require,module,exports) {
+},{"debug":"../../node_modules/socket.io-client/node_modules/socket.io-parser/node_modules/debug/src/browser.js","component-emitter":"../../node_modules/component-emitter/index.js","./binary":"../../node_modules/socket.io-client/node_modules/socket.io-parser/binary.js","isarray":"../../node_modules/socket.io-client/node_modules/isarray/index.js","./is-buffer":"../../node_modules/socket.io-client/node_modules/socket.io-parser/is-buffer.js"}],"../../node_modules/has-cors/index.js":[function(require,module,exports) {
 
 /**
  * Module exports.
@@ -15537,6 +15779,7 @@ function Transport (opts) {
   this.agent = opts.agent || false;
   this.socket = opts.socket;
   this.enablesXDR = opts.enablesXDR;
+  this.withCredentials = opts.withCredentials;
 
   // SSL options for Node.js client
   this.pfx = opts.pfx;
@@ -15783,247 +16026,451 @@ yeast.encode = encode;
 yeast.decode = decode;
 module.exports = yeast;
 
-},{}],"../../node_modules/engine.io-client/node_modules/debug/src/debug.js":[function(require,module,exports) {
+},{}],"../../node_modules/engine.io-client/node_modules/ms/index.js":[function(require,module,exports) {
+/**
+ * Helpers.
+ */
+
+var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var w = d * 7;
+var y = d * 365.25;
 
 /**
- * This is the common logic for both the Node.js and web browser
- * implementations of `debug()`.
+ * Parse or format the given `val`.
  *
- * Expose `debug()` as the module.
- */
-
-exports = module.exports = createDebug.debug = createDebug['default'] = createDebug;
-exports.coerce = coerce;
-exports.disable = disable;
-exports.enable = enable;
-exports.enabled = enabled;
-exports.humanize = require('ms');
-
-/**
- * Active `debug` instances.
- */
-exports.instances = [];
-
-/**
- * The currently active debug mode names, and names to skip.
- */
-
-exports.names = [];
-exports.skips = [];
-
-/**
- * Map of special "%n" handling functions, for the debug "format" argument.
+ * Options:
  *
- * Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} [options]
+ * @throws {Error} throw an error if val is not a non-empty string or a number
+ * @return {String|Number}
+ * @api public
  */
 
-exports.formatters = {};
+module.exports = function(val, options) {
+  options = options || {};
+  var type = typeof val;
+  if (type === 'string' && val.length > 0) {
+    return parse(val);
+  } else if (type === 'number' && isFinite(val)) {
+    return options.long ? fmtLong(val) : fmtShort(val);
+  }
+  throw new Error(
+    'val is not a non-empty string or a valid number. val=' +
+      JSON.stringify(val)
+  );
+};
 
 /**
- * Select a color.
- * @param {String} namespace
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
  * @return {Number}
  * @api private
  */
 
-function selectColor(namespace) {
-  var hash = 0, i;
-
-  for (i in namespace) {
-    hash  = ((hash << 5) - hash) + namespace.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
+function parse(str) {
+  str = String(str);
+  if (str.length > 100) {
+    return;
   }
-
-  return exports.colors[Math.abs(hash) % exports.colors.length];
-}
-
-/**
- * Create a debugger with the given `namespace`.
- *
- * @param {String} namespace
- * @return {Function}
- * @api public
- */
-
-function createDebug(namespace) {
-
-  var prevTime;
-
-  function debug() {
-    // disabled?
-    if (!debug.enabled) return;
-
-    var self = debug;
-
-    // set `diff` timestamp
-    var curr = +new Date();
-    var ms = curr - (prevTime || curr);
-    self.diff = ms;
-    self.prev = prevTime;
-    self.curr = curr;
-    prevTime = curr;
-
-    // turn the `arguments` into a proper Array
-    var args = new Array(arguments.length);
-    for (var i = 0; i < args.length; i++) {
-      args[i] = arguments[i];
-    }
-
-    args[0] = exports.coerce(args[0]);
-
-    if ('string' !== typeof args[0]) {
-      // anything else let's inspect with %O
-      args.unshift('%O');
-    }
-
-    // apply any `formatters` transformations
-    var index = 0;
-    args[0] = args[0].replace(/%([a-zA-Z%])/g, function(match, format) {
-      // if we encounter an escaped % then don't increase the array index
-      if (match === '%%') return match;
-      index++;
-      var formatter = exports.formatters[format];
-      if ('function' === typeof formatter) {
-        var val = args[index];
-        match = formatter.call(self, val);
-
-        // now we need to remove `args[index]` since it's inlined in the `format`
-        args.splice(index, 1);
-        index--;
-      }
-      return match;
-    });
-
-    // apply env-specific formatting (colors, etc.)
-    exports.formatArgs.call(self, args);
-
-    var logFn = debug.log || exports.log || console.log.bind(console);
-    logFn.apply(self, args);
+  var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
+    str
+  );
+  if (!match) {
+    return;
   }
-
-  debug.namespace = namespace;
-  debug.enabled = exports.enabled(namespace);
-  debug.useColors = exports.useColors();
-  debug.color = selectColor(namespace);
-  debug.destroy = destroy;
-
-  // env-specific initialization logic for debug instances
-  if ('function' === typeof exports.init) {
-    exports.init(debug);
-  }
-
-  exports.instances.push(debug);
-
-  return debug;
-}
-
-function destroy () {
-  var index = exports.instances.indexOf(this);
-  if (index !== -1) {
-    exports.instances.splice(index, 1);
-    return true;
-  } else {
-    return false;
+  var n = parseFloat(match[1]);
+  var type = (match[2] || 'ms').toLowerCase();
+  switch (type) {
+    case 'years':
+    case 'year':
+    case 'yrs':
+    case 'yr':
+    case 'y':
+      return n * y;
+    case 'weeks':
+    case 'week':
+    case 'w':
+      return n * w;
+    case 'days':
+    case 'day':
+    case 'd':
+      return n * d;
+    case 'hours':
+    case 'hour':
+    case 'hrs':
+    case 'hr':
+    case 'h':
+      return n * h;
+    case 'minutes':
+    case 'minute':
+    case 'mins':
+    case 'min':
+    case 'm':
+      return n * m;
+    case 'seconds':
+    case 'second':
+    case 'secs':
+    case 'sec':
+    case 's':
+      return n * s;
+    case 'milliseconds':
+    case 'millisecond':
+    case 'msecs':
+    case 'msec':
+    case 'ms':
+      return n;
+    default:
+      return undefined;
   }
 }
 
 /**
- * Enables a debug mode by namespaces. This can include modes
- * separated by a colon and wildcards.
+ * Short format for `ms`.
  *
- * @param {String} namespaces
- * @api public
- */
-
-function enable(namespaces) {
-  exports.save(namespaces);
-
-  exports.names = [];
-  exports.skips = [];
-
-  var i;
-  var split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-  var len = split.length;
-
-  for (i = 0; i < len; i++) {
-    if (!split[i]) continue; // ignore empty strings
-    namespaces = split[i].replace(/\*/g, '.*?');
-    if (namespaces[0] === '-') {
-      exports.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
-    } else {
-      exports.names.push(new RegExp('^' + namespaces + '$'));
-    }
-  }
-
-  for (i = 0; i < exports.instances.length; i++) {
-    var instance = exports.instances[i];
-    instance.enabled = exports.enabled(instance.namespace);
-  }
-}
-
-/**
- * Disable debug output.
- *
- * @api public
- */
-
-function disable() {
-  exports.enable('');
-}
-
-/**
- * Returns true if the given mode name is enabled, false otherwise.
- *
- * @param {String} name
- * @return {Boolean}
- * @api public
- */
-
-function enabled(name) {
-  if (name[name.length - 1] === '*') {
-    return true;
-  }
-  var i, len;
-  for (i = 0, len = exports.skips.length; i < len; i++) {
-    if (exports.skips[i].test(name)) {
-      return false;
-    }
-  }
-  for (i = 0, len = exports.names.length; i < len; i++) {
-    if (exports.names[i].test(name)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Coerce `val`.
- *
- * @param {Mixed} val
- * @return {Mixed}
+ * @param {Number} ms
+ * @return {String}
  * @api private
  */
 
-function coerce(val) {
-  if (val instanceof Error) return val.stack || val.message;
-  return val;
+function fmtShort(ms) {
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
+    return Math.round(ms / d) + 'd';
+  }
+  if (msAbs >= h) {
+    return Math.round(ms / h) + 'h';
+  }
+  if (msAbs >= m) {
+    return Math.round(ms / m) + 'm';
+  }
+  if (msAbs >= s) {
+    return Math.round(ms / s) + 's';
+  }
+  return ms + 'ms';
 }
 
-},{"ms":"../../node_modules/ms/index.js"}],"../../node_modules/engine.io-client/node_modules/debug/src/browser.js":[function(require,module,exports) {
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */
+
+function fmtLong(ms) {
+  var msAbs = Math.abs(ms);
+  if (msAbs >= d) {
+    return plural(ms, msAbs, d, 'day');
+  }
+  if (msAbs >= h) {
+    return plural(ms, msAbs, h, 'hour');
+  }
+  if (msAbs >= m) {
+    return plural(ms, msAbs, m, 'minute');
+  }
+  if (msAbs >= s) {
+    return plural(ms, msAbs, s, 'second');
+  }
+  return ms + ' ms';
+}
+
+/**
+ * Pluralization helper.
+ */
+
+function plural(ms, msAbs, n, name) {
+  var isPlural = msAbs >= n * 1.5;
+  return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
+}
+
+},{}],"../../node_modules/engine.io-client/node_modules/debug/src/common.js":[function(require,module,exports) {
+
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ */
+
+function setup(env) {
+	createDebug.debug = createDebug;
+	createDebug.default = createDebug;
+	createDebug.coerce = coerce;
+	createDebug.disable = disable;
+	createDebug.enable = enable;
+	createDebug.enabled = enabled;
+	createDebug.humanize = require('ms');
+
+	Object.keys(env).forEach(key => {
+		createDebug[key] = env[key];
+	});
+
+	/**
+	* Active `debug` instances.
+	*/
+	createDebug.instances = [];
+
+	/**
+	* The currently active debug mode names, and names to skip.
+	*/
+
+	createDebug.names = [];
+	createDebug.skips = [];
+
+	/**
+	* Map of special "%n" handling functions, for the debug "format" argument.
+	*
+	* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+	*/
+	createDebug.formatters = {};
+
+	/**
+	* Selects a color for a debug namespace
+	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @return {Number|String} An ANSI color code for the given namespace
+	* @api private
+	*/
+	function selectColor(namespace) {
+		let hash = 0;
+
+		for (let i = 0; i < namespace.length; i++) {
+			hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
+			hash |= 0; // Convert to 32bit integer
+		}
+
+		return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+	}
+	createDebug.selectColor = selectColor;
+
+	/**
+	* Create a debugger with the given `namespace`.
+	*
+	* @param {String} namespace
+	* @return {Function}
+	* @api public
+	*/
+	function createDebug(namespace) {
+		let prevTime;
+
+		function debug(...args) {
+			// Disabled?
+			if (!debug.enabled) {
+				return;
+			}
+
+			const self = debug;
+
+			// Set `diff` timestamp
+			const curr = Number(new Date());
+			const ms = curr - (prevTime || curr);
+			self.diff = ms;
+			self.prev = prevTime;
+			self.curr = curr;
+			prevTime = curr;
+
+			args[0] = createDebug.coerce(args[0]);
+
+			if (typeof args[0] !== 'string') {
+				// Anything else let's inspect with %O
+				args.unshift('%O');
+			}
+
+			// Apply any `formatters` transformations
+			let index = 0;
+			args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
+				// If we encounter an escaped % then don't increase the array index
+				if (match === '%%') {
+					return match;
+				}
+				index++;
+				const formatter = createDebug.formatters[format];
+				if (typeof formatter === 'function') {
+					const val = args[index];
+					match = formatter.call(self, val);
+
+					// Now we need to remove `args[index]` since it's inlined in the `format`
+					args.splice(index, 1);
+					index--;
+				}
+				return match;
+			});
+
+			// Apply env-specific formatting (colors, etc.)
+			createDebug.formatArgs.call(self, args);
+
+			const logFn = self.log || createDebug.log;
+			logFn.apply(self, args);
+		}
+
+		debug.namespace = namespace;
+		debug.enabled = createDebug.enabled(namespace);
+		debug.useColors = createDebug.useColors();
+		debug.color = selectColor(namespace);
+		debug.destroy = destroy;
+		debug.extend = extend;
+		// Debug.formatArgs = formatArgs;
+		// debug.rawLog = rawLog;
+
+		// env-specific initialization logic for debug instances
+		if (typeof createDebug.init === 'function') {
+			createDebug.init(debug);
+		}
+
+		createDebug.instances.push(debug);
+
+		return debug;
+	}
+
+	function destroy() {
+		const index = createDebug.instances.indexOf(this);
+		if (index !== -1) {
+			createDebug.instances.splice(index, 1);
+			return true;
+		}
+		return false;
+	}
+
+	function extend(namespace, delimiter) {
+		const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
+		newDebug.log = this.log;
+		return newDebug;
+	}
+
+	/**
+	* Enables a debug mode by namespaces. This can include modes
+	* separated by a colon and wildcards.
+	*
+	* @param {String} namespaces
+	* @api public
+	*/
+	function enable(namespaces) {
+		createDebug.save(namespaces);
+
+		createDebug.names = [];
+		createDebug.skips = [];
+
+		let i;
+		const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
+		const len = split.length;
+
+		for (i = 0; i < len; i++) {
+			if (!split[i]) {
+				// ignore empty strings
+				continue;
+			}
+
+			namespaces = split[i].replace(/\*/g, '.*?');
+
+			if (namespaces[0] === '-') {
+				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+			} else {
+				createDebug.names.push(new RegExp('^' + namespaces + '$'));
+			}
+		}
+
+		for (i = 0; i < createDebug.instances.length; i++) {
+			const instance = createDebug.instances[i];
+			instance.enabled = createDebug.enabled(instance.namespace);
+		}
+	}
+
+	/**
+	* Disable debug output.
+	*
+	* @return {String} namespaces
+	* @api public
+	*/
+	function disable() {
+		const namespaces = [
+			...createDebug.names.map(toNamespace),
+			...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+		].join(',');
+		createDebug.enable('');
+		return namespaces;
+	}
+
+	/**
+	* Returns true if the given mode name is enabled, false otherwise.
+	*
+	* @param {String} name
+	* @return {Boolean}
+	* @api public
+	*/
+	function enabled(name) {
+		if (name[name.length - 1] === '*') {
+			return true;
+		}
+
+		let i;
+		let len;
+
+		for (i = 0, len = createDebug.skips.length; i < len; i++) {
+			if (createDebug.skips[i].test(name)) {
+				return false;
+			}
+		}
+
+		for (i = 0, len = createDebug.names.length; i < len; i++) {
+			if (createDebug.names[i].test(name)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	* Convert regexp to namespace
+	*
+	* @param {RegExp} regxep
+	* @return {String} namespace
+	* @api private
+	*/
+	function toNamespace(regexp) {
+		return regexp.toString()
+			.substring(2, regexp.toString().length - 2)
+			.replace(/\.\*\?$/, '*');
+	}
+
+	/**
+	* Coerce `val`.
+	*
+	* @param {Mixed} val
+	* @return {Mixed}
+	* @api private
+	*/
+	function coerce(val) {
+		if (val instanceof Error) {
+			return val.stack || val.message;
+		}
+		return val;
+	}
+
+	createDebug.enable(createDebug.load());
+
+	return createDebug;
+}
+
+module.exports = setup;
+
+},{"ms":"../../node_modules/engine.io-client/node_modules/ms/index.js"}],"../../node_modules/engine.io-client/node_modules/debug/src/browser.js":[function(require,module,exports) {
 var process = require("process");
+/* eslint-env browser */
+
 /**
  * This is the web browser implementation of `debug()`.
- *
- * Expose `debug()` as the module.
  */
-exports = module.exports = require('./debug');
 exports.log = log;
 exports.formatArgs = formatArgs;
 exports.save = save;
 exports.load = load;
 exports.useColors = useColors;
-exports.storage = 'undefined' != typeof chrome && 'undefined' != typeof chrome.storage ? chrome.storage.local : localstorage();
+exports.storage = localstorage();
 /**
  * Colors.
  */
@@ -16036,40 +16483,29 @@ exports.colors = ['#0000CC', '#0000FF', '#0033CC', '#0033FF', '#0066CC', '#0066F
  *
  * TODO: add a `localStorage` variable to explicitly enable/disable colors
  */
+// eslint-disable-next-line complexity
 
 function useColors() {
   // NB: In an Electron preload script, document will be defined but not fully
   // initialized. Since we know we're in Chrome, we'll just detect this case
   // explicitly
-  if (typeof window !== 'undefined' && window.process && window.process.type === 'renderer') {
+  if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
     return true;
   } // Internet Explorer and Edge do not support colors.
 
 
   if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
     return false;
-  } // is webkit? http://stackoverflow.com/a/16459606/376773
+  } // Is webkit? http://stackoverflow.com/a/16459606/376773
   // document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
 
 
-  return typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // is firebug? http://stackoverflow.com/a/398120/376773
-  typeof window !== 'undefined' && window.console && (window.console.firebug || window.console.exception && window.console.table) || // is firefox >= v31?
+  return typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
+  typeof window !== 'undefined' && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
   // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // double check webkit in userAgent just in case we are in a worker
+  typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
   typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
 }
-/**
- * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
- */
-
-
-exports.formatters.j = function (v) {
-  try {
-    return JSON.stringify(v);
-  } catch (err) {
-    return '[UnexpectedJSONParseError]: ' + err.message;
-  }
-};
 /**
  * Colorize log arguments if enabled.
  *
@@ -16078,22 +16514,28 @@ exports.formatters.j = function (v) {
 
 
 function formatArgs(args) {
-  var useColors = this.useColors;
-  args[0] = (useColors ? '%c' : '') + this.namespace + (useColors ? ' %c' : ' ') + args[0] + (useColors ? '%c ' : ' ') + '+' + exports.humanize(this.diff);
-  if (!useColors) return;
-  var c = 'color: ' + this.color;
-  args.splice(1, 0, c, 'color: inherit'); // the final "%c" is somewhat tricky, because there could be other
+  args[0] = (this.useColors ? '%c' : '') + this.namespace + (this.useColors ? ' %c' : ' ') + args[0] + (this.useColors ? '%c ' : ' ') + '+' + module.exports.humanize(this.diff);
+
+  if (!this.useColors) {
+    return;
+  }
+
+  const c = 'color: ' + this.color;
+  args.splice(1, 0, c, 'color: inherit'); // The final "%c" is somewhat tricky, because there could be other
   // arguments passed either before or after the %c, so we need to
   // figure out the correct index to insert the CSS into
 
-  var index = 0;
-  var lastC = 0;
-  args[0].replace(/%[a-zA-Z%]/g, function (match) {
-    if ('%%' === match) return;
+  let index = 0;
+  let lastC = 0;
+  args[0].replace(/%[a-zA-Z%]/g, match => {
+    if (match === '%%') {
+      return;
+    }
+
     index++;
 
-    if ('%c' === match) {
-      // we only are interested in the *last* %c
+    if (match === '%c') {
+      // We only are interested in the *last* %c
       // (the user may have provided their own)
       lastC = index;
     }
@@ -16108,10 +16550,10 @@ function formatArgs(args) {
  */
 
 
-function log() {
-  // this hackery is required for IE8/9, where
+function log(...args) {
+  // This hackery is required for IE8/9, where
   // the `console.log` function doesn't have 'apply'
-  return 'object' === typeof console && console.log && Function.prototype.apply.call(console.log, console, arguments);
+  return typeof console === 'object' && console.log && console.log(...args);
 }
 /**
  * Save `namespaces`.
@@ -16123,12 +16565,14 @@ function log() {
 
 function save(namespaces) {
   try {
-    if (null == namespaces) {
-      exports.storage.removeItem('debug');
+    if (namespaces) {
+      exports.storage.setItem('debug', namespaces);
     } else {
-      exports.storage.debug = namespaces;
+      exports.storage.removeItem('debug');
     }
-  } catch (e) {}
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
 }
 /**
  * Load `namespaces`.
@@ -16139,11 +16583,13 @@ function save(namespaces) {
 
 
 function load() {
-  var r;
+  let r;
 
   try {
-    r = exports.storage.debug;
-  } catch (e) {} // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+    r = exports.storage.getItem('debug');
+  } catch (error) {} // Swallow
+  // XXX (@Qix-) should we be logging these?
+  // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
 
 
   if (!r && typeof process !== 'undefined' && 'env' in process) {
@@ -16152,12 +16598,6 @@ function load() {
 
   return r;
 }
-/**
- * Enable namespaces listed in `localStorage.debug` initially.
- */
-
-
-exports.enable(load());
 /**
  * Localstorage attempts to return the localstorage.
  *
@@ -16169,12 +16609,33 @@ exports.enable(load());
  * @api private
  */
 
+
 function localstorage() {
   try {
-    return window.localStorage;
-  } catch (e) {}
+    // TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
+    // The Browser also has localStorage in the global context.
+    return localStorage;
+  } catch (error) {// Swallow
+    // XXX (@Qix-) should we be logging these?
+  }
 }
-},{"./debug":"../../node_modules/engine.io-client/node_modules/debug/src/debug.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling.js":[function(require,module,exports) {
+
+module.exports = require('./common')(exports);
+const {
+  formatters
+} = module.exports;
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */
+
+formatters.j = function (v) {
+  try {
+    return JSON.stringify(v);
+  } catch (error) {
+    return '[UnexpectedJSONParseError]: ' + error.message;
+  }
+};
+},{"./common":"../../node_modules/engine.io-client/node_modules/debug/src/common.js","process":"../../node_modules/process/browser.js"}],"../../node_modules/engine.io-client/lib/transports/polling.js":[function(require,module,exports) {
 /**
  * Module dependencies.
  */
@@ -16501,6 +16962,7 @@ XHR.prototype.request = function (opts) {
   opts.agent = this.agent || false;
   opts.supportsBinary = this.supportsBinary;
   opts.enablesXDR = this.enablesXDR;
+  opts.withCredentials = this.withCredentials;
 
   // SSL options for Node.js client
   opts.pfx = this.pfx;
@@ -16574,6 +17036,7 @@ function Request (opts) {
   this.isBinary = opts.isBinary;
   this.supportsBinary = opts.supportsBinary;
   this.enablesXDR = opts.enablesXDR;
+  this.withCredentials = opts.withCredentials;
   this.requestTimeout = opts.requestTimeout;
 
   // SSL options for Node.js client
@@ -16648,7 +17111,7 @@ Request.prototype.create = function () {
 
     // ie6 check
     if ('withCredentials' in xhr) {
-      xhr.withCredentials = true;
+      xhr.withCredentials = this.withCredentials;
     }
 
     if (this.requestTimeout) {
@@ -16667,7 +17130,7 @@ Request.prototype.create = function () {
         if (xhr.readyState === 2) {
           try {
             var contentType = xhr.getResponseHeader('Content-Type');
-            if (self.supportsBinary && contentType === 'application/octet-stream') {
+            if (self.supportsBinary && contentType === 'application/octet-stream' || contentType === 'application/octet-stream; charset=UTF-8') {
               xhr.responseType = 'arraybuffer';
             }
           } catch (e) {}
@@ -16679,7 +17142,7 @@ Request.prototype.create = function () {
           // make sure the `error` event handler that's user-set
           // does not throw in the same tick and gets caught here
           setTimeout(function () {
-            self.onError(xhr.status);
+            self.onError(typeof xhr.status === 'number' ? xhr.status : 0);
           }, 0);
         }
       };
@@ -16779,7 +17242,7 @@ Request.prototype.onLoad = function () {
     try {
       contentType = this.xhr.getResponseHeader('Content-Type');
     } catch (e) {}
-    if (contentType === 'application/octet-stream') {
+    if (contentType === 'application/octet-stream' || contentType === 'application/octet-stream; charset=UTF-8') {
       data = this.xhr.response || this.xhr.responseText;
     } else {
       data = this.xhr.responseText;
@@ -17101,7 +17564,9 @@ if (typeof WebSocket !== 'undefined') {
   BrowserWebSocket = WebSocket;
 } else if (typeof self !== 'undefined') {
   BrowserWebSocket = self.WebSocket || self.MozWebSocket;
-} else {
+}
+
+if (typeof window === 'undefined') {
   try {
     NodeWebSocket = require('ws');
   } catch (e) { }
@@ -17513,6 +17978,7 @@ function Socket (uri, opts) {
   this.jsonp = false !== opts.jsonp;
   this.forceBase64 = !!opts.forceBase64;
   this.enablesXDR = !!opts.enablesXDR;
+  this.withCredentials = false !== opts.withCredentials;
   this.timestampParam = opts.timestampParam || 't';
   this.timestampRequests = opts.timestampRequests;
   this.transports = opts.transports || ['polling', 'websocket'];
@@ -17630,6 +18096,7 @@ Socket.prototype.createTransport = function (name) {
     jsonp: options.jsonp || this.jsonp,
     forceBase64: options.forceBase64 || this.forceBase64,
     enablesXDR: options.enablesXDR || this.enablesXDR,
+    withCredentials: options.withCredentials || this.withCredentials,
     timestampRequests: options.timestampRequests || this.timestampRequests,
     timestampParam: options.timestampParam || this.timestampParam,
     policyPort: options.policyPort || this.policyPort,
@@ -18710,7 +19177,7 @@ Socket.prototype.binary = function (binary) {
   return this;
 };
 
-},{"socket.io-parser":"../../node_modules/socket.io-parser/index.js","component-emitter":"../../node_modules/component-emitter/index.js","to-array":"../../node_modules/to-array/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","parseqs":"../../node_modules/parseqs/index.js","has-binary2":"../../node_modules/has-binary2/index.js"}],"../../node_modules/backo2/index.js":[function(require,module,exports) {
+},{"socket.io-parser":"../../node_modules/socket.io-client/node_modules/socket.io-parser/index.js","component-emitter":"../../node_modules/component-emitter/index.js","to-array":"../../node_modules/to-array/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","parseqs":"../../node_modules/parseqs/index.js","has-binary2":"../../node_modules/has-binary2/index.js"}],"../../node_modules/backo2/index.js":[function(require,module,exports) {
 
 /**
  * Expose `Backoff`.
@@ -19372,7 +19839,7 @@ Manager.prototype.onreconnect = function () {
   this.emitAll('reconnect', attempt);
 };
 
-},{"engine.io-client":"../../node_modules/engine.io-client/lib/index.js","./socket":"../../node_modules/socket.io-client/lib/socket.js","component-emitter":"../../node_modules/component-emitter/index.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","backo2":"../../node_modules/backo2/index.js"}],"../../node_modules/socket.io-client/lib/index.js":[function(require,module,exports) {
+},{"engine.io-client":"../../node_modules/engine.io-client/lib/index.js","./socket":"../../node_modules/socket.io-client/lib/socket.js","component-emitter":"../../node_modules/component-emitter/index.js","socket.io-parser":"../../node_modules/socket.io-client/node_modules/socket.io-parser/index.js","./on":"../../node_modules/socket.io-client/lib/on.js","component-bind":"../../node_modules/component-bind/index.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","indexof":"../../node_modules/indexof/index.js","backo2":"../../node_modules/backo2/index.js"}],"../../node_modules/socket.io-client/lib/index.js":[function(require,module,exports) {
 
 /**
  * Module dependencies.
@@ -19468,7 +19935,7 @@ exports.connect = lookup;
 exports.Manager = require('./manager');
 exports.Socket = require('./socket');
 
-},{"./url":"../../node_modules/socket.io-client/lib/url.js","socket.io-parser":"../../node_modules/socket.io-parser/index.js","./manager":"../../node_modules/socket.io-client/lib/manager.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","./socket":"../../node_modules/socket.io-client/lib/socket.js"}],"../../node_modules/axios/lib/helpers/bind.js":[function(require,module,exports) {
+},{"./url":"../../node_modules/socket.io-client/lib/url.js","socket.io-parser":"../../node_modules/socket.io-client/node_modules/socket.io-parser/index.js","./manager":"../../node_modules/socket.io-client/lib/manager.js","debug":"../../node_modules/socket.io-client/node_modules/debug/src/browser.js","./socket":"../../node_modules/socket.io-client/lib/socket.js"}],"../../node_modules/axios/lib/helpers/bind.js":[function(require,module,exports) {
 'use strict';
 
 module.exports = function bind(fn, thisArg) {
@@ -19481,7 +19948,7 @@ module.exports = function bind(fn, thisArg) {
   };
 };
 
-},{}],"../../node_modules/axios/node_modules/is-buffer/index.js":[function(require,module,exports) {
+},{}],"../../node_modules/is-buffer/index.js":[function(require,module,exports) {
 /*!
  * Determine if an object is a Buffer
  *
@@ -19796,7 +20263,7 @@ module.exports = {
   trim: trim
 };
 
-},{"./helpers/bind":"../../node_modules/axios/lib/helpers/bind.js","is-buffer":"../../node_modules/axios/node_modules/is-buffer/index.js"}],"../../node_modules/axios/lib/helpers/normalizeHeaderName.js":[function(require,module,exports) {
+},{"./helpers/bind":"../../node_modules/axios/lib/helpers/bind.js","is-buffer":"../../node_modules/is-buffer/index.js"}],"../../node_modules/axios/lib/helpers/normalizeHeaderName.js":[function(require,module,exports) {
 'use strict';
 
 var utils = require('../utils');
@@ -24039,10 +24506,6 @@ var _mapboxGlUtils = _interopRequireDefault(require("mapbox-gl-utils"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
-
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
-
 var ix, oldID, reloadGeologySource;
 mapboxgl.accessToken = "pk.eyJ1IjoiZGF2ZW5xdWlubiIsImEiOiJjanVpMG81Ym4xNXd3NDlwa3ExOTZ0dG1tIn0.ATfQ6VFevSeOxSEtWW0B1A";
 ix = 0;
@@ -24059,25 +24522,24 @@ reloadGeologySource = function reloadGeologySource(map) {
   return oldID = newID;
 };
 
-_asyncToGenerator(
-/*#__PURE__*/
-regeneratorRuntime.mark(function _callee() {
-  var _, map, polygonTypes, reloadMap, socket, style, _ref2;
+(function _callee() {
+  var _, map, polygonTypes, reloadMap, socket, style, _ref;
 
-  return regeneratorRuntime.wrap(function _callee$(_context) {
+  return regeneratorRuntime.async(function _callee$(_context) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
           _context.next = 2;
-          return (0, _axios.get)("/polygon/types");
+          return regeneratorRuntime.awrap((0, _axios.get)("/polygon/types"));
 
         case 2:
-          _ref2 = _context.sent;
-          polygonTypes = _ref2.data;
+          _ref = _context.sent;
+          polygonTypes = _ref.data;
           style = (0, _mapStyle.createStyle)(polygonTypes);
           map = new mapboxgl.Map({
             container: 'map',
             style: style,
+            hash: true,
             center: [16.1987, -24.2254],
             zoom: 10
           });
@@ -24101,9 +24563,9 @@ regeneratorRuntime.mark(function _callee() {
           return _context.stop();
       }
     }
-  }, _callee);
-}))();
-},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","axios":"../../node_modules/axios/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../../../../../../../../usr/local/var/nodenv/versions/10.11.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+  });
+})();
+},{"babel-polyfill":"../../node_modules/babel-polyfill/lib/index.js","../live-tiles/src/map-style":"../live-tiles/src/map-style/index.coffee","socket.io-client":"../../node_modules/socket.io-client/lib/index.js","axios":"../../node_modules/axios/index.js","underscore":"../../node_modules/underscore/underscore.js","mapbox-gl-utils":"../../node_modules/mapbox-gl-utils/index.js"}],"../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -24131,7 +24593,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58919" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50064" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
@@ -24162,8 +24624,9 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
         assetsToAccept.forEach(function (v) {
           hmrAcceptRun(v[0], v[1]);
         });
-      } else {
-        window.location.reload();
+      } else if (location.reload) {
+        // `location` global exists in a web worker context but lacks `.reload()` function.
+        location.reload();
       }
     }
 
@@ -24306,5 +24769,5 @@ function hmrAcceptRun(bundle, id) {
     return true;
   }
 }
-},{}]},{},["../../../../../../../../../usr/local/var/nodenv/versions/10.11.0/lib/node_modules/parcel/src/builtins/hmr-runtime.js","index.coffee"], null)
+},{}]},{},["../../node_modules/parcel-bundler/src/builtins/hmr-runtime.js","index.coffee"], null)
 //# sourceMappingURL=/web.9d9889e0.js.map

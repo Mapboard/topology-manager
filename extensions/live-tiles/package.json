@@ -4,10 +4,13 @@
   "description": "Store tiles in the database",
   "fixtures": "fixtures",
   "commands": [
-    "./src/cache-tiles.coffee"
+    "./src/cache-tiles.coffee",
+    "./src/export-mbtiles.coffee"
   ],
   "dependencies": {
+    "@mapbox/mbtiles": "^0.11.0",
     "axios": "^0.18.0",
+    "cli-progress": "^3.3.1",
     "express": "^4.16.4",
     "tessera": "git://github.com/davenquinn/tessera.git#master"
   }

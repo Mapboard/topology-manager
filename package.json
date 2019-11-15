@@ -8,7 +8,7 @@
   "scripts": {
     "compile": "./bin/compile",
     "preinstall": "linklocal",
-    "serve": "./bin/geologic-map-serve-dev"
+    "start": "./bin/geologic-map-serve-dev"
   },
   "browserslist": [
     "> 1%"
