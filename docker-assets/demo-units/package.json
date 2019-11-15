@@ -1,0 +1,6 @@
+{
+  "name": "demo-units",
+  "version": "0.1.0",
+  "description": "Unit colors for demo app.",
+  "fixtures": "fixtures"
+}

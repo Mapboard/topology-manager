@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW map_topology.face_data AS
 WITH fg AS (
 SELECT
 face_id,
-ST_GetFaceGeometry('map_topology', face_id) geometry
+topology.ST_GetFaceGeometry('map_topology', face_id) geometry
 FROM map_topology.face
 WHERE face_id <> 0
 )
@@ -66,4 +66,3 @@ SELECT
 FROM map_topology.map_face f
 LEFT JOIN map_digitizer.polygon_type t
   ON f.unit_id = t.id;
-

@@ -1,28 +1,34 @@
-{server, data_schema, connection} = require '../../src/config'
+{db} = require '../../src/util.coffee'
+cfg = require '../../src/config'
 {startWatcher} = require '../../src/commands/update'
 appFactory = require './map-digitizer-server/src/feature-server'
+express = require 'express'
 {join} = require 'path'
+http = require 'http'
 
 command = 'serve'
 describe = 'Create a feature server'
 
+{server, data_schema, connection} = cfg
+
 handler = ->
   server ?= {}
   {tiles, port} = server
+  tiles ?= {}
   port ?= 3006
-  app = appFactory {connection, tiles, schema: data_schema}
-  app.set 'views', join(__dirname, 'views')
-  app.set 'view engine', 'pug'
+  app = appFactory {connection, tiles, schema: data_schema, createFunctions: false}
 
-  app.get '/', (req,res)->
-    res.render 'map.pug', {
-      title: 'Geologic Map', message: 'Hello there!'
-      endpoints: Object.keys(tiles)
-    }
+  app.use express.static join(__dirname,'..','web','dist')
 
-  server = app.listen port, ->
-    console.log "Listening on port #{server.address().port}"
-    startWatcher(verbose=false)
+  # This should be conditional
+  {liveTileServer, topologyWatcher} = require '../live-tiles/server'
+  app.use('/live-tiles', liveTileServer(cfg))
+
+  server = http.createServer(app)
+  topologyWatcher(db, server)
+  startWatcher(verbose=false)
+
+  server.listen port, ->
+    console.log "Listening on port #{port}"
 
 module.exports = {command, describe, handler}
-

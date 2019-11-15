@@ -7,26 +7,39 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "linklocal"
+    "preinstall": "linklocal",
+    "start": "./bin/geologic-map-serve-dev"
   },
+  "browserslist": [
+    "> 1%"
+  ],
   "extensions": {
-    "geologic-map-display": "file:extensions/display",
-    "fill-patterns": "file:extensions/fill-patterns",
-    "live-tiles": "file:extensions/live-tiles"
+    "geologic-map-display": "file:./extensions/display",
+    "fill-patterns": "file:./extensions/fill-patterns",
+    "live-tiles": "file:./extensions/live-tiles"
   },
   "dependencies": {
-    "@mapbox/tilelive-mapnik": "file:../tilelive-mapnik",
+    "@mapbox/postgis-vt-util": "^1.2.1",
+    "axios": "^0.18.1",
+    "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "colors": "^1.1.2",
+    "express": "^4.16.4",
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "leaflet": "^1.2.0",
     "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
-    "pg-promise": "^7.3.2",
+    "mapbox-gl": "^0.53.1",
+    "mapbox-gl-utils": "^0.26.1",
+    "pg": "^7.11.0",
+    "pg-promise": "^7.5.4",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
+    "socket.io": "^2.2.0",
+    "socket.io-client": "^2.2.0",
+    "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
+    "underscore": "^1.9.1",
     "yargs": "^10.0.3"
   },
   "pkg": {
@@ -37,5 +50,11 @@
       "**/*.sql",
       "node_modules/@mapbox/mbtiles/lib/**/*.*"
     ]
+  },
+  "devDependencies": {
+    "coffeescript": "^2.4.1",
+    "cssnano": "^4.1.10",
+    "parcel-bundler": "^1.12.3",
+    "stylus": "^0.54.5"
   }
 }
