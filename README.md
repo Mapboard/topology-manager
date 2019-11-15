@@ -64,18 +64,38 @@ However, these processes are in development and aren't yet fully supported.
    defined by the `GEOLOGIC_MAP_CONFIG` environment variable, or passed in by the `-c`
    flag at runtime. You can optionally add the `bin` directory to your path.
 #. Create tables: `geologic-map create-tables --all`.
+#. Optionally, create demo units and topologies: `geologic-map create-demo-units`.
 
+## Running
 
+Add geometries to the `map_digitizer.linework` and `map_digitizer.polygon`
+topologies using the GIS platform of your choice. Units and line types are
+managed by foreign keys to the `map_digitizer.linework_type` and `map_digitizer.polygon_type`
+tables.
 
+After linework and polygons are added to the database, the
+topology can be updated using the command
+```
+geologic-map update [--watch]
+```
+The optional `--watch` flag enables the topology watcher daemon, to
+rebuild the topology concurrently with modifications (using `--watch` mode).
+The `geologic-map serve` command starts the updater in watch mode and also
+opens an http endpoint serving map data.
+`npm start` is aliased to `geologic-map serve`.
 
+The output of topology building can be found in the `map_topology.map_face` layer.
 
 ## Contributing
 
 Contributions in the form of raised issues or proposed changes are welcome.
 The core database code is a strong foundation, and the quality of the rest
-of the software around it needs to be improved.
+of the software around it needs much improvement.
 
 ## TODO
 
-- [ ] Improve documentation
-- [ ] Improve onboarding process.
+- [ ] Improve documentation and onboarding process.
+- [ ] Improve configurability and stability of Docker version
+- [ ] Move `map_topology.subtopology` table to `map_digitizer` schema
+      (it currently breaks rule of no dependencies between the schemas).
+- [ ] Stabilize and document vector-tile generation functionality
