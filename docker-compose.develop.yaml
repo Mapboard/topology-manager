@@ -1,5 +1,0 @@
-version: '3'
-services:
-  app:
-    volumes:
-      - ./extensions/web/dist:/app/extensions/web/dist

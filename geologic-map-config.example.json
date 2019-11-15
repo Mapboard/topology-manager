@@ -1,0 +1,10 @@
+{
+  "database": "Naukluft",
+  "topo_schema": "map_topology",
+  "data_schema": "map_digitizer",
+  "srid": 32733,
+  "tolerance": 1,
+  "extensions": {
+    "demo-units": "demo-units"
+  }
+}

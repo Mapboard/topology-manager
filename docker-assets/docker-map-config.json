@@ -17,6 +17,6 @@
     "bounds": [15.75, -24.60, 16.60, -23.7]
   },
   "extensions": {
-    "live-tiles": "live-tiles"
+    "demo-units": "demo-units"
   }
 }

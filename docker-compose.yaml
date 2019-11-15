@@ -8,10 +8,12 @@ services:
       - "54321:5432"
     expose:
       - 5432
+    volumes:
+      - ./extensions/demo-units/defs:/app/extensions/demo-units/defs:ro
   app:
     build: .
     environment:
-      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/geologic-map-config.json
+      - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
     ports:
       - '3006:3006'
     expose:

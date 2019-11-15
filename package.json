@@ -7,7 +7,7 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "linklocal",
+    "preinstall": "npm install -D linklocal; linklocal",
     "start": "./bin/geologic-map-serve-dev"
   },
   "browserslist": [
@@ -16,13 +16,15 @@
   "extensions": {
     "geologic-map-display": "file:./extensions/display",
     "fill-patterns": "file:./extensions/fill-patterns",
-    "live-tiles": "file:./extensions/live-tiles"
+    "live-tiles": "file:./extensions/live-tiles",
+    "demo-units": "file:./extensions/demo-units"
   },
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
     "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
+    "cli-progress": "^3.4.0",
     "colors": "^1.1.2",
     "express": "^4.16.4",
     "glob": "^7.1.2",
@@ -33,6 +35,7 @@
     "mapbox-gl-utils": "^0.26.1",
     "pg": "^7.11.0",
     "pg-promise": "^7.5.4",
+    "pkg": "^4.4.0",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
     "socket.io": "^2.2.0",
@@ -48,12 +51,15 @@
       "extensions/*/package.json",
       "extensions/**/*.pug",
       "**/*.sql",
+      "extensions/**/web/dist/*.*",
+      "extensions/live-tiles/src/map-style/base-style.json",
       "node_modules/@mapbox/mbtiles/lib/**/*.*"
     ]
   },
   "devDependencies": {
     "coffeescript": "^2.4.1",
     "cssnano": "^4.1.10",
+    "linklocal": "^2.8.2",
     "parcel-bundler": "^1.12.3",
     "stylus": "^0.54.5"
   }
