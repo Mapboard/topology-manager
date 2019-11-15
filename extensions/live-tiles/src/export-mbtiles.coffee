@@ -3,6 +3,7 @@ Promise = require 'bluebird'
 {promisify} = require 'util'
 {SingleBar} = require('cli-progress')
 MBTiles = require '@mapbox/mbtiles'
+zlib = require('zlib')
 
 {vectorTileInterface} = require './tile-factory'
 cfg = require '../../../src/config'
@@ -47,7 +48,7 @@ handler = (argv)->
     version: 2,
     minzoom
     maxzoom
-    bounds: bounds.map(toString).join(",")
+    bounds
     type: "overlay"
     json: JSON.stringify {
       vector_layers: [
@@ -71,7 +72,9 @@ handler = (argv)->
   coords = tileCoords(zoomLevels, bounds)
   fn = ({z,x,y})->
     tile = await getTile {z,x,y}
-    await mbtOp('putTile', z,x,y, tile)
+    # Tiles must be gzipped
+    ztile = await promisify(zlib.gzip)(tile)
+    await mbtOp('putTile', z,x,y, ztile)
     progressBar.increment()
 
   # Insert actual tiles
