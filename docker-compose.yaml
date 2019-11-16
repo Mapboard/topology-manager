@@ -10,6 +10,7 @@ services:
       - 5432
     volumes:
       - ./extensions/demo-units/defs:/app/extensions/demo-units/defs:ro
+      - db_cluster:/var/lib/postgresql/data
   app:
     build: .
     environment:
@@ -18,3 +19,6 @@ services:
       - '3006:3006'
     expose:
       - '3006'
+volumes:
+  db_cluster:
+
