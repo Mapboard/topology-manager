@@ -32,7 +32,7 @@ startWatcher = ->
     return if updateInProgress
     return unless needsUpdate
 
-    updatInProgress = true
+    updateInProgress = true
     needsUpdate = false
     await updateAll()
     updateInProgress = false
