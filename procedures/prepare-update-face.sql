@@ -43,3 +43,17 @@ DELETE FROM map_topology.map_face f
 USING v3
 WHERE f.id = v3.id;
 
+/*
+Delete map faces that have no edges corresponding to map linework
+These should have been caught earlier by trigger process, but weren't
+*/
+WITH v1 AS (
+SELECT DISTINCT ON (ef.face_id) *
+FROM map_topology.edge_face ef
+JOIN map_topology.face_type ft ON ef.face_id = ft.face_id
+WHERE ef.edge_id NOT IN (SELECT edge_id FROM map_topology.__edge_relation)
+  AND ef.face_id != 0
+)
+DELETE FROM map_topology.map_face f
+USING v1
+WHERE v1.map_face = f.id;
