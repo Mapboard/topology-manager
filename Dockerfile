@@ -8,5 +8,5 @@ RUN mkdir /app
 COPY ./ /app/
 
 WORKDIR /app/
-RUN npm install -g linklocal & linklocal & npm install
+RUN npm install -g linklocal && linklocal && npm install
 CMD /app/docker-assets/run
