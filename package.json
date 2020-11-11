@@ -19,6 +19,9 @@
     "live-tiles": "file:./extensions/live-tiles",
     "demo-units": "file:./extensions/demo-units"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
     "axios": "^0.18.1",
@@ -30,7 +33,7 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
+    "map-digitizer-server": "^1.0.0",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
     "pg": "^7.11.0",

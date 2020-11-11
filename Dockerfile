@@ -1,15 +1,16 @@
-FROM node:8
+FROM node:12
 
 RUN apt-get update \
- && apt-get install -y libpq-dev postgresql-client
+ && apt-get install -y libpq-dev postgresql-client \
+ && npm install -g npm@7
 
 RUN mkdir /app
 WORKDIR /app/
 
-COPY ./extensions/server/map-digitizer-server/ /app/extensions/server/map-digitizer-server/
+COPY ./packages/ /app/packages/
 COPY ./package.json /app/package.json
 
-RUN npm install -g linklocal && linklocal && npm install
+RUN npm install
 
 COPY ./ /app/
 
