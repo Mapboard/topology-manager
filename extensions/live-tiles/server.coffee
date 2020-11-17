@@ -3,7 +3,6 @@ responseTime = require "response-time"
 cors = require 'cors'
 morgan = require 'morgan'
 {vectorTileInterface} = require './src/tile-factory'
-{topologyWatcher} = require './src/event-server'
 {db, sql} = require '../../src/util.coffee'
 {createStyle} = require './src/map-style'
 
@@ -53,4 +52,4 @@ liveTileServer = (cfg)->
 
   return app
 
-module.exports = {liveTileServer, topologyWatcher}
+module.exports = {liveTileServer}
