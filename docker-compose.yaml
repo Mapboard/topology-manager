@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   db:
     image: mdillon/postgis:11
@@ -9,16 +9,14 @@ services:
     expose:
       - 5432
     volumes:
-      - ./extensions/demo-units/defs:/app/extensions/demo-units/defs:ro
       - db_cluster:/var/lib/postgresql/data
   app:
     build: .
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
     ports:
-      - '3006:3006'
+      - "3006:3006"
     expose:
-      - '3006'
+      - "3006"
 volumes:
   db_cluster:
-

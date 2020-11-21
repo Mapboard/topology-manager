@@ -1,1 +1,1 @@
-../extensions/server/map-digitizer-server/db-fixtures/snap-function.sql
+../packages/mapboard-server/db-fixtures/snap-function.sql
