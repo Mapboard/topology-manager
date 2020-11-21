@@ -5,15 +5,14 @@
 cd "$(git rev-parse --show-toplevel)"
 
 export PATH="$(pwd)/bin:$PATH"
-
 export GEOLOGIC_MAP_CONFIG="$(pwd)/docker-assets/docker-local-map-config.json"
 
 docker-compose up --build -d db
-while ! pg_isready -h "localhost" -p "54321" ; do
+while ! pg_isready -h localhost -p 54321 ; do
   echo "Waiting for database..."
   sleep 1
 done
 
 geologic-map create-tables --all
 geologic-map create-demo-units
-geologic-map serve
+npm run dev

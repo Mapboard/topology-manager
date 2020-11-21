@@ -11,7 +11,9 @@
     "compile": "./bin/compile",
     "start": "./bin/geologic-map-serve-dev",
     "build": "npm --prefix packages/mapboard-server run build",
-    "dev": "cd packages/mapboard-server && npm run dev"
+    "dev:server": "npm --prefix packages/mapboard-server run dev",
+    "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
+    "dev": "npm-run-all --parallel dev:**"
   },
   "browserslist": [
     "> 1%"
@@ -39,6 +41,7 @@
     "mapboard-server": "file:./packages/mapboard-server",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
+    "npm-run-all": "^4.1.5",
     "pg": "^8.5.0",
     "pg-copy-streams": "^5.1.1",
     "pg-promise": "^10.7.3",
