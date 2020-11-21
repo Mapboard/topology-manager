@@ -40,6 +40,7 @@
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
     "pg": "^8.5.0",
+    "pg-copy-streams": "^5.1.1",
     "pg-promise": "^10.7.3",
     "pkg": "^4.4.0",
     "progress": "^2.0.0",

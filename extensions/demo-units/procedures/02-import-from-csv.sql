@@ -1,2 +1,2 @@
 COPY ${tablename~} (id,name,color,topology)
-FROM ${csvfile} DELIMITER ',' CSV HEADER;
+FROM STDIN DELIMITER ',' CSV HEADER;

@@ -1,13 +1,19 @@
-#!/usr/bin/env zsh
+#!/bin/bash -e
+# Develop locally against a Docker-ized database
+# This should be fully compatible with running in docker in production
 
 cd "$(git rev-parse --show-toplevel)"
 
-dist=./extensions/web/dist
+export PATH="$(pwd)/bin:$PATH"
 
-files=(-f docker-compose.yaml -f docker-compose.develop.yaml)
+export GEOLOGIC_MAP_CONFIG="$(pwd)/docker-assets/docker-local-map-config.json"
 
-docker-compose $files up --build -d
+docker-compose up --build -d db
+while ! pg_isready -h "localhost" -p "54321" ; do
+  echo "Waiting for database..."
+  sleep 1
+done
 
-rm -f "$dist"/*.*
-docker-compose $files logs -f app & \
-parcel ./extensions/web/index.html --out-dir $dist
+geologic-map create-tables --all
+geologic-map create-demo-units
+geologic-map serve
