@@ -3,6 +3,9 @@
 {existsSync} = require 'fs'
 require 'tilelive-modules/loader'
 
+if not GEOLOGIC_MAP_CONFIG?
+  throw Error("Environment variable GEOLOGIC_MAP_CONFIG is not defined!")
+
 {database, srid, topo_schema,
  data_schema, host, port,
  connection, tolerance, server,

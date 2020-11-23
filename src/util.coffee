@@ -72,11 +72,14 @@ queryInfo = (queryText)->
     s = arr[1]
   return s.replace(/"/g,'')
 
+logQueryInfo = (sql, indent="")->
+  qi = queryInfo(sql)
+  console.log indent+qi.gray
+
 runQuery = (q, opts={})->
   opts.indent ?= ''
   try
-    qi = queryInfo(q)
-    console.log opts.indent+qi.gray
+    logQueryInfo(q, opts.indent)
     await db.query q
   catch err
     ste = err.toString()
@@ -108,4 +111,4 @@ proc = (fn, opts={})->
   catch err
     console.error indent+"#{err.stack}".red
 
-module.exports = {db,sql,proc,__base}
+module.exports = {db,sql,proc,__base, logQueryInfo}

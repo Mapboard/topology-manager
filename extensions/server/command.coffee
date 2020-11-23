@@ -1,7 +1,7 @@
 {db} = require '../../src/util.coffee'
 cfg = require '../../src/config'
 {startWatcher} = require '../../src/commands/update'
-appFactory = require './map-digitizer-server/src/feature-server'
+{appFactory, createServer} = require 'mapboard-server'
 express = require 'express'
 {join} = require 'path'
 http = require 'http'
@@ -21,11 +21,10 @@ handler = ->
   app.use express.static join(__dirname,'..','web','dist')
 
   # This should be conditional
-  {liveTileServer, topologyWatcher} = require '../live-tiles/server'
+  {liveTileServer} = require '../live-tiles/server'
   app.use('/live-tiles', liveTileServer(cfg))
 
-  server = http.createServer(app)
-  topologyWatcher(db, server)
+  server = createServer(app)
   startWatcher(verbose=false)
 
   server.listen port, ->

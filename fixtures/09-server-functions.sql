@@ -1,1 +1,0 @@
-../extensions/server/map-digitizer-server/db-fixtures/snap-function.sql

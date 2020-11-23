@@ -4,11 +4,16 @@
   "description": "A PostGIS helper library to manage a geologic map",
   "author": "Daven Quinn",
   "license": "MIT",
-  "bin": "bin/geologic-map",
+  "bin": {
+    "postgis-geologic-map": "bin/geologic-map"
+  },
   "scripts": {
     "compile": "./bin/compile",
-    "preinstall": "npm install -D linklocal; linklocal",
-    "start": "./bin/geologic-map-serve-dev"
+    "start": "./bin/geologic-map-serve-dev",
+    "build": "npm --prefix packages/mapboard-server run build",
+    "dev:server": "npm --prefix packages/mapboard-server run dev",
+    "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
+    "dev": "npm-run-all --parallel dev:**"
   },
   "browserslist": [
     "> 1%"
@@ -19,6 +24,9 @@
     "live-tiles": "file:./extensions/live-tiles",
     "demo-units": "file:./extensions/demo-units"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
     "axios": "^0.18.1",
@@ -30,11 +38,13 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "map-digitizer-server": "file:./extensions/server/map-digitizer-server",
+    "mapboard-server": "file:./packages/mapboard-server",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
-    "pg": "^7.11.0",
-    "pg-promise": "^7.5.4",
+    "npm-run-all": "^4.1.5",
+    "pg": "^8.5.0",
+    "pg-copy-streams": "^5.1.1",
+    "pg-promise": "^10.7.3",
     "pkg": "^4.4.0",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",

@@ -1,0 +1,23 @@
+{
+  "connection": {
+    "database": "geologic_map",
+    "port": 54321,
+    "host": "localhost",
+    "user": "postgres"
+  },
+  "srid": 32733,
+  "tolerance": 0.1,
+  "loadPosition": {
+    "lon": 15.8,
+    "lat": -24.6,
+    "width": 4000
+  },
+  "live-tiles": {
+    "zoomRange": [5, 15],
+    "bounds": [15.75, -24.6, 16.6, -23.7]
+  },
+  "extensions": {
+    "demo-units": "demo-units",
+    "live-tiles": "live-tiles"
+  }
+}

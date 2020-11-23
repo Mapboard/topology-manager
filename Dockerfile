@@ -1,15 +1,23 @@
-FROM node:8
+FROM node:14
 
 RUN apt-get update \
- && apt-get install -y libpq-dev postgresql-client
+ && apt-get install -y libpq-dev postgresql-client \
+ && npm install -g npm@7 \
+ && npm cache clean -f \
+ && npm cache verify
 
-RUN mkdir /app
-WORKDIR /app/
 
-COPY ./extensions/server/map-digitizer-server/ /app/extensions/server/map-digitizer-server/
+COPY ./packages/ /app/packages/
+
+WORKDIR /app/packages/mapboard-server
+
+RUN npm install --no-package-lock --no-scripts && npm run build
+
 COPY ./package.json /app/package.json
 
-RUN npm install -g linklocal && linklocal && npm install
+WORKDIR /app/
+
+RUN npm install
 
 COPY ./ /app/
 

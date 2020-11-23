@@ -22,8 +22,7 @@ Right now, this project relies on two PostgreSQL schemas: `map_digitizer` and
 linework and polygons (used to assign map units to the eventual space-filling
 polygons), along with map units and line types. The `map_topology` schema
 contains solved topological relationships, including polygonal space-filling
-units. It can be rebuilt from scratch by simply calling `DROP SCHEMA
-map_topology CASCADE`, without destroying data.
+units. It can be rebuilt from scratch by simply calling `DROP SCHEMA map_topology CASCADE`, without destroying data.
 
 ## Structure of the code
 
@@ -59,10 +58,11 @@ is in development.
 
 1. Make sure Docker and `docker-compose` are installed using the
    [instructions for your platform](https://docs.docker.com/install/).
-2. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
-3. Connect to the `geologic_map` database on local port `54321`.
-
-
+2. Modify the `docker-assets/docker-map-config.json` configuration file to suit
+   your needs (typically, this involves changing the `srid` and `tolerance` fields).
+   A better way to configure the application in Docker is forthcoming.
+3. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
+4. Connect to the `geologic_map` database on local port `54321`.
 
 ### Local installation
 
@@ -71,7 +71,7 @@ is in development.
 3. Create a configuration JSON file using [`geologic-map-config.example.json`](geologic-map-config.example.json)
    as a template. Make sure to change
    the database connection info to the right values for your PostgreSQL connection,
-   using [`the semantics of `pg-promise`](https://github.com/vitaly-t/pg-promise/wiki/Connection-Syntax).
+   using [`the semantics of`pg-promise`](https://github.com/vitaly-t/pg-promise/wiki/Connection-Syntax).
    Optionally, export the full path to your config file to the `GEOLOGIC_MAP_CONFIG` environment variable.
 4. Run the application with `bin/geologic-map`. This will show a help page listing
    the commands available. This will use the configuration file
@@ -79,6 +79,14 @@ is in development.
    flag at runtime. You can optionally add the `bin` directory to your path.
 5. Create tables: `geologic-map create-tables --all`.
 6. Optionally, create demo units and topologies: `geologic-map create-demo-units`.
+
+### "Hybrid" installation
+
+Development with Docker tends to be slow unless heavily optimized, since the app
+and its relatively heavy Node.JS dependencies must be recompiled on each
+build. One nice alternative is to run the database server in Docker while running
+the rest of the app locally. A script to do this is referenced by the `make dev`
+command.
 
 ## Running
 
@@ -89,9 +97,11 @@ tables.
 
 After linework and polygons are added to the database, the
 topology can be updated using the command
+
 ```
 geologic-map update [--watch]
 ```
+
 The optional `--watch` flag enables the topology watcher daemon, to
 rebuild the topology concurrently with modifications (using `--watch` mode).
 The `geologic-map serve` command starts the updater in watch mode and also

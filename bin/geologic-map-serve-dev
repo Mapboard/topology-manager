@@ -13,8 +13,7 @@ dist=./extensions/web/dist
 
 export MAPBOX_TOKEN="$(geologic-map config web.access-token)"
 
-parcel watch ./extensions/web/index.html \
-  --out-dir $dist &
+npm --prefix packages/mapboard-server run dev &
 pid=$!
 
 nodemon --ignore $dist ./src/geologic-map serve
