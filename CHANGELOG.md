@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Bundled `mapboard-server` application was updated to version 2, which includes
+  support for higher-quality streaming topology to the Mapboard client
 - Added a hybrid database-in-Docker/local development for quicker iteration
   on containerized app. This can be accessed using `make dev`.
 - Move to `npm@7` package manager (including "workspaces"). This will break on npm v6.

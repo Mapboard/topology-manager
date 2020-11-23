@@ -1,9 +1,11 @@
 version: "3"
 services:
   db:
-    image: mdillon/postgis:11
+    image: postgis/postgis:12-3.0
     environment:
       - POSTGRES_DB=geologic_map
+      # This allows connections without a password, which is expedient but insecure...
+      - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - "54321:5432"
     expose:
