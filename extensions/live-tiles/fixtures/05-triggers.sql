@@ -36,7 +36,7 @@ BEGIN
     'n_deleted', __deletion_count
   );
 
-  PERFORM pg_notify('topology', __payload);
+  PERFORM pg_notify('request-tile', __payload);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -76,7 +76,7 @@ BEGIN
     'n_deleted', __deletion_count
   );
 
-  PERFORM pg_notify('topology', __payload);
+  PERFORM pg_notify('request-tile', __payload);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
