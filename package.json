@@ -13,7 +13,8 @@
     "build": "npm --prefix packages/mapboard-server run build",
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
-    "dev": "npm-run-all --parallel dev:**"
+    "dev": "npm-run-all --parallel dev:**",
+    "test": "ava"
   },
   "browserslist": [
     "> 1%"
@@ -67,6 +68,7 @@
     ]
   },
   "devDependencies": {
+    "ava": "^3.14.0",
     "coffeescript": "^2.4.1",
     "cssnano": "^4.1.10",
     "linklocal": "^2.8.2",
