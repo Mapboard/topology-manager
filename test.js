@@ -1,6 +1,13 @@
 require("coffeescript/register");
 const test = require("ava");
 const { db, sql } = require("./src/util");
+const { createCoreTables } = require("./src/commands/create-tables");
+const { handler: createDemoUnits } = require("./extensions/demo-units/command");
+
+test.before(async (d) => {
+  await createCoreTables();
+  await createDemoUnits();
+});
 
 test("basic insert", async (t) => {
   const s1 = sql("test-fixtures/basic-insert");
@@ -13,7 +20,7 @@ test("basic insert", async (t) => {
 
 test("insert using stored procedure", async (t) => {
   const s1 = sql("./packages/mapboard-server/sql/new-line");
-  const res = await db.query(s1, {
+  const res = await db.one(s1, {
     schema: "map_digitizer",
     snap_width: 0,
     snap_types: [],
@@ -22,10 +29,8 @@ test("insert using stored procedure", async (t) => {
     map_width: null,
     certainty: null,
     zoom_level: null,
-    geometry: "LINESTRING(0 0,1 0)",
+    geometry: "LINESTRING(0 0, 1 0)",
   });
-  t.is(res.length, 1);
-  console.log(res[0]);
-  t.is(res[0]["type"], "bedrock");
+  t.is(res["type"], "bedrock");
   t.pass();
 });

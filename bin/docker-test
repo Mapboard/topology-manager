@@ -15,9 +15,5 @@ while ! pg_isready $dbargs ; do
 done
 
 createdb $dbargs geologic_map_test || true
-
-geologic-map create-tables --all
-geologic-map create-demo-units
 npm run test
-
 dropdb $dbargs geologic_map_test
