@@ -54,4 +54,4 @@ handler = (argv)->
   await updateAll({reset,fillHoles})
   process.exit()
 
-module.exports = {command, describe, handler, startWatcher}
+module.exports = {command, describe, handler, startWatcher, updateAll}

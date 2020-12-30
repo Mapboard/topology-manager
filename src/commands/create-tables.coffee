@@ -61,4 +61,4 @@ handler = (argv)->
     process.exit()
   process.exit()
 
-module.exports = {command, describe, handler}
+module.exports = {command, describe, handler, createCoreTables}
