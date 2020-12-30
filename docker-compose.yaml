@@ -1,7 +1,9 @@
 version: "3"
 services:
   db:
-    image: postgis/postgis:12-3.0
+    # PostgreSQL 13 is needed in order to allow force-dropping the database
+    # (in testing mode)
+    image: postgis/postgis:13-3.1
     environment:
       - POSTGRES_DB=geologic_map
       # This allows connections without a password, which is expedient but insecure...

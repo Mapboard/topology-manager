@@ -14,6 +14,6 @@ while ! pg_isready $dbargs ; do
   sleep 1
 done
 
+psql $dbargs -c "DROP DATABASE geologic_map_test WITH (FORCE);" || true
 createdb $dbargs geologic_map_test || true
 npm run test
-dropdb $dbargs geologic_map_test
