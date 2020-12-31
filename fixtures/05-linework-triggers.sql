@@ -43,8 +43,11 @@ CREATE OR REPLACE FUNCTION map_topology.mark_surrounding_faces(
 RETURNS void AS $$
 DECLARE
   __faces integer[];
+  __topology text;
 BEGIN
-  IF (line.topo IS null) THEN
+  __topology := map_topology.line_topology(line.type);
+
+  IF (line.topo IS null OR __topology IS null) THEN
     RETURN;
   END IF;
 
@@ -71,7 +74,7 @@ BEGIN
   INSERT INTO map_topology.__dirty_face (id, topology)
   SELECT
     unnest(__faces),
-    map_topology.line_topology(line.type)
+    __topology
   ON CONFLICT DO NOTHING;
 
   RAISE NOTICE 'Marking faces %', __faces;
@@ -82,6 +85,7 @@ CREATE OR REPLACE FUNCTION map_topology.linework_changed()
 RETURNS trigger AS $$
 DECLARE
   __edges integer[];
+  __dest_topology text;
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
@@ -92,10 +96,16 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-IF (NEW.topo IS null) THEN
+__dest_topology := map_topology.line_topology(NEW.type);
+
+IF (NEW.topo IS null OR __dest_topology IS null ) THEN
+  -- Delete stale relations, in case we are changing the topology
+  DELETE FROM map_topology.__edge_relation
+  WHERE line_id = NEW.id;
+
   RETURN NEW;
 END IF;
-/* We now are working with situations were we have a topogeometry of some
+/* We now are working with situations where we have a topogeometry of some
    sort
 */
 
@@ -129,7 +139,7 @@ IF (
      if it doesn't we'll have to reset
   */
   (OLD.topo).id = (NEW.topo).id AND
-  map_topology.line_topology(OLD.type) = map_topology.line_topology(NEW.type)
+  map_topology.line_topology(OLD.type) = __dest_topology
 ) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;
@@ -150,7 +160,7 @@ INSERT INTO map_topology.__edge_relation
   (edge_id, topology, line_id, type)
 VALUES (
   unnest(__edges),
-  map_topology.line_topology(NEW.type),
+  __dest_topology,
   NEW.id,
   NEW.type
 )

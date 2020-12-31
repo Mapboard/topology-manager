@@ -1,4 +1,10 @@
 dev:
 	bin/docker-develop
 
-.PHONY: dev
+clean:
+	docker-compose down --volumes
+
+test:
+	bin/docker-test
+
+.PHONY: dev clean

@@ -20,6 +20,9 @@ updateContacts = (opts={})->
     await db.query resetErrors
 
   {nlines} = await db.one count
+  if nlines == 0
+    console.log("No contacts to update")
+
   rows = await db.query getContacts
   remaining = rows.length
   __ = 'Updating lines :bar :current/:total (:elapsed/:eta s)'
@@ -32,6 +35,7 @@ updateContacts = (opts={})->
         if err?
           bar.interrupt "#{id}".gray+" #{err}".red.dim
     catch err
+      console.error(err)
       bar.interrupt "#{err}".red.dim
     bar.tick(result.length)
     remaining -= result.length
