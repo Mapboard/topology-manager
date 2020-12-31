@@ -32,6 +32,7 @@ updateContacts = (opts={})->
         if err?
           bar.interrupt "#{id}".gray+" #{err}".red.dim
     catch err
+      console.error(err)
       bar.interrupt "#{err}".red.dim
     bar.tick(result.length)
     remaining -= result.length

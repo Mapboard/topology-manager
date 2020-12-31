@@ -101,7 +101,7 @@ __dest_topology := map_topology.line_topology(NEW.type);
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   RETURN NEW;
 END IF;
-/* We now are working with situations were we have a topogeometry of some
+/* We now are working with situations where we have a topogeometry of some
    sort
 */
 
