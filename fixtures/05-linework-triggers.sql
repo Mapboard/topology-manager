@@ -99,6 +99,10 @@ END IF;
 __dest_topology := map_topology.line_topology(NEW.type);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
+  -- Delete stale relations, in case we are changing the topology
+  DELETE FROM map_topology.__edge_relation
+  WHERE line_id = NEW.id;
+
   RETURN NEW;
 END IF;
 /* We now are working with situations where we have a topogeometry of some

@@ -79,7 +79,6 @@ test("solve topology and check that we have a map face", async (t) => {
 
 test("change a line type", async (t) => {
   const line_id = lineChangeID;
-  console.log(line_id);
   const res = await db.query(
     "UPDATE map_digitizer.linework SET type = 'anticline-hinge' WHERE id = ${line_id} RETURNING id",
     { line_id }
