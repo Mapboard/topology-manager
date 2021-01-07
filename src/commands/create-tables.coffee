@@ -10,6 +10,10 @@ describe = 'Create tables'
 createCoreTables = ->
   for fn in await glob('fixtures/*.sql', cwd: __base)
     await proc(fn)
+
+  # These should really be handled by extensions
+  for fn in await glob('extensions/server/fixtures/*.sql', cwd: __base)
+    await proc(fn)
   await proc('extensions/map-digitizer.sql')
 
 createExtensionTables = (e)->
