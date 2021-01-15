@@ -8,6 +8,7 @@
     "postgis-geologic-map": "bin/geologic-map"
   },
   "scripts": {
+    "preinstall": "npm --prefix packages/mapboard-server install",
     "compile": "./bin/compile",
     "start": "./bin/geologic-map-serve-dev",
     "build": "npm --prefix packages/mapboard-server run build",
