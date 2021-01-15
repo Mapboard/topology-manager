@@ -82,9 +82,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Linework trigger
-DROP TRIGGER IF EXISTS map_topology_topo_line_notify_trigger
-ON map_digitizer.linework;
-
 CREATE TRIGGER map_topology_topo_line_notify_trigger
 AFTER INSERT
     OR UPDATE
@@ -94,9 +91,6 @@ FOR EACH ROW
 EXECUTE PROCEDURE map_topology.linework_topology_notify();
 
 -- Polygon trigger
-DROP TRIGGER IF EXISTS map_topology_topo_map_face_trigger
-ON map_topology.map_face;
-
 CREATE TRIGGER map_topology_topo_map_face_trigger
 AFTER INSERT
     OR UPDATE

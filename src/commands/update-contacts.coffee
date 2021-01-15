@@ -37,8 +37,8 @@ updateContacts = (opts={})->
     catch err
       console.error(err)
       bar.interrupt "#{err}".red.dim
-    bar.tick(result.length)
-    remaining -= result.length
+    bar.tick(result?.length)
+    remaining -= result?.length or 0
 
   # Post-update (in an ideal world we would not have to do this)
   #console.log "Linking lines to topology edges".gray
