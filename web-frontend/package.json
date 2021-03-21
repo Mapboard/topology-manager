@@ -12,5 +12,8 @@
   "devDependencies": {
     "@parcel/transformer-stylus": "^2.0.0-beta.2",
     "parcel": "^2.0.0-beta.2"
+  },
+  "dependencies": {
+    "mapbox-gl": "^2.1.1"
   }
 }

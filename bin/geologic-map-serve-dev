@@ -14,6 +14,6 @@ export MAPBOX_TOKEN="$(geologic-map config web.access-token)"
 npm --prefix packages/mapboard-server run dev &
 pid=$!
 
-nodemon --ignore $dist ./src/geologic-map serve
+nodemon --ignore web-frontend ./src/geologic-map serve
 
 trap finish EXIT
