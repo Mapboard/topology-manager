@@ -31,10 +31,13 @@ const reloadGeologySource = function (map) {
 };
 
 (async function () {
-  const { data: polygonTypes } = await get("/polygon/types");
+  const { data: polygonTypes } = await get(
+    "http://localhost:3006/polygon/types"
+  );
   //const style = createStyle(polygonTypes);
 
-  const style = await getStyle({ access_token: mapboxgl.accessToken });
+  const baseStyle = await getStyle({ access_token: mapboxgl.accessToken });
+  const style = createStyle(baseStyle, polygonTypes);
 
   const map = new mapboxgl.Map({
     container: "map",

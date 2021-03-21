@@ -1,4 +1,3 @@
-const baseStyle = require("./base-style.json");
 import axios from "axios";
 
 const createGeologySource = (host) => ({
@@ -10,11 +9,11 @@ const createGeologySource = (host) => ({
   minzoom: 5,
 });
 
-const createStyle = function (polygonTypes, hostName) {
-  if (hostName == null) {
-    hostName = "http://localhost:3006";
-  }
-
+const createStyle = function (
+  baseStyle,
+  polygonTypes,
+  hostName = "http://localhost:3006"
+) {
   const colors = {};
   for (let d of Array.from(polygonTypes)) {
     colors[d.id] = d.color;
@@ -28,6 +27,7 @@ const createStyle = function (polygonTypes, hostName) {
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        "fill-opacity": 0.5,
       },
     },
     {
@@ -52,17 +52,15 @@ const createStyle = function (polygonTypes, hostName) {
       },
       //filter: ["!", ["match", "surficial", ["get", "type"]]]
     },
-    /*
     {
-      "id": "surface",
-      "source": "geology",
+      id: "surface",
+      source: "geology",
       "source-layer": "surficial",
-      "type": "fill",
-      "paint": {
-        "fill-color": ['get', ['get', 'unit_id'], ['literal', colors]]
-      }
+      type: "fill",
+      paint: {
+        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+      },
     },
-    */
     // {
     //   "id": "surficial-contact",
     //   "source": "geology",
