@@ -27,7 +27,7 @@ const createStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-opacity": 0.5,
+        "fill-opacity": 0.3,
       },
     },
     {
@@ -59,18 +59,19 @@ const createStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        "fill-opacity": 0.3,
       },
     },
-    // {
-    //   "id": "surficial-contact",
-    //   "source": "geology",
-    //   "source-layer": "contact",
-    //   "type": "line",
-    //   "paint": {
-    //     "line-color": "#ffbe17"
-    //   }
-    //   filter: ["match", "surficial", ["get", "type"]]
-    // }
+    /*{
+      id: "surficial-contact",
+      source: "geology",
+      "source-layer": "contact",
+      type: "line",
+      paint: {
+        "line-color": "#ffbe17",
+      },
+      filter: ["match", "surficial", ["get", "type"]],
+    },*/
     {
       id: "watercourse",
       source: "geology",
