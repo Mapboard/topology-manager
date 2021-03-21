@@ -1,11 +1,5 @@
-/*
- * decaffeinate suggestions:
- * DS101: Remove unnecessary use of Array.from
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
 const baseStyle = require("./base-style.json");
+import axios from "axios";
 
 const createGeologySource = (host) => ({
   type: "vector",
@@ -113,4 +107,12 @@ const createStyle = function (polygonTypes, hostName) {
   return style;
 };
 
-module.exports = { createStyle, createGeologySource };
+async function getStyle({ access_token }) {
+  const res = await axios.get(
+    "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
+    { params: { access_token } }
+  );
+  return res.data;
+}
+
+module.exports = { createStyle, createGeologySource, getStyle };

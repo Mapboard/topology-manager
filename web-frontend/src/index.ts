@@ -1,5 +1,5 @@
 import "babel-polyfill";
-import { createStyle, createGeologySource } from "./map-style";
+import { createStyle, createGeologySource, getStyle } from "./map-style";
 import io from "socket.io-client";
 import { get } from "axios";
 import { debounce } from "underscore";
@@ -34,13 +34,18 @@ const reloadGeologySource = function (map) {
   const { data: polygonTypes } = await get("/polygon/types");
   //const style = createStyle(polygonTypes);
 
+  const style = await getStyle({ access_token: mapboxgl.accessToken });
+
   const map = new mapboxgl.Map({
     container: "map",
-    style: "mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
+    style,
+    //style: "mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
     hash: true,
     center: [16.1987, -24.2254],
     zoom: 10,
   });
+
+  //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
 
   map.on("load", function () {
     map.addSource("mapbox-dem", {
