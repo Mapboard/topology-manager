@@ -18,8 +18,6 @@ handler = ->
   port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema, createFunctions: false}
 
-  app.use express.static join(__dirname,'..','web','dist')
-
   # This should be conditional
   {liveTileServer} = require '../live-tiles/server'
   app.use('/live-tiles', liveTileServer(cfg))

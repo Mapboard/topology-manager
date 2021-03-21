@@ -9,8 +9,6 @@ function finish {
 
 cd $(git rev-parse --show-toplevel)
 
-dist=./extensions/web/dist
-
 export MAPBOX_TOKEN="$(geologic-map config web.access-token)"
 
 npm --prefix packages/mapboard-server run dev &
