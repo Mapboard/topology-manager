@@ -4,8 +4,9 @@
   "description": "This folder contains a standalone web frontend application for PostGIS Geologic Map. Unlike earlier iterations of this frontend, this application will be highly decoupled from the mapping server. It will also have more features geared towards high-end graphical representation of geologic maps.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "parcel index.html"
   },
-  "author": "",
+  "author": "Daven Quinn",
   "license": "ISC"
 }
