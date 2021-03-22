@@ -1,44 +1,55 @@
 import "babel-polyfill";
-import { createStyle, createGeologySource, getStyle } from "./map-style";
+import { createStyle, createGeologySource, getMapboxStyle } from "./map-style";
 import io from "socket.io-client";
 import { get } from "axios";
 import { debounce } from "underscore";
-import mapboxgl from "mapbox-gl";
+import mapboxgl, { Map } from "mapbox-gl";
 import mbxUtils from "mapbox-gl-utils";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import h from "@macrostrat/hyper";
+import { ButtonGroup, Button } from "@blueprintjs/core";
+import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
+
+const satellite = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9";
+const terrain =
+  "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n";
+
+const geologyLayerIDs = [
+  "unit",
+  "bedrock-contact",
+  "surface",
+  "surficial-contact",
+  "watercourse",
+  "line",
+];
 
 let ix = 0;
 let oldID = "geology";
 const reloadGeologySource = function (map) {
-  const layerIDs = [
-    "unit",
-    "bedrock-contact",
-    "surface",
-    "surficial-contact",
-    "watercourse",
-    "line",
-  ];
-
   ix += 1;
   const newID = `geology-${ix}`;
   map.addSource(newID, createGeologySource());
-  map.U.setLayerSource(layerIDs, newID);
+  map.U.setLayerSource(geologyLayerIDs, newID);
   map.removeSource(oldID);
   return (oldID = newID);
 };
 
-async function initializeMap(el: HTMLElement) {
+async function createMapStyle(url) {
   const { data: polygonTypes } = await get(
     "http://localhost:3006/polygon/types"
   );
-  //const style = createStyle(polygonTypes);
+  const baseStyle = await getMapboxStyle(url, {
+    access_token: mapboxgl.accessToken,
+  });
+  return createStyle(baseStyle, polygonTypes);
+}
 
-  const baseStyle = await getStyle({ access_token: mapboxgl.accessToken });
-  const style = createStyle(baseStyle, polygonTypes);
+async function initializeMap(el: HTMLElement) {
+  //const style = createStyle(polygonTypes);
+  const style = await createMapStyle(baseLayers[0].url);
 
   const map = new mapboxgl.Map({
     container: el,
@@ -51,7 +62,7 @@ async function initializeMap(el: HTMLElement) {
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
 
-  map.on("load", function () {
+  map.on("style.load", function () {
     map.addSource("mapbox-dem", {
       type: "raster-dem",
       url: "mapbox://mapbox.mapbox-terrain-dem-v1",
@@ -82,19 +93,103 @@ async function initializeMap(el: HTMLElement) {
   const reloadMap = debounce(_, 500);
 
   const socket = io();
-  return socket.on("topology", function (message) {
+  socket.on("topology", function (message) {
     console.log(message);
     return reloadMap();
   });
+
+  return map;
 }
 
-export function Map() {
+const baseLayers = [
+  {
+    id: "satellite",
+    name: "Satellite",
+    url: "https://api.mapbox.com/styles/v1/mapbox/satellite-v9",
+  },
+  {
+    id: "hillshade",
+    name: "Hillshade",
+    url:
+      "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
+  },
+];
+
+function BaseLayerSwitcher({ layers, activeLayer, onSetLayer }) {
+  return h(
+    ButtonGroup,
+    { vertical: true },
+    baseLayers.map((d) => {
+      return h(
+        Button,
+        {
+          active: d == activeLayer,
+          //disabled: d == activeLayer,
+          onClick() {
+            if (d == activeLayer) return;
+            onSetLayer(d);
+          },
+        },
+        d.name
+      );
+    })
+  );
+}
+
+export function MapComponent() {
   const ref = useRef<HTMLElement>();
+
+  const [enableGeology, setEnableGeology] = useState(true);
+  const [activeLayer, setActiveLayer] = useState(baseLayers[0]);
+
+  const mapRef = useRef<Map>();
 
   useEffect(() => {
     if (ref.current == null) return;
-    initializeMap(ref.current);
+    initializeMap(ref.current).then((mapObj) => {
+      mapRef.current = mapObj;
+    });
+    return () => mapRef.current.remove();
   }, [ref]);
 
-  return h("div.map", { ref });
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map == null) return;
+    for (const lyr of geologyLayerIDs) {
+      map.setLayoutProperty(
+        lyr,
+        "visibility",
+        enableGeology ? "visible" : "none"
+      );
+    }
+  }, [mapRef, enableGeology]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map == null) return;
+    createMapStyle(activeLayer.url).then((style) => map.setStyle(style));
+  }, [mapRef, activeLayer]);
+
+  return h("div.map-area", [
+    h("div.map", { ref }),
+    h("div.map-controls", null, [
+      h(
+        Button,
+        {
+          active: enableGeology,
+          onClick() {
+            setEnableGeology(!enableGeology);
+          },
+        },
+        "Geology"
+      ),
+      h(BaseLayerSwitcher, {
+        layers: baseLayers,
+        activeLayer: activeLayer,
+        onSetLayer(layer) {
+          setActiveLayer(layer);
+        },
+      }),
+    ]),
+  ]);
 }

@@ -106,12 +106,9 @@ const createStyle = function (
   return style;
 };
 
-async function getStyle({ access_token }) {
-  const res = await axios.get(
-    "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
-    { params: { access_token } }
-  );
+async function getMapboxStyle(url, { access_token }) {
+  const res = await axios.get(url, { params: { access_token } });
   return res.data;
 }
 
-module.exports = { createStyle, createGeologySource, getStyle };
+module.exports = { createStyle, createGeologySource, getMapboxStyle };

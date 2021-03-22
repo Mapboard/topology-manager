@@ -1,10 +1,10 @@
 import h from "@macrostrat/hyper";
 import { render } from "react-dom";
-import { Map } from "./map";
+import { MapComponent } from "./map";
 import "./main.styl";
 
 function App() {
-  return h(Map);
+  return h(MapComponent);
 }
 
 const el = document.getElementById("app");
