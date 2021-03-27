@@ -1,5 +1,9 @@
 import "babel-polyfill";
-import { createStyle, createGeologySource, getMapboxStyle } from "./map-style";
+import {
+  createGeologyStyle,
+  createGeologySource,
+  getMapboxStyle,
+} from "./map-style";
 import io from "socket.io-client";
 import { get } from "axios";
 import { debounce } from "underscore";
@@ -13,13 +17,11 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
-const t1 = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
+const patternBaseURL =
+  "//visualization-assets.s3.amazonaws.com/geologic-patterns/png";
 
-const satellite = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9";
-const terrain = t1.replace(
-  "mapbox://styles",
-  "https://api.mapbox.com/styles/v1"
-);
+const satellite = "mapbox://styles/mapbox/satellite-v9";
+const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
 
 const geologyLayerIDs = [
   "unit",
@@ -41,24 +43,55 @@ const reloadGeologySource = function (map) {
   return (oldID = newID);
 };
 
-async function createMapStyle(url) {
+async function loadImage(map, url: string) {
+  return new Promise((resolve, reject) => {
+    map.loadImage(url, function (err, image) {
+      // Throw an error if something went wrong
+      if (err) reject(err);
+      // Declare the image
+      resolve(image);
+    });
+  });
+}
+
+async function setupStyleImages(map, polygonTypes) {
+  const loadableImages = polygonTypes.filter((type) => {
+    return type.symbol != null && !map.hasImage(type.symbol);
+  });
+
+  const symbols = new Set(loadableImages.map((d) => d.symbol));
+
+  return Promise.all(
+    Array.from(symbols).map(async function (symbol) {
+      const image = await loadImage(map, patternBaseURL + `/${symbol}.png`);
+      console.log(symbol + " loaded");
+      map.addImage(symbol, image, { sdf: true, pixelRatio: 10 });
+    })
+  );
+}
+
+async function createMapStyle(map, url) {
   const { data: polygonTypes } = await get(
     "http://localhost:3006/polygon/types"
   );
-  const baseStyle = await getMapboxStyle(url, {
+  const baseURL = url.replace(
+    "mapbox://styles",
+    "https://api.mapbox.com/styles/v1"
+  );
+  const baseStyle = await getMapboxStyle(baseURL, {
     access_token: mapboxgl.accessToken,
   });
-  return createStyle(baseStyle, polygonTypes);
+  await setupStyleImages(map, polygonTypes);
+  return createGeologyStyle(baseStyle, polygonTypes);
 }
 
 async function initializeMap(el: HTMLElement) {
   //const style = createStyle(polygonTypes);
-  const style = await createMapStyle(baseLayers[0].url);
+  const style = baseLayers[0].url;
 
   const map = new mapboxgl.Map({
     container: el,
     style,
-    //style: "mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
     hash: true,
     center: [16.1987, -24.2254],
     zoom: 10,
@@ -66,26 +99,16 @@ async function initializeMap(el: HTMLElement) {
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
 
-  map.on("style.load", function () {
-    map.addSource("mapbox-dem", {
-      type: "raster-dem",
-      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-      tileSize: 512,
-      maxzoom: 14,
-    });
-    // add the DEM source as a terrain layer with exaggerated height
+  map.on("load", async function () {
+    const style = await createMapStyle(map, baseLayers[0].url);
+    map.setStyle(style);
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+  });
 
-    // add a sky layer that will show when the map is highly pitched
-    map.addLayer({
-      id: "sky",
-      type: "sky",
-      paint: {
-        "sky-type": "atmosphere",
-        "sky-atmosphere-sun": [0.0, 0.0],
-        "sky-atmosphere-sun-intensity": 15,
-      },
-    });
+  map.on("style.load", function () {
+    // add the DEM source as a terrain layer with exaggerated height
+    if (map.getSource("mapbox-dem") == null) return;
+    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
   });
 
   mbxUtils.init(map, mapboxgl);
@@ -109,7 +132,7 @@ const baseLayers = [
   {
     id: "satellite",
     name: "Satellite",
-    url: "https://api.mapbox.com/styles/v1/mapbox/satellite-v9",
+    url: "mapbox://styles/mapbox/satellite-v9",
   },
   {
     id: "hillshade",
@@ -157,7 +180,7 @@ export function MapComponent() {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map == null) return;
+    if (map?.style == null) return;
     for (const lyr of geologyLayerIDs) {
       map.setLayoutProperty(
         lyr,
@@ -170,7 +193,7 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map == null) return;
-    createMapStyle(activeLayer.url).then((style) => map.setStyle(style));
+    createMapStyle(map, activeLayer.url).then((style) => map.setStyle(style));
   }, [mapRef, activeLayer]);
 
   return h("div.map-area", [

@@ -9,17 +9,39 @@ const createGeologySource = (host) => ({
   minzoom: 5,
 });
 
-const patternAssets =
-  "//visualization-assets.s3.amazonaws.com/geologic-patterns/png/101-K.png";
+function createBasicStyle(baseStyle) {
+  let style = { ...baseStyle };
+  style.sources["mapbox-dem"] = {
+    type: "raster-dem",
+    url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+    tileSize: 512,
+    maxzoom: 14,
+  };
 
-const createStyle = function (
+  const skyLayer = {
+    id: "sky",
+    type: "sky",
+    paint: {
+      "sky-type": "atmosphere",
+      "sky-atmosphere-sun": [0.0, 0.0],
+      "sky-atmosphere-sun-intensity": 15,
+    },
+  };
+
+  style.layers = [...baseStyle.layers, skyLayer];
+  return style;
+}
+
+const createGeologyStyle = function (
   baseStyle,
   polygonTypes,
   hostName = "http://localhost:3006"
 ) {
   const colors = {};
+  const patterns = {};
   for (let d of Array.from(polygonTypes)) {
     colors[d.id] = d.color;
+    patterns[d.id] = d.symbol ?? null;
   }
 
   const geologyLayers = [
@@ -30,7 +52,8 @@ const createStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-opacity": 0.3,
+        "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
+        "fill-opacity": 0.8,
       },
     },
     {
@@ -75,6 +98,7 @@ const createStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
         "fill-opacity": 0.3,
       },
     },
@@ -101,14 +125,9 @@ const createStyle = function (
     },
   ];
 
-  const style = { ...baseStyle };
-
+  let style = createBasicStyle(baseStyle);
   style.sources.geology = createGeologySource(hostName);
-
   style.layers = [...baseStyle.layers, ...geologyLayers];
-
-  //style.geologyLayers = geologyLayers
-
   return style;
 };
 
@@ -117,4 +136,9 @@ async function getMapboxStyle(url, { access_token }) {
   return res.data;
 }
 
-module.exports = { createStyle, createGeologySource, getMapboxStyle };
+export {
+  createGeologyStyle,
+  createBasicStyle,
+  createGeologySource,
+  getMapboxStyle,
+};
