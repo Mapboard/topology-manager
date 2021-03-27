@@ -13,9 +13,13 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
+const t1 = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
+
 const satellite = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9";
-const terrain =
-  "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n";
+const terrain = t1.replace(
+  "mapbox://styles",
+  "https://api.mapbox.com/styles/v1"
+);
 
 const geologyLayerIDs = [
   "unit",
@@ -110,8 +114,7 @@ const baseLayers = [
   {
     id: "hillshade",
     name: "Hillshade",
-    url:
-      "https://api.mapbox.com/styles/v1/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n",
+    url: terrain,
   },
 ];
 

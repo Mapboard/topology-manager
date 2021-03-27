@@ -9,6 +9,9 @@ const createGeologySource = (host) => ({
   minzoom: 5,
 });
 
+const patternAssets =
+  "//visualization-assets.s3.amazonaws.com/geologic-patterns/png/101-K.png";
+
 const createStyle = function (
   baseStyle,
   polygonTypes,
@@ -50,7 +53,20 @@ const createStyle = function (
           ["*", 3, ["^", 2, 8]],
         ],
       },
-      //filter: ["!", ["match", "surficial", ["get", "type"]]]
+      filter: ["!=", "surficial", ["get", "type"]],
+    },
+    {
+      id: "surficial-contact",
+      source: "geology",
+      "source-layer": "contact",
+      type: "line",
+      layout: {
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#ffbe17",
+      },
+      filter: ["==", "surficial", ["get", "type"]],
     },
     {
       id: "surface",
@@ -62,16 +78,6 @@ const createStyle = function (
         "fill-opacity": 0.3,
       },
     },
-    /*{
-      id: "surficial-contact",
-      source: "geology",
-      "source-layer": "contact",
-      type: "line",
-      paint: {
-        "line-color": "#ffbe17",
-      },
-      filter: ["match", "surficial", ["get", "type"]],
-    },*/
     {
       id: "watercourse",
       source: "geology",
