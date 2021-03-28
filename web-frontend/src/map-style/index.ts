@@ -52,8 +52,17 @@ const createGeologyStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        "fill-opacity": 0.4,
+      },
+    },
+    {
+      id: "unit-pattern",
+      source: "geology",
+      "source-layer": "bedrock",
+      type: "fill",
+      paint: {
         "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
-        "fill-opacity": 0.8,
+        "fill-opacity": 1,
       },
     },
     {
