@@ -13,6 +13,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
+import { lineSymbols } from "./map-style/symbol-layers";
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
@@ -23,16 +24,6 @@ const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
 
 const satellite = "mapbox://styles/mapbox/satellite-v9";
 const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
-
-const lineSymbols = [
-  "anticline-hinge",
-  "left-lateral-fault",
-  "normal-fault",
-  "reverse-fault",
-  "right-lateral-fault",
-  "syncline-hinge",
-  "thrust-fault",
-];
 
 const geologyLayerIDs = [
   "unit",
@@ -69,7 +60,8 @@ async function setupLineSymbols(map) {
   return Promise.all(
     lineSymbols.map(async function (symbol) {
       const image = await loadImage(map, lineSymbolsURL + `/${symbol}.png`);
-      map.addImage(symbol, image, { sdf: true });
+      if (map.hasImage(symbol)) return;
+      map.addImage(symbol, image, { sdf: true, pixelRatio: 3 });
     })
   );
 }
@@ -123,12 +115,6 @@ async function initializeMap(el: HTMLElement) {
   map.on("load", async function () {
     const style = await createMapStyle(map, baseLayers[0].url);
     map.setStyle(style);
-    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-  });
-
-  map.on("style.load", function () {
-    // add the DEM source as a terrain layer with exaggerated height
-    if (map.getSource("mapbox-dem") == null) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
   });
 

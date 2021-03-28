@@ -1,4 +1,5 @@
 import axios from "axios";
+import { createLineSymbolLayers } from "./symbol-layers";
 
 const createGeologySource = (host) => ({
   type: "vector",
@@ -87,6 +88,7 @@ const createGeologyStyle = function (
       },
       filter: ["!=", "surficial", ["get", "type"]],
     },
+    ...createLineSymbolLayers(),
     {
       id: "surficial-contact",
       source: "geology",
