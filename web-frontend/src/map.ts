@@ -17,11 +17,22 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
-const patternBaseURL =
-  "//visualization-assets.s3.amazonaws.com/geologic-patterns/png";
+const vizBaseURL = "//visualization-assets.s3.amazonaws.com";
+const patternBaseURL = vizBaseURL + "/geologic-patterns/png";
+const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
 
 const satellite = "mapbox://styles/mapbox/satellite-v9";
 const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
+
+const lineSymbols = [
+  "anticline-hinge",
+  "left-lateral-fault",
+  "normal-fault",
+  "reverse-fault",
+  "right-lateral-fault",
+  "syncline-hinge",
+  "thrust-fault",
+];
 
 const geologyLayerIDs = [
   "unit",
@@ -54,6 +65,15 @@ async function loadImage(map, url: string) {
   });
 }
 
+async function setupLineSymbols(map) {
+  return Promise.all(
+    lineSymbols.map(async function (symbol) {
+      const image = await loadImage(map, lineSymbolsURL + `/${symbol}.png`);
+      map.addImage(symbol, image, { sdf: true });
+    })
+  );
+}
+
 async function setupStyleImages(map, polygonTypes) {
   const loadableImages = polygonTypes.filter((type) => {
     return type.symbol != null && !map.hasImage(type.symbol);
@@ -81,6 +101,7 @@ async function createMapStyle(map, url) {
   const baseStyle = await getMapboxStyle(baseURL, {
     access_token: mapboxgl.accessToken,
   });
+  await setupLineSymbols(map);
   await setupStyleImages(map, polygonTypes);
   return createGeologyStyle(baseStyle, polygonTypes);
 }
