@@ -65,7 +65,7 @@ async function setupStyleImages(map, polygonTypes) {
     Array.from(symbols).map(async function (symbol) {
       const image = await loadImage(map, patternBaseURL + `/${symbol}.png`);
       console.log(symbol + " loaded");
-      map.addImage(symbol, image, { sdf: true, pixelRatio: 10 });
+      map.addImage(symbol, image, { sdf: true, pixelRatio: 12 });
     })
   );
 }
