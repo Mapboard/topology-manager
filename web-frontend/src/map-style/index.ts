@@ -50,6 +50,7 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       source: "geology",
       "source-layer": "bedrock",
       type: "fill",
+      minzoom: 12,
       paint: {
         "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
         "fill-opacity": 1,
