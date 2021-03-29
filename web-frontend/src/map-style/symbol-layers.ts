@@ -8,6 +8,11 @@ const lineSymbols = [
   "thrust-fault",
 ];
 
+const spacing = {
+  "anticline-hinge": 200,
+  "syncline-hinge": 200,
+};
+
 function createLineSymbolLayers() {
   let symbolLayers = [];
   for (const lyr of lineSymbols) {
@@ -18,10 +23,20 @@ function createLineSymbolLayers() {
       type: "symbol",
       layout: {
         "icon-image": lyr,
+        "icon-pitch-alignment": "map",
         "icon-allow-overlap": true,
         "symbol-avoid-edges": false,
         "symbol-placement": "line",
-        "symbol-spacing": 100,
+        "symbol-spacing": spacing[lyr] ?? 30,
+        "icon-size": {
+          stops: [
+            [5, 0.2],
+            [16, 1],
+          ],
+        },
+      },
+      paint: {
+        "icon-color": ["get", "color"],
       },
       filter: ["==", ["get", "type"], lyr],
     };

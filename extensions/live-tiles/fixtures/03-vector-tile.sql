@@ -71,6 +71,7 @@ FROM (
     AND unit_id != 'surficial-none'
 ) a;
 
+/*
 SELECT
   ST_AsMVT(a, 'contact', 4096, 'geom')
 INTO contact
@@ -101,6 +102,36 @@ JOIN map_topology.face_type f2
  AND er.topology = f2.topology
 WHERE e.geom && projected_bbox
   AND er.type NOT IN (
+    'arbitrary-bedrock',
+    'arbitrary-surficial-contact'
+)) a;
+*/
+SELECT
+  ST_AsMVT(a, 'contact', 4096, 'geom')
+INTO contact
+FROM (
+SELECT
+  l.id,
+  l.type,
+  lt.topology,
+  lt.color,
+  ST_AsMVTGeom(
+    ST_ChaikinSmoothing(
+      ST_Segmentize(
+        ST_Transform(
+          ST_Simplify(l.geometry, zres/2),
+          3857
+        ), zres*6
+      ), 1, true
+    ),
+    mercator_bbox
+  ) geom
+FROM map_digitizer.linework l
+JOIN map_digitizer.linework_type lt
+  ON lt.id = l.type
+WHERE 
+  topology IS NOT null
+  AND l.type NOT IN (
     'arbitrary-bedrock',
     'arbitrary-surficial-contact'
 )) a;

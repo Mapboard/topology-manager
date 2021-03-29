@@ -33,19 +33,8 @@ function createBasicStyle(baseStyle) {
   return style;
 }
 
-const createGeologyStyle = function (
-  baseStyle,
-  polygonTypes,
-  hostName = "http://localhost:3006"
-) {
-  const colors = {};
-  const patterns = {};
-  for (let d of Array.from(polygonTypes)) {
-    colors[d.id] = d.color;
-    patterns[d.id] = d.symbol ?? null;
-  }
-
-  const geologyLayers = [
+const geologyLayerDefs = function (colors = {}, patterns = {}) {
+  return [
     {
       id: "unit",
       source: "geology",
@@ -53,7 +42,7 @@ const createGeologyStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-opacity": 0.4,
+        "fill-opacity": 0.5,
       },
     },
     {
@@ -109,8 +98,8 @@ const createGeologyStyle = function (
       type: "fill",
       paint: {
         "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
-        "fill-opacity": 0.3,
+        //"fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
+        "fill-opacity": 0.5,
       },
     },
     {
@@ -135,8 +124,28 @@ const createGeologyStyle = function (
       filter: ["!=", "watercourse", ["get", "type"]],
     },
   ];
+};
 
-  let style = createBasicStyle(baseStyle);
+function geologyLayerIDs() {
+  const defs = geologyLayerDefs();
+  return defs.map((d) => d.id);
+}
+
+const createGeologyStyle = function (
+  baseStyle,
+  polygonTypes,
+  hostName = "http://localhost:3006"
+) {
+  const colors = {};
+  const patterns = {};
+  for (let d of Array.from(polygonTypes)) {
+    colors[d.id] = d.color;
+    patterns[d.id] = d.symbol ?? null;
+  }
+
+  const geologyLayers = geologyLayerDefs(colors, patterns);
+
+  let style = baseStyle;
   style.sources.geology = createGeologySource(hostName);
   style.layers = [...baseStyle.layers, ...geologyLayers];
   return style;
@@ -152,4 +161,5 @@ export {
   createBasicStyle,
   createGeologySource,
   getMapboxStyle,
+  geologyLayerIDs,
 };

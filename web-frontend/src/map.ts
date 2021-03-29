@@ -1,7 +1,9 @@
 import "babel-polyfill";
 import {
   createGeologyStyle,
+  createBasicStyle,
   createGeologySource,
+  geologyLayerIDs,
   getMapboxStyle,
 } from "./map-style";
 import io from "socket.io-client";
@@ -25,22 +27,13 @@ const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
 const satellite = "mapbox://styles/mapbox/satellite-v9";
 const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
 
-const geologyLayerIDs = [
-  "unit",
-  "bedrock-contact",
-  "surface",
-  "surficial-contact",
-  "watercourse",
-  "line",
-];
-
 let ix = 0;
 let oldID = "geology";
 const reloadGeologySource = function (map) {
   ix += 1;
   const newID = `geology-${ix}`;
-  map.addSource(newID, createGeologySource());
-  map.U.setLayerSource(geologyLayerIDs, newID);
+  map.addSource(newID, createGeologySource("http://localhost:3006"));
+  map.U.setLayerSource(geologyLayerIDs(), newID);
   map.removeSource(oldID);
   return (oldID = newID);
 };
@@ -82,7 +75,7 @@ async function setupStyleImages(map, polygonTypes) {
   );
 }
 
-async function createMapStyle(map, url) {
+async function createMapStyle(map, url, enableGeology = true) {
   const { data: polygonTypes } = await get(
     "http://localhost:3006/polygon/types"
   );
@@ -90,9 +83,11 @@ async function createMapStyle(map, url) {
     "mapbox://styles",
     "https://api.mapbox.com/styles/v1"
   );
-  const baseStyle = await getMapboxStyle(baseURL, {
+  let baseStyle = await getMapboxStyle(baseURL, {
     access_token: mapboxgl.accessToken,
   });
+  baseStyle = createBasicStyle(baseStyle);
+  if (!enableGeology) return baseStyle;
   await setupLineSymbols(map);
   await setupStyleImages(map, polygonTypes);
   return createGeologyStyle(baseStyle, polygonTypes);
@@ -100,21 +95,26 @@ async function createMapStyle(map, url) {
 
 async function initializeMap(el: HTMLElement) {
   //const style = createStyle(polygonTypes);
-  const style = baseLayers[0].url;
 
   const map = new mapboxgl.Map({
     container: el,
-    style,
+    style: baseLayers[0].url,
     hash: true,
     center: [16.1987, -24.2254],
     zoom: 10,
   });
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
-
   map.on("load", async function () {
-    const style = await createMapStyle(map, baseLayers[0].url);
+    const style = await createMapStyle(map, baseLayers[0].url, true);
     map.setStyle(style);
+    if (map.getSource("mapbox-dem") == null) return;
+    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+  });
+
+  map.on("style.load", async function () {
+    console.log("Reloaded style");
+    if (map.getSource("mapbox-dem") == null) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
   });
 
@@ -126,7 +126,7 @@ async function initializeMap(el: HTMLElement) {
   };
   const reloadMap = debounce(_, 500);
 
-  const socket = io();
+  const socket = io("http://localhost:3006");
   socket.on("topology", function (message) {
     console.log(message);
     return reloadMap();
@@ -188,7 +188,7 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map?.style == null) return;
-    for (const lyr of geologyLayerIDs) {
+    for (const lyr of geologyLayerIDs()) {
       map.setLayoutProperty(
         lyr,
         "visibility",
