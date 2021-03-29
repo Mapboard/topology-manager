@@ -40,19 +40,9 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       source: "geology",
       "source-layer": "bedrock",
       type: "fill",
-      paint: {
-        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-opacity": 0.5,
-      },
-    },
-    {
-      id: "unit-pattern",
-      source: "geology",
-      "source-layer": "bedrock",
-      type: "fill",
       minzoom: 12,
       paint: {
-        "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
+        "fill-pattern": ["get", "unit_id"],
         "fill-opacity": 1,
       },
     },
@@ -92,17 +82,17 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       },
       filter: ["==", "surficial", ["get", "type"]],
     },
-    {
-      id: "surface",
-      source: "geology",
-      "source-layer": "surficial",
-      type: "fill",
-      paint: {
-        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        //"fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
-        "fill-opacity": 0.5,
-      },
-    },
+    // {
+    //   id: "surface",
+    //   source: "geology",
+    //   "source-layer": "surficial",
+    //   type: "fill",
+    //   paint: {
+    //     "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+    //     //"fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
+    //     "fill-opacity": 0.5,
+    //   },
+    // },
     {
       id: "watercourse",
       source: "geology",
