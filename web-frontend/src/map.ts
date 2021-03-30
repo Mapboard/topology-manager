@@ -64,7 +64,7 @@ async function setupStyleImages(map, polygonTypes) {
   return Promise.all(
     Array.from(polygonTypes).map(async function (type: any) {
       const { symbol, id } = type;
-      const uid = id;
+      const uid = id + "_fill";
       if (map.hasImage(uid)) return;
       const url = symbol == null ? null : patternBaseURL + `/${symbol}.png`;
       const img = await createUnitFill({
