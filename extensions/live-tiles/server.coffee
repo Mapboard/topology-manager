@@ -13,7 +13,6 @@ tileLayerServer = ({getTile, content_type, format, layer_id})->
 
   app = express().disable("x-powered-by")
   app.use prefix, responseTime()
-  app.use prefix, cors()
 
   app.get "/:z/:x/:y.#{format}", (req, res, next)->
     z = req.params.z | 0
@@ -34,6 +33,8 @@ tileLayerServer = ({getTile, content_type, format, layer_id})->
 
 liveTileServer = (cfg)->
   app = express().disable("x-powered-by")
+  app.use cors()
+
   if process.env.NODE_ENV != "production"
     app.use(morgan("dev"))
 

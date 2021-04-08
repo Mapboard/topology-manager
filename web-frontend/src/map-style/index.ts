@@ -77,7 +77,33 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
           ["*", 3, ["^", 2, 8]],
         ],
       },
-      filter: ["!=", "surficial", ["get", "type"]],
+      filter: [
+        "all",
+        ["!=", "surficial", ["get", "type"]],
+        ["!=", "thrust-fault", ["get", "type"]],
+      ],
+    },
+    {
+      id: "thrust-fault",
+      source: "geology",
+      "source-layer": "contact",
+      type: "line",
+      layout: {
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#000000",
+        "line-width": [
+          "interpolate",
+          ["exponential", 2],
+          ["zoom"],
+          10,
+          ["*", 5, ["^", 2, -6]],
+          24,
+          ["*", 5, ["^", 2, 8]],
+        ],
+      },
+      filter: ["==", "thrust-fault", ["get", "type"]],
     },
     ...createLineSymbolLayers(),
     {

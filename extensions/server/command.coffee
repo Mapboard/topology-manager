@@ -5,6 +5,7 @@ cfg = require '../../src/config'
 express = require 'express'
 {join} = require 'path'
 http = require 'http'
+cors = require 'cors'
 
 command = 'serve'
 describe = 'Create a feature server'
@@ -17,6 +18,8 @@ handler = ->
   tiles ?= {}
   port ?= 3006
   app = appFactory {connection, tiles, schema: data_schema, createFunctions: false}
+  app.use cors()
+
 
   # This should be conditional
   {liveTileServer} = require '../live-tiles/server'
