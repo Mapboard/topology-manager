@@ -36,6 +36,7 @@
     "bluebird": "^3.5.1",
     "cli-progress": "^3.4.0",
     "colors": "^1.1.2",
+    "cors": "^2.8.5",
     "express": "^4.16.4",
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
