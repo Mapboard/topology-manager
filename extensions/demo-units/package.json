@@ -3,6 +3,6 @@
   "version": "0.1.0",
   "description": "Create demo unit colors.",
   "commands": [
-    "./command.coffee"
+    "./command.ts"
   ]
 }
