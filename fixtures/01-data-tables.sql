@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS ${data_schema~}.polygon_type (
     id text PRIMARY KEY,
     name text,
     color text,
-    topology text
+    topology text,
+    -- Optional, for display...
+    symbol text,
+    symbol_color text
 );
 
 /* Skeletal table structure needed to support linework for the map */

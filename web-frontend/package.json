@@ -1,0 +1,24 @@
+{
+  "name": "postgis-geologic-map-frontend",
+  "version": "1.0.0",
+  "description": "This folder contains a standalone web frontend application for PostGIS Geologic Map. Unlike earlier iterations of this frontend, this application will be highly decoupled from the mapping server. It will also have more features geared towards high-end graphical representation of geologic maps.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "parcel index.html"
+  },
+  "author": "Daven Quinn",
+  "license": "ISC",
+  "devDependencies": {
+    "@parcel/transformer-stylus": "^2.0.0-beta.2",
+    "parcel": "^2.0.0-beta.2"
+  },
+  "dependencies": {
+    "@blueprintjs/core": "^3.41.0",
+    "@macrostrat/hyper": "^1.2.11",
+    "@types/mapbox-gl": "^2.1.1",
+    "mapbox-gl": "^2.1.1",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1"
+  }
+}
