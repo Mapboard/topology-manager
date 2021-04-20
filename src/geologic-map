@@ -2,5 +2,7 @@
 require("ts-node").register({
   transpileOnly: true,
 });
+
+// For legacy extensions
 require("coffeescript/register");
 require("./cli.ts");
