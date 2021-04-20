@@ -75,6 +75,8 @@
     "cssnano": "^4.1.10",
     "linklocal": "^2.8.2",
     "parcel-bundler": "^1.12.3",
-    "stylus": "^0.54.5"
+    "stylus": "^0.54.5",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.2.4"
   }
 }
