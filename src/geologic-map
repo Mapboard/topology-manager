@@ -1,3 +1,8 @@
 #!/usr/bin/env node
-require("coffeescript/register")
-require("./cli.coffee")
+require("ts-node").register({
+  transpileOnly: true,
+});
+
+// For legacy extensions
+require("coffeescript/register");
+require("./cli.ts");

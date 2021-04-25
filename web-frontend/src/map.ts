@@ -6,6 +6,7 @@ import {
   geologyLayerIDs,
   getMapboxStyle,
 } from "./map-style";
+import { createUnitFill } from "./map-style/pattern-fill";
 import io from "socket.io-client";
 import { get } from "axios";
 import { debounce } from "underscore";
@@ -60,17 +61,19 @@ async function setupLineSymbols(map) {
 }
 
 async function setupStyleImages(map, polygonTypes) {
-  const loadableImages = polygonTypes.filter((type) => {
-    return type.symbol != null && !map.hasImage(type.symbol);
-  });
-
-  const symbols = new Set(loadableImages.map((d) => d.symbol));
-
   return Promise.all(
-    Array.from(symbols).map(async function (symbol) {
-      const image = await loadImage(map, patternBaseURL + `/${symbol}.png`);
-      console.log(symbol + " loaded");
-      map.addImage(symbol, image, { sdf: true, pixelRatio: 12 });
+    Array.from(polygonTypes).map(async function (type: any) {
+      const { symbol, id } = type;
+      const uid = id + "_fill";
+      if (map.hasImage(uid)) return;
+      const url = symbol == null ? null : patternBaseURL + `/${symbol}.png`;
+      const img = await createUnitFill({
+        patternURL: url,
+        color: type.color,
+        patternColor: type.symbol_color,
+      });
+
+      map.addImage(uid, img, { sdf: false, pixelRatio: 12 });
     })
   );
 }

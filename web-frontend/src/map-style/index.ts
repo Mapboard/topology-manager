@@ -40,20 +40,21 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       source: "geology",
       "source-layer": "bedrock",
       type: "fill",
+      minzoom: 11,
       paint: {
-        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-        "fill-opacity": 0.5,
+        "fill-pattern": ["concat", ["get", "unit_id"], "_fill"],
+        "fill-opacity": 1,
       },
     },
     {
-      id: "unit-pattern",
+      id: "unit-lowzoom",
       source: "geology",
       "source-layer": "bedrock",
       type: "fill",
-      minzoom: 12,
+      maxzoom: 10,
       paint: {
-        "fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
-        "fill-opacity": 1,
+        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        "fill-opacity": 0.5,
       },
     },
     {
@@ -76,7 +77,33 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
           ["*", 3, ["^", 2, 8]],
         ],
       },
-      filter: ["!=", "surficial", ["get", "type"]],
+      filter: [
+        "all",
+        ["!=", "surficial", ["get", "type"]],
+        ["!=", "thrust-fault", ["get", "type"]],
+      ],
+    },
+    {
+      id: "thrust-fault",
+      source: "geology",
+      "source-layer": "contact",
+      type: "line",
+      layout: {
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#000000",
+        "line-width": [
+          "interpolate",
+          ["exponential", 2],
+          ["zoom"],
+          10,
+          ["*", 5, ["^", 2, -6]],
+          24,
+          ["*", 5, ["^", 2, 8]],
+        ],
+      },
+      filter: ["==", "thrust-fault", ["get", "type"]],
     },
     ...createLineSymbolLayers(),
     {

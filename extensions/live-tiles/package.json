@@ -4,8 +4,8 @@
   "description": "Store tiles in the database",
   "fixtures": "fixtures",
   "commands": [
-    "./src/cache-tiles.coffee",
-    "./src/export-mbtiles.coffee"
+    "./src/cache-tiles.ts",
+    "./src/export-mbtiles.ts"
   ],
   "dependencies": {
     "@mapbox/mbtiles": "^0.11.0",

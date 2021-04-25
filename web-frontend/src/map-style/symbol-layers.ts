@@ -11,11 +11,37 @@ const lineSymbols = [
 const spacing = {
   "anticline-hinge": 200,
   "syncline-hinge": 200,
+  "thrust-fault": [
+    "interpolate",
+    ["exponential", 2],
+    ["zoom"],
+    0, // stop
+    5, // size
+    15,
+    80,
+    24,
+    200,
+  ],
 };
 
 function createLineSymbolLayers() {
   let symbolLayers = [];
   for (const lyr of lineSymbols) {
+    let color: any = ["get", "color"];
+    let offset: any = [0, 0];
+    if (lyr == "thrust-fault") {
+      color = "#000000";
+      offset = [
+        "interpolate",
+        ["exponential", 2],
+        ["zoom"],
+        0,
+        ["literal", [0, 0]],
+        24,
+        ["literal", [0, 0]],
+      ];
+    }
+
     const val = {
       id: `${lyr}-stroke`,
       source: "geology",
@@ -28,18 +54,27 @@ function createLineSymbolLayers() {
         "symbol-avoid-edges": false,
         "symbol-placement": "line",
         "symbol-spacing": spacing[lyr] ?? 30,
-        "icon-size": {
-          stops: [
-            [5, 0.2],
-            [16, 1],
-          ],
-        },
+        "icon-offset": offset,
+        "icon-size": [
+          "interpolate",
+          ["exponential", 2],
+          ["zoom"],
+          0, // stop
+          0.5,
+          15,
+          1.2, // size
+          18,
+          4,
+          24,
+          30,
+        ],
       },
       paint: {
-        "icon-color": ["get", "color"],
+        "icon-color": color,
       },
       filter: ["==", ["get", "type"], lyr],
     };
+
     symbolLayers.push(val);
   }
   return symbolLayers;
