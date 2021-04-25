@@ -119,17 +119,17 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       },
       filter: ["==", "surficial", ["get", "type"]],
     },
-    // {
-    //   id: "surface",
-    //   source: "geology",
-    //   "source-layer": "surficial",
-    //   type: "fill",
-    //   paint: {
-    //     "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
-    //     //"fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
-    //     "fill-opacity": 0.5,
-    //   },
-    // },
+    {
+      id: "surface",
+      source: "geology",
+      "source-layer": "surficial",
+      type: "fill",
+      paint: {
+        "fill-color": ["get", ["get", "unit_id"], ["literal", colors]],
+        //"fill-pattern": ["get", ["get", "unit_id"], ["literal", patterns]],
+        "fill-opacity": 0.5,
+      },
+    },
     {
       id: "watercourse",
       source: "geology",
