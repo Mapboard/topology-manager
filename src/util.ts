@@ -85,6 +85,10 @@ const sql = function (fn) {
   return queryIndex[p];
 };
 
+function prepare(sql, params = {}) {
+  return pgp.as.format(sql, params, { partial: true });
+}
+
 const queryInfo = function (queryText) {
   let s = queryText.replace(/\/\*[\s\S]*?\*\/|--.*?$/gm, "");
   const arr = /^[\s\n]*([A-Za-z\s]+[a-zA-Z_."]*)/g.exec(s);
@@ -156,4 +160,4 @@ const proc = function (fn, opts) {
   }
 };
 
-module.exports = { db, sql, proc, __base, logQueryInfo };
+module.exports = { db, sql, proc, __base, logQueryInfo, prepare };

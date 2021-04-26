@@ -81,7 +81,7 @@ test("insert a polygon identifying unit within the triangle", async (t) => {
 
 test("solve topology and check that we have a map face", async (t) => {
   await updateAll();
-  const res = await db.query("SELECT * FROM map_topology.map_face");
+  const res = await db.query("SELECT * FROM ${topo_schema~}.map_face");
   t.is(res["length"], 1);
 });
 
