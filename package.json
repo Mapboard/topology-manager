@@ -31,6 +31,7 @@
   ],
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
+    "@types/bluebird-global": "^3.5.12",
     "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",

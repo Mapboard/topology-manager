@@ -1,10 +1,10 @@
-const PGPromise = require("pg-promise");
-const { join, resolve, isAbsolute, dirname } = require("path");
-const colors = require("colors");
-const Promise = require("bluebird");
-const { TSParser } = require("tsparser");
-const { readFileSync } = require("fs");
-const stripComments = require("sql-strip-comments");
+import PGPromise from "pg-promise";
+import { join, resolve, isAbsolute, dirname } from "path";
+import colors from "colors";
+import Promise from "bluebird";
+import { TSParser } from "tsparser";
+import { readFileSync } from "fs";
+import stripComments from "sql-strip-comments";
 
 const {
   srid,
@@ -161,4 +161,4 @@ const proc = function (fn, opts) {
   }
 };
 
-module.exports = { db, sql, proc, __base, logQueryInfo, prepare };
+export { db, sql, proc, __base, logQueryInfo, prepare };
