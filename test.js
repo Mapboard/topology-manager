@@ -97,3 +97,15 @@ test("change a line type", async (t) => {
   const res1 = await db.query("SELECT * FROM map_topology.map_face");
   t.is(res1.length, 0);
 });
+
+test("tables have been created in correct schema", async (t) => {
+  const q = sql("test-fixtures/table-exists");
+  const res = await db.one(q, { schema: "map_digitizer", table: "linework" });
+  t.is(res.exists, false);
+
+  const res2 = await db.one(q, {
+    schema: "map_digitizer_test",
+    table: "linework",
+  });
+  t.is(res2.exists, true);
+});
