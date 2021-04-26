@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2020-12-29
+## `[2.0.0]` = 2021-04-25
+
+- Shift from Coffeescript to Typescript
+- Added a standalone web frontend with more advanced visualization options
+- Fixed snapping behavior
+- Improved vector tiling server
+
+## `[2.0.0-beta]` - 2020-12-29
 
 ### Changed
 

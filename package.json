@@ -1,6 +1,6 @@
 {
   "name": "postgis-geologic-map",
-  "version": "2.0.0-beta",
+  "version": "2.0.0",
   "description": "A PostGIS helper library to manage a geologic map",
   "author": "Daven Quinn",
   "license": "MIT",
