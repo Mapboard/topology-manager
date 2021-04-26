@@ -50,6 +50,8 @@ const pgp = PGPromise({
 const { QueryFile } = pgp;
 ({ readFileSync } = require("fs"));
 
+console.log(connection);
+
 const db = pgp(connection);
 
 const __base = resolve(__dirname, "..");

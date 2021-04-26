@@ -6,8 +6,12 @@ cd "$(git rev-parse --show-toplevel)"
 
 export PATH="$(pwd)/bin:$PATH"
 export GEOLOGIC_MAP_CONFIG="$(pwd)/docker-assets/docker-local-test-config.json"
+dbname="geologic_map_test"
 
-dbargs="-h localhost -p 54321 -U postgres"
+export POSTGRES_DB="$dbname"
+export port=54321
+
+dbargs="-h localhost -p $port -U postgres"
 docker-compose up --build -d db
 while ! pg_isready $dbargs ; do
   echo "Waiting for database..."
@@ -15,5 +19,18 @@ while ! pg_isready $dbargs ; do
 done
 
 psql $dbargs -c "DROP DATABASE geologic_map_test WITH (FORCE);" || true
-createdb $dbargs geologic_map_test || true
+createdb $dbargs $dbname || true
+
+# Equivalent database setup for Mapboard-server submodule tests
+
+conn="postgresql://postgres@localhost:$port/$dbname"
+export MAPBOARD_TEST_DB="$conn"
+export MAPBOARD_SRID=32733
+
+echo $conn
+
+# Create core tables first because we seem to
+# call mapboard-server tests first...
+bin/geologic-map create-tables --core
+
 npm run test
