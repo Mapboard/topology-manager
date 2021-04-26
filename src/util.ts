@@ -99,27 +99,22 @@ const queryInfo = function (queryText) {
   return s.replace(/"/g, "");
 };
 
-const logQueryInfo = function (sql, indent) {
-  if (indent == null) {
-    indent = "";
-  }
+const logQueryInfo = function (sql, indent = "") {
   const qi = queryInfo(sql);
   return console.log(indent + qi.gray);
 };
 
 const runQuery = async function (q, opts = {}) {
-  if (opts.indent == null) {
-    opts.indent = "";
-  }
+  const indent = opts.indent ?? "";
   try {
-    logQueryInfo(q, opts.indent);
+    logQueryInfo(q, indent);
     return await db.query(q);
   } catch (err) {
     const ste = err.toString();
     if (ste.endsWith("already exists")) {
-      return console.error(opts.indent + ste.dim.red);
+      return console.error(indent + ste.dim.red);
     } else {
-      return console.error(opts.indent + ste.red);
+      return console.error(indent + ste.red);
     }
   }
 };
