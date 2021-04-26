@@ -1,4 +1,7 @@
 require("coffeescript/register");
+require("ts-node").register({
+  transpileOnly: true,
+});
 const { serial: test } = require("ava");
 const { db, sql } = require("./src/util");
 const { createCoreTables } = require("./src/commands/create-tables");
@@ -8,6 +11,11 @@ const { updateAll } = require("./src/commands/update");
 test.before(async (d) => {
   await createCoreTables();
   await createDemoUnits();
+
+  // These are needed because it the mapboard-server tests get run first
+  // by default.
+  await db.query("TRUNCATE TABLE map_digitizer.linework CASCADE");
+  await db.query("TRUNCATE TABLE map_digitizer.polygon CASCADE");
 });
 
 test("basic insert", async (t) => {
