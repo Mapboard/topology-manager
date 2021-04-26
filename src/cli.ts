@@ -5,8 +5,8 @@
  * DS207: Consider shorter variations of null checks
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-const yargs = require("yargs");
-const { spawnSync } = require("child_process");
+import yargs from "yargs";
+import { spawnSync } from "child_process";
 const { join, resolve } = require("path");
 const { existsSync } = require("fs");
 const colors = require("colors");
