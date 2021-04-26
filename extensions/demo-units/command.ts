@@ -1,14 +1,8 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
-const { db, proc, sql, logQueryInfo, prepare } = require("../../src/util");
-const { join, resolve } = require("path");
-const http = require("http");
-const Promise = require("bluebird");
-const { createReadStream } = require("fs");
-const { from: copyFrom } = require("pg-copy-streams");
+import { db, proc, sql, logQueryInfo, prepare } from "../../src/util";
+import { join, resolve } from "path";
+import Promise from "bluebird";
+import { createReadStream } from "fs";
+import { from as copyFrom } from "pg-copy-streams";
 
 const sqlFile = (id) => resolve(join(__dirname, "procedures", `${id}.sql`));
 
@@ -49,4 +43,4 @@ const handler = async function () {
   return await proc(sqlFile("03-add-to-map"));
 };
 
-module.exports = { command, describe, handler };
+export { command, describe, handler };
