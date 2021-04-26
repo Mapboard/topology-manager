@@ -3,7 +3,7 @@ const { join, resolve, isAbsolute, dirname } = require("path");
 const colors = require("colors");
 const Promise = require("bluebird");
 const { TSParser } = require("tsparser");
-let { readFileSync } = require("fs");
+const { readFileSync } = require("fs");
 const stripComments = require("sql-strip-comments");
 
 const {
@@ -48,9 +48,6 @@ const pgp = PGPromise({
 });
 
 const { QueryFile } = pgp;
-({ readFileSync } = require("fs"));
-
-console.log(connection);
 
 const db = pgp(connection);
 
@@ -58,7 +55,16 @@ const __base = resolve(__dirname, "..");
 
 const queryIndex = {};
 
-const sql = function (fn) {
+function prepare(sql, params = {}) {
+  // Prepare a statement
+  return pgp.as.format(
+    sql,
+    { topo_schema, data_schema, srid, tolerance, ...params },
+    { partial: true }
+  );
+}
+
+const sql = function (fn, extraParams = {}) {
   // Function to get sql queries from a file
   let p;
   if (isAbsolute(fn)) {
@@ -70,24 +76,19 @@ const sql = function (fn) {
     p = join(__base, fn);
   }
 
-  const d = dirname(require.resolve(p));
-  const params = { topo_schema, data_schema, srid, tolerance, dirname: d };
-
   if (queryIndex[p] == null) {
     // Using queryFile because it is best-documented
     // way to pre-format SQL. We could probably use
     // its internal interface
-    let _ = readFileSync(p, "utf8");
-    _ = pgp.as.format(_, params, { partial: true });
-    queryIndex[p] = _;
+    const text = readFileSync(p, "utf8");
+    queryIndex[p] = prepare(text, {
+      dirname: dirname(require.resolve(p)),
+      ...extraParams,
+    });
   }
 
   return queryIndex[p];
 };
-
-function prepare(sql, params = {}) {
-  return pgp.as.format(sql, params, { partial: true });
-}
 
 const queryInfo = function (queryText) {
   let s = queryText.replace(/\/\*[\s\S]*?\*\/|--.*?$/gm, "");

@@ -1,1 +1,1 @@
-SELECT topology.ST_RemEdgeNewFace('map_topology', ${edge_id})
+SELECT topology.ST_RemEdgeNewFace( ${topo_schema}, ${edge_id})

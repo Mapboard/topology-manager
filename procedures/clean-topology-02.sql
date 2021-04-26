@@ -1,3 +1,3 @@
-SELECT topology.ST_RemIsoNode('map_topology',node_id)
-FROM map_topology.node
-WHERE node_id NOT IN (SELECT node_id FROM map_topology.node_edge);
+SELECT topology.ST_RemIsoNode( ${topo_schema},node_id)
+FROM ${topo_schema~}.node
+WHERE node_id NOT IN (SELECT node_id FROM ${topo_schema~}.node_edge);

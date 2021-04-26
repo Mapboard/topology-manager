@@ -17,7 +17,7 @@ BEGIN
 
 SELECT ST_SRID(geometry)
 INTO srid
-FROM map_topology.face_display
+FROM ${topo_schema~}.face_display
 LIMIT 1;
 
 mercator_bbox := TileBBox(coord.z, coord.x, coord.y, 3857);
@@ -27,7 +27,7 @@ zres := ZRes(coord.z)/2;
 
 SELECT
   coalesce(ST_Union(geometry), ST_SetSRID(ST_GeomFromText('POLYGON EMPTY'), srid))
-FROM map_topology.face_display
+FROM ${topo_schema~}.face_display
 INTO bedrock_clip
 WHERE ST_Intersects(geometry, projected_bbox)
   AND topology = 'surficial';
@@ -46,7 +46,7 @@ FROM (
       ),
       mercator_bbox
     ) geom
-  FROM map_topology.face_display
+  FROM ${topo_schema~}.face_display
   WHERE ST_Intersects(geometry, projected_bbox)
     AND topology = 'bedrock'
 ) a;
@@ -65,7 +65,7 @@ FROM (
       ),
       mercator_bbox
     ) geom
-  FROM map_topology.face_display
+  FROM ${topo_schema~}.face_display
   WHERE ST_Intersects(geometry, projected_bbox)
     AND topology = 'surficial'
     AND unit_id != 'surficial-none'
@@ -91,13 +91,13 @@ SELECT
     ),
     mercator_bbox
   ) geom
-FROM map_topology.edge_data e
-JOIN map_topology.__edge_relation er
+FROM ${topo_schema~}.edge_data e
+JOIN ${topo_schema~}.__edge_relation er
   ON er.edge_id = e.edge_id
-JOIN map_topology.face_type f1
+JOIN ${topo_schema~}.face_type f1
   ON e.left_face = f1.face_id
  AND er.topology = f1.topology
-JOIN map_topology.face_type f2
+JOIN ${topo_schema~}.face_type f2
   ON e.right_face = f2.face_id
  AND er.topology = f2.topology
 WHERE e.geom && projected_bbox
@@ -126,8 +126,8 @@ SELECT
     ),
     mercator_bbox
   ) geom
-FROM map_digitizer.linework l
-JOIN map_digitizer.linework_type lt
+FROM ${data_schema~}.linework l
+JOIN ${data_schema~}.linework_type lt
   ON lt.id = l.type
 WHERE 
   topology IS NOT null
@@ -155,8 +155,8 @@ SELECT
     ),
     mercator_bbox
   ) geom
-FROM map_digitizer.linework l
-JOIN map_digitizer.linework_type t
+FROM ${data_schema~}.linework l
+JOIN ${data_schema~}.linework_type t
   ON l.type = t.id
 WHERE l.geometry && projected_bbox
   AND t.topology IS null

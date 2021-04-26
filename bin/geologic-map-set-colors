@@ -11,7 +11,7 @@ do ->
     continue if ln == ''
     [id,color] = ln.split(',')
     console.log id,color
-    await db.query "UPDATE map_digitizer.polygon_type
+    await db.query "UPDATE ${data_schema~}.polygon_type
                     SET color = ${color}
                     WHERE id = ${id}", {id,color}
   process.exit()

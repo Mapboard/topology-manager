@@ -5,10 +5,14 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 const ProgressBar = require("progress");
-const { db, sql, proc } = require("../util");
+const { db, sql, proc, prepare } = require("../util");
 const { deleteEdges } = require("./clean-topology");
 
-const count = "SELECT count(*)::integer nfaces FROM map_topology.__dirty_face";
+const countQuery = prepare(
+  "SELECT count(*)::integer nfaces FROM ${topo_schema~}.__dirty_face"
+);
+const updateFaceQuery = prepare("SELECT ${topo_schema~}.update_map_face()");
+
 const command = "update-faces [--reset] [--fill-holes]";
 const describe = "Update map faces";
 
@@ -32,7 +36,7 @@ const updateFaces = async function (opts = {}) {
   await proc("procedures/prepare-update-face");
 
   console.time("Updating faces");
-  let { nfaces } = await db.one(count);
+  let { nfaces } = await db.one(countQuery);
   if (nfaces === 0) {
     console.log("No faces to update");
     return;
@@ -42,8 +46,8 @@ const updateFaces = async function (opts = {}) {
   });
   bar.tick(0);
   while (nfaces > 0) {
-    await db.query("SELECT map_topology.update_map_face()");
-    const { nfaces: next } = await db.one(count);
+    await db.query(updateFaceQuery);
+    const { nfaces: next } = await db.one(countQuery);
     bar.tick(nfaces - next);
     nfaces = next;
   }
