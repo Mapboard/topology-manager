@@ -17,14 +17,12 @@ const command =
 const describe = "Create tables";
 
 const createCoreTables = async function () {
-  let fn;
-  for (fn of Array.from(await glob("fixtures/*.sql", { cwd: __base }))) {
-    console.log(fn);
+  for (const fn of Array.from(await glob("fixtures/*.sql", { cwd: __base }))) {
     await proc(fn);
   }
 
   // These should really be handled by extensions
-  for (fn of Array.from(
+  for (const fn of Array.from(
     await glob("extensions/server/fixtures/*.sql", { cwd: __base })
   )) {
     await proc(fn);
@@ -56,10 +54,8 @@ const createExtensionTables = async function (e) {
   })();
 };
 
-const handler = async function handler(argv) {
+const handler = async function (argv) {
   let { extensions, extension, core, all } = argv;
-
-  console.log("Running handler");
 
   // Set variables properly
   if (extensions == null) {

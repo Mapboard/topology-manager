@@ -4,7 +4,7 @@ import colors from "colors";
 import Promise from "bluebird";
 import { TSParser } from "tsparser";
 import { readFileSync } from "fs";
-import stripComments from "sql-strip-comments";
+const stripComments = require("sql-strip-comments");
 
 const {
   srid,

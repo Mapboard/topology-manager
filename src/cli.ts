@@ -59,7 +59,7 @@ const configCommand = {
       }
       console.log(v);
     } else {
-      console.log(JSON.stringify(config, null, 2));
+      console.log(config);
     }
   },
 };
@@ -90,6 +90,5 @@ GEOLOGIC_MAP_CONFIG environment variable`,
 
 createExtensionCommands(argv).demandCommand();
 
-if (!argv._?.[0]) {
-  yargs.showHelp();
-}
+// This is ridiculous
+if (argv.parsed.argv._ == 0) yargs.showHelp();
