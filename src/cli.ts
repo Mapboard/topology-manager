@@ -7,9 +7,9 @@
  */
 import * as yargs from "yargs";
 import { spawnSync } from "child_process";
-const { join, resolve } = require("path");
-const { existsSync } = require("fs");
-const colors = require("colors");
+const { join } = require("path");
+const config = require("./config");
+
 const external = function (cmd, describe) {
   if (describe == null) {
     describe = "";
@@ -47,6 +47,23 @@ const createExtensionCommands = function (argv) {
   return argv;
 };
 
+const configCommand = {
+  command: "config [sub.item]",
+  describe: "Show configuration, optionally fetching a specific value",
+  handler(argv) {
+    if (argv._.length === 2) {
+      const args: string[] = argv._[1].split(".");
+      let v = config;
+      for (const arg of Array.from(args)) {
+        v = v[arg];
+      }
+      console.log(v);
+    } else {
+      console.log(JSON.stringify(config, null, 2));
+    }
+  },
+};
+
 const argv = yargs
   .usage("geologic-map <command>")
   .option("c", {
@@ -59,12 +76,6 @@ GEOLOGIC_MAP_CONFIG environment variable`,
     global: true,
   })
   .command(external("set-colors [file]", "Set colors from csv file (id,color)"))
-  .command(
-    external(
-      "config [sub.item]",
-      "Show configuration, optionally fetching a specific value"
-    )
-  )
   .command(require("../src/commands/update-contacts"))
   .command(require("../src/commands/update-faces"))
   .command(require("../src/commands/update"))
@@ -73,6 +84,7 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .command(require("../src/commands/delete"))
   .command(require("../src/commands/clean-topology"))
   .command(require("../extensions/server/command"))
+  .command(configCommand)
   .wrap(yargs.terminalWidth());
 
 createExtensionCommands(argv).demandCommand().argv;
