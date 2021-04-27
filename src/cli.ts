@@ -5,7 +5,7 @@
  * DS207: Consider shorter variations of null checks
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import * as yargs from "yargs";
+const yargs = require("yargs/yargs");
 import { spawnSync } from "child_process";
 const { join } = require("path");
 const config = require("./config");
@@ -34,14 +34,12 @@ const createExtensionCommands = function (argv) {
   global.verbose = argv.argv.verbose;
   const config = require("../src/config");
   global.config = config;
-  for (let ext of Array.from(config.extensions)) {
-    if (ext.commands == null) {
-      ext.commands = [];
-    }
-    for (let commandFile of Array.from(ext.commands)) {
-      commandFile = join(ext.path, commandFile);
-      const cmd = require(commandFile);
-      argv.command(cmd);
+  for (const ext of config.extensions) {
+    const { commands = [] } = ext;
+
+    for (const commandFile of commands) {
+      const cmd = require(join(ext.path, commandFile));
+      argv = argv.command(cmd);
     }
   }
   return argv;
@@ -64,7 +62,9 @@ const configCommand = {
   },
 };
 
-const argv = yargs
+const cli = yargs(process.argv.slice(2));
+
+cli
   .scriptName(config.commandName)
   .usage(config.commandName + ` <command>`)
   .option("c", {
@@ -86,9 +86,8 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .command(require("../src/commands/clean-topology"))
   .command(require("../extensions/server/command"))
   .command(configCommand)
-  .wrap(yargs.terminalWidth());
+  .wrap(cli.terminalWidth()); //.exitProcess(false);
 
-createExtensionCommands(argv).demandCommand();
+createExtensionCommands(cli).demandCommand().help();
 
-// This is ridiculous
-if (argv.parsed.argv._ == 0) yargs.showHelp();
+cli.argv;
