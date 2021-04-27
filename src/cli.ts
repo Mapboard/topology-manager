@@ -5,7 +5,7 @@
  * DS207: Consider shorter variations of null checks
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import yargs from "yargs";
+import * as yargs from "yargs";
 import { spawnSync } from "child_process";
 const { join, resolve } = require("path");
 const { existsSync } = require("fs");
@@ -73,6 +73,6 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .command(require("../src/commands/delete"))
   .command(require("../src/commands/clean-topology"))
   .command(require("../extensions/server/command"))
-  .wrap(null);
+  .wrap(yargs.terminalWidth());
 
 createExtensionCommands(argv).demandCommand().argv;

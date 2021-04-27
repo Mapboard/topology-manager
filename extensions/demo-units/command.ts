@@ -43,4 +43,4 @@ const handler = async function () {
   return await proc(sqlFile("03-add-to-map"));
 };
 
-export { command, describe, handler };
+export default { command, describe, handler };
