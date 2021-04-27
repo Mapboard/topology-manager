@@ -89,3 +89,7 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .wrap(yargs.terminalWidth());
 
 createExtensionCommands(argv).demandCommand();
+
+if (!argv._?.[0]) {
+  yargs.showHelp();
+}

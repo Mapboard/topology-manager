@@ -1,4 +1,4 @@
-import PGPromise from "pg-promise";
+const PGPromise = require("pg-promise");
 import { join, resolve, isAbsolute, dirname } from "path";
 import colors from "colors";
 import Promise from "bluebird";
