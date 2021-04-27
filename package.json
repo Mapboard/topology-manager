@@ -58,7 +58,7 @@
     "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "underscore": "^1.9.1",
-    "yargs": "^10.0.3"
+    "yargs": "17.0.0-candidate.12"
   },
   "pkg": {
     "assets": [

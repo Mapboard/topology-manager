@@ -15,6 +15,8 @@ if (GEOLOGIC_MAP_CONFIG == null) {
   throw Error("Environment variable GEOLOGIC_MAP_CONFIG is not defined!");
 }
 
+process.env.GEOLOGIC_MAP_SOURCE_DIR = __dirname;
+
 let {
   database,
   srid,
@@ -26,6 +28,7 @@ let {
   tolerance,
   server,
   extensions,
+  commandName = "geologic-map",
   ...rest
 } = require(GEOLOGIC_MAP_CONFIG);
 
@@ -95,6 +98,7 @@ const config = {
   server,
   appRequire,
   cfgRequire,
+  commandName,
   ...rest,
 };
 

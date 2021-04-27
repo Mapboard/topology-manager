@@ -5,7 +5,11 @@ require("ts-node").register({
 const { serial: test } = require("ava");
 const { db, sql, prepare } = require("./src/util");
 const { createCoreTables } = require("./src/commands/create-tables");
-const { handler: createDemoUnits } = require("./extensions/demo-units/command");
+
+// Have to use a weird import structure here
+const {
+  handler: createDemoUnits,
+} = require("./extensions/demo-units/command").default;
 const { updateAll } = require("./src/commands/update");
 const { data_schema, topo_schema } = require("./src/config");
 

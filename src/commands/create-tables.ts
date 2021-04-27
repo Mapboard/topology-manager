@@ -19,6 +19,7 @@ const describe = "Create tables";
 const createCoreTables = async function () {
   let fn;
   for (fn of Array.from(await glob("fixtures/*.sql", { cwd: __base }))) {
+    console.log(fn);
     await proc(fn);
   }
 
@@ -55,8 +56,10 @@ const createExtensionTables = async function (e) {
   })();
 };
 
-const handler = async function (argv) {
+const handler = async function handler(argv) {
   let { extensions, extension, core, all } = argv;
+
+  console.log("Running handler");
 
   // Set variables properly
   if (extensions == null) {

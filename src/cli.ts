@@ -65,7 +65,8 @@ const configCommand = {
 };
 
 const argv = yargs
-  .usage("geologic-map <command>")
+  .scriptName(config.commandName)
+  .usage(config.commandName + ` <command>`)
   .option("c", {
     description: `JSON config file. Used in lieu of the \
 GEOLOGIC_MAP_CONFIG environment variable`,
@@ -87,4 +88,4 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .command(configCommand)
   .wrap(yargs.terminalWidth());
 
-createExtensionCommands(argv).demandCommand().argv;
+createExtensionCommands(argv).demandCommand();
