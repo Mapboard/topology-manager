@@ -5,6 +5,7 @@
   "fixtures": "fixtures",
   "commands": [
     "./src/cache-tiles.ts",
+    "./src/clear-cache.ts",
     "./src/export-mbtiles.ts"
   ],
   "dependencies": {

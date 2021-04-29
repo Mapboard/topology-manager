@@ -84,6 +84,7 @@ LOOP
   EXIT WHEN y1 != y2;
   res := ROW(x1,y1,zoom);
   zoom := zoom+1;
+  EXIT WHEN zoom > 24;
 END LOOP;
 RETURN res;
 END
