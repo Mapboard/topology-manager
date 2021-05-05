@@ -16,24 +16,17 @@ const cors = require("cors");
 const command = "serve";
 const describe = "Create a feature server";
 
-let { server, data_schema, connection } = cfg;
+const { server: serverCfg = {}, data_schema, topo_schema, connection } = cfg;
 
 const handler = function () {
-  let verbose;
-  if (server == null) {
-    server = {};
-  }
-  let { tiles, port } = server;
-  if (tiles == null) {
-    tiles = {};
-  }
-  if (port == null) {
-    port = 3006;
-  }
+  const { tiles = {}, port = 3006 } = serverCfg;
+  const verbose = false;
+
   const app = appFactory({
     connection,
     tiles,
     schema: data_schema,
+    topology: topo_schema,
     createFunctions: false,
   });
   app.use(cors());
@@ -42,8 +35,8 @@ const handler = function () {
   const { liveTileServer } = require("../live-tiles/server");
   app.use("/live-tiles", liveTileServer(cfg));
 
-  server = createServer(app);
-  startWatcher((verbose = false));
+  const server = createServer(app);
+  startWatcher(verbose);
 
   return server.listen(port, () => console.log(`Listening on port ${port}`));
 };

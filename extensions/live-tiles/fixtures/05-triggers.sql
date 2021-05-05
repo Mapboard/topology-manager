@@ -1,7 +1,7 @@
 /*
 Post a notification each time the output topology changes
 */
-CREATE OR REPLACE FUNCTION map_topology.linework_topology_notify()
+CREATE OR REPLACE FUNCTION ${topo_schema~}.linework_topology_notify()
 RETURNS trigger AS $$
 DECLARE
 __payload text;
@@ -41,7 +41,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION map_topology.polygon_topology_notify()
+CREATE OR REPLACE FUNCTION ${topo_schema~}.polygon_topology_notify()
 RETURNS trigger AS $$
 DECLARE
 __payload text;
@@ -86,15 +86,15 @@ CREATE TRIGGER map_topology_topo_line_notify_trigger
 AFTER INSERT
     OR UPDATE
     OR DELETE
-    ON map_digitizer.linework
+    ON ${data_schema~}.linework
 FOR EACH ROW
-EXECUTE PROCEDURE map_topology.linework_topology_notify();
+EXECUTE PROCEDURE ${topo_schema~}.linework_topology_notify();
 
 -- Polygon trigger
 CREATE TRIGGER map_topology_topo_map_face_trigger
 AFTER INSERT
     OR UPDATE
     OR DELETE
-    ON map_topology.map_face
+    ON ${topo_schema~}.map_face
 FOR EACH ROW
-EXECUTE PROCEDURE map_topology.polygon_topology_notify();
+EXECUTE PROCEDURE ${topo_schema~}.polygon_topology_notify();

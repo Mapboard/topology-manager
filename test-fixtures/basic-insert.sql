@@ -1,5 +1,5 @@
 WITH newline AS (
-  INSERT INTO map_digitizer.linework (
+  INSERT INTO ${data_schema~}.linework (
     geometry,
     type,
     pixel_width,
@@ -12,7 +12,7 @@ WITH newline AS (
         Linework_SnapEndpoints(
           ST_Transform(
             ST_SetSRID('LINESTRING(16.17 -24.364,16.182 -24.348)'::geometry, 4326),
-            map_digitizer.Linework_SRID()),
+            ${data_schema~}.Linework_SRID()),
           0, '{}'::text[]
         )
       )
@@ -28,5 +28,5 @@ SELECT
   coalesce(color, '#888888') color,
   false AS erased
 FROM newline l
-JOIN map_digitizer.linework_type t
+JOIN ${data_schema~}.linework_type t
   ON l.type = t.id;

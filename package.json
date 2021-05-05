@@ -31,6 +31,7 @@
   ],
   "dependencies": {
     "@mapbox/postgis-vt-util": "^1.2.1",
+    "@types/bluebird-global": "^3.5.12",
     "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
@@ -57,7 +58,7 @@
     "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "underscore": "^1.9.1",
-    "yargs": "^10.0.3"
+    "yargs": "^16.2.0"
   },
   "pkg": {
     "assets": [

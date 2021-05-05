@@ -5,6 +5,8 @@
     "host": "localhost",
     "user": "postgres"
   },
+  "data_schema": "test_map_data",
+  "topo_schema": "test_topology",
   "srid": 32733,
   "tolerance": 0.1,
   "loadPosition": {

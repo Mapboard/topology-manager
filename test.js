@@ -3,10 +3,15 @@ require("ts-node").register({
   transpileOnly: true,
 });
 const { serial: test } = require("ava");
-const { db, sql } = require("./src/util");
+const { db, sql, prepare } = require("./src/util");
 const { createCoreTables } = require("./src/commands/create-tables");
-const { handler: createDemoUnits } = require("./extensions/demo-units/command");
+
+// Have to use a weird import structure here
+const {
+  handler: createDemoUnits,
+} = require("./extensions/demo-units/command").default;
 const { updateAll } = require("./src/commands/update");
+const { data_schema, topo_schema } = require("./src/config");
 
 test.before(async (d) => {
   await createCoreTables();
@@ -14,8 +19,17 @@ test.before(async (d) => {
 
   // These are needed because it the mapboard-server tests get run first
   // by default.
-  await db.query("TRUNCATE TABLE map_digitizer.linework CASCADE");
-  await db.query("TRUNCATE TABLE map_digitizer.polygon CASCADE");
+  await db.query(prepare("TRUNCATE TABLE ${data_schema~}.linework CASCADE"));
+  await db.query(prepare("TRUNCATE TABLE ${data_schema~}.polygon CASCADE"));
+});
+
+test("demo units have been created", async (t) => {
+  const res = await db.query(
+    prepare("SELECT id FROM ${data_schema~}.polygon_type")
+  );
+  t.true(res.length >= 1);
+  const ids = res.map((d) => d.id);
+  t.true(ids.includes("upper-omkyk"));
 });
 
 test("basic insert", async (t) => {
@@ -29,7 +43,7 @@ test("basic insert", async (t) => {
 test("insert using stored procedure", async (t) => {
   const s1 = sql("./packages/mapboard-server/sql/new-line");
   const res = await db.one(s1, {
-    schema: "map_digitizer",
+    schema: data_schema,
     snap_width: 0,
     snap_types: [],
     type: "bedrock",
@@ -81,19 +95,35 @@ test("insert a polygon identifying unit within the triangle", async (t) => {
 
 test("solve topology and check that we have a map face", async (t) => {
   await updateAll();
-  const res = await db.query("SELECT * FROM map_topology.map_face");
+  const res = await db.query(prepare("SELECT * FROM ${topo_schema~}.map_face"));
   t.is(res["length"], 1);
 });
 
 test("change a line type", async (t) => {
   const line_id = lineChangeID;
   const res = await db.query(
-    "UPDATE map_digitizer.linework SET type = 'anticline-hinge' WHERE id = ${line_id} RETURNING id",
+    prepare(
+      "UPDATE ${data_schema~}.linework SET type = 'anticline-hinge' WHERE id = ${line_id} RETURNING id"
+    ),
     { line_id }
   );
   t.is(res.length, 1);
 
   await updateAll();
-  const res1 = await db.query("SELECT * FROM map_topology.map_face");
+  const res1 = await db.query(
+    prepare("SELECT * FROM ${topo_schema~}.map_face")
+  );
   t.is(res1.length, 0);
+});
+
+test("tables have been created in correct schema", async (t) => {
+  const q = sql("test-fixtures/table-exists");
+  const res = await db.one(q, { schema: "map_digitizer", table: "linework" });
+  t.is(res.exists, false);
+
+  const res2 = await db.one(q, {
+    schema: data_schema,
+    table: "linework",
+  });
+  t.is(res2.exists, true);
 });

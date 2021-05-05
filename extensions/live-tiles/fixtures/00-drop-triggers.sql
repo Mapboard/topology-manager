@@ -1,7 +1,7 @@
 -- Linework trigger
 DROP TRIGGER IF EXISTS map_topology_topo_line_notify_trigger
-ON map_digitizer.linework;
+ON ${data_schema~}.linework;
 
 -- Polygon trigger
 DROP TRIGGER IF EXISTS map_topology_topo_map_face_trigger
-ON map_topology.map_face;
+ON ${topo_schema~}.map_face;

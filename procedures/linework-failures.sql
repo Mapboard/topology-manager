@@ -1,3 +1,3 @@
-INSERT INTO map_topology.__linework_failures (id)
+INSERT INTO ${topo_schema~}.__linework_failures (id)
 VALUES (${id})
 ON CONFLICT DO NOTHING;

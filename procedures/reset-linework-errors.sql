@@ -1,1 +1,1 @@
-UPDATE map_digitizer.linework SET topology_error = null
+UPDATE ${data_schema~}.linework SET topology_error = null

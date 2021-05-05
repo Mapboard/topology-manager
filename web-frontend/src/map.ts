@@ -191,6 +191,7 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map?.style == null) return;
+    console.log(enableGeology);
     for (const lyr of geologyLayerIDs()) {
       map.setLayoutProperty(
         lyr,

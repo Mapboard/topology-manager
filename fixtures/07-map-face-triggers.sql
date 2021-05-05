@@ -20,8 +20,8 @@ but this can be disabled for speed.
 Drastically simplified this view creation
 */
 
-CREATE OR REPLACE FUNCTION map_topology.other_face(
-  e map_topology.edge_data,
+CREATE OR REPLACE FUNCTION ${topo_schema~}.other_face(
+  e ${topo_schema~}.edge_data,
   fid integer
 )
 RETURNS integer
@@ -33,30 +33,30 @@ SELECT CASE
 END
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION map_topology.adjacent_faces(
+CREATE OR REPLACE FUNCTION ${topo_schema~}.adjacent_faces(
   fid integer,
   topoid text
 )
 RETURNS integer[]
 AS $$
 WITH RECURSIVE r(faces,adjacent,cycle) AS (
-SELECT DISTINCT ON (map_topology.other_face(e,fid))
+SELECT DISTINCT ON (${topo_schema~}.other_face(e,fid))
   ARRAY[left_face,right_face] faces,
-  map_topology.other_face(e,fid) adjacent,
+  ${topo_schema~}.other_face(e,fid) adjacent,
   false
-FROM map_topology.edge_data e
-LEFT JOIN map_topology.__edge_relation er
+FROM ${topo_schema~}.edge_data e
+LEFT JOIN ${topo_schema~}.__edge_relation er
   ON er.edge_id = e.edge_id
 WHERE (e.left_face = fid OR e.right_face = fid)
   AND e.left_face != e.right_face
   AND er.topology IS DISTINCT FROM topoid
 UNION
-SELECT DISTINCT ON (map_topology.other_face(e,r1.adjacent))
-  r1.faces || map_topology.other_face(e,r1.adjacent) faces,
-  map_topology.other_face(e,r1.adjacent) adjacent,
-  (map_topology.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
-FROM map_topology.edge_data e
-LEFT JOIN map_topology.__edge_relation er
+SELECT DISTINCT ON (${topo_schema~}.other_face(e,r1.adjacent))
+  r1.faces || ${topo_schema~}.other_face(e,r1.adjacent) faces,
+  ${topo_schema~}.other_face(e,r1.adjacent) adjacent,
+  (${topo_schema~}.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
+FROM ${topo_schema~}.edge_data e
+LEFT JOIN ${topo_schema~}.__edge_relation er
   ON er.edge_id = e.edge_id
 JOIN r r1
   ON (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
@@ -70,13 +70,13 @@ SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 SELECT array_agg(face) faces FROM b;
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION map_topology.update_map_face()
-RETURNS map_topology.__dirty_face AS $$
+CREATE OR REPLACE FUNCTION ${topo_schema~}.update_map_face()
+RETURNS ${topo_schema~}.__dirty_face AS $$
 DECLARE
   __topo_elements integer[][];
   __topo topology.topogeometry;
   __geometry geometry;
-  __face map_topology.__dirty_face;
+  __face ${topo_schema~}.__dirty_face;
   __precision integer;
   __dissolved_faces integer[];
   __is_global boolean;
@@ -86,33 +86,33 @@ DECLARE
   __srid integer;
 BEGIN
 
-SELECT * INTO __face FROM map_topology.__dirty_face LIMIT 1;
+SELECT * INTO __face FROM ${topo_schema~}.__dirty_face LIMIT 1;
 
 SELECT srid
 INTO __srid
 FROM topology.topology
-WHERE name='map_topology';
+WHERE name=${topo_schema};
 
 SELECT precision
 INTO __precision
 FROM topology.topology
-WHERE name = 'map_topology';
+WHERE name = ${topo_schema};
 
-__layer_id := map_topology.__map_face_layer_id();
+__layer_id := ${topo_schema~}.__map_face_layer_id();
 
 RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.topology;
 
 -- Special case when adjacent to global face
 IF (__face.id = 0) THEN
   DELETE
-  FROM map_topology.__dirty_face df
+  FROM ${topo_schema~}.__dirty_face df
   WHERE topology = __face.topology
     AND id = 0;
   RETURN __face;
 END IF;
 
 /* First, get the adjoining faces */
-__dissolved_faces := map_topology.adjacent_faces(__face.id,__face.topology);
+__dissolved_faces := ${topo_schema~}.adjacent_faces(__face.id,__face.topology);
 RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
 
 -- Special case when adjoining global face
@@ -130,7 +130,7 @@ END IF;
 __dissolved_faces := array_remove(__dissolved_faces,0);
 
 -- /* Delete all topogeometries currently inhabiting the space */
--- DELETE FROM map_topology.map_face
+-- DELETE FROM ${topo_schema~}.map_face
 -- WHERE id IN (
   -- SELECT DISTINCT
     -- (map_topology.containing_face(
@@ -140,7 +140,7 @@ __dissolved_faces := array_remove(__dissolved_faces,0);
 --- Escape before topogeometry creation if global
 IF (__is_global) THEN
   DELETE
-  FROM map_topology.__dirty_face df
+  FROM ${topo_schema~}.__dirty_face df
   WHERE topology = __face.topology
     AND (
       id = ANY(__dissolved_faces) OR id = 0
@@ -156,36 +156,36 @@ SELECT array_agg(a.vals)
 INTO __topo_elements
 FROM a;
 
-__topo := topology.CreateTopoGeom('map_topology', 3, __layer_id, __topo_elements);
+__topo := topology.CreateTopoGeom(${topo_schema}, 3, __layer_id, __topo_elements);
 
 __geometry := ST_SetSRID(__topo::geometry,__srid);
 
-DELETE FROM map_topology.map_face mf
+DELETE FROM ${topo_schema~}.map_face mf
 WHERE id IN (
   SELECT DISTINCT
-    (map_topology.containing_face(
+    (${topo_schema~}.containing_face(
         unnest(__dissolved_faces),
         __face.topology)
     ).id
   );
 
 DELETE
-FROM map_topology.__dirty_face df
+FROM ${topo_schema~}.__dirty_face df
 WHERE topology = __face.topology
   AND id = ANY(__dissolved_faces);
 
 IF (__is_global) THEN
   DELETE
-  FROM map_topology.__dirty_face df
+  FROM ${topo_schema~}.__dirty_face df
   WHERE topology = __face.topology
     AND id = 0;
   RETURN __face;
 END IF;
 
-INSERT INTO map_topology.map_face
+INSERT INTO ${topo_schema~}.map_face
   (unit_id, topo, topology, geometry)
 SELECT
-map_topology.unitForArea(
+${topo_schema~}.unitForArea(
   __geometry,
   __face.topology) unit_id,
 __topo,
@@ -193,7 +193,7 @@ __face.topology,
 __geometry;
 
 DELETE
-FROM map_topology.__dirty_face df
+FROM ${topo_schema~}.__dirty_face df
 WHERE topology = __face.topology
   AND id = ANY(__dissolved_faces);
 
@@ -202,14 +202,14 @@ RETURN __face;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION map_topology.update_all_map_faces()
+CREATE OR REPLACE FUNCTION ${topo_schema~}.update_all_map_faces()
 RETURNS void AS $$
 BEGIN
 
 -- Loop throug table of dirty linework
-WHILE EXISTS (SELECT * FROM map_topology.__dirty_face)
+WHILE EXISTS (SELECT * FROM ${topo_schema~}.__dirty_face)
 LOOP
-  PERFORM map_topology.update_map_face();
+  PERFORM ${topo_schema~}.update_map_face();
 END LOOP;
 
 END;

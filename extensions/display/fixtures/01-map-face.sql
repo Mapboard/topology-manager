@@ -6,8 +6,8 @@ SELECT
   f.geometry,
   f.topology,
   t.color
-FROM map_topology.map_face f
-JOIN map_digitizer.polygon_type t
+FROM ${topo_schema~}.map_face f
+JOIN ${data_schema~}.polygon_type t
   ON f.unit_id = t.id
 WHERE f.unit_id != 'surficial-none';
 
