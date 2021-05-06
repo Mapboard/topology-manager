@@ -9,7 +9,6 @@ let v, loc;
 const { GEOLOGIC_MAP_CONFIG } = process.env;
 const { resolve, join, dirname, isAbsolute } = require("path");
 const { existsSync } = require("fs");
-require("tilelive-modules/loader");
 
 if (GEOLOGIC_MAP_CONFIG == null) {
   throw Error("Environment variable GEOLOGIC_MAP_CONFIG is not defined!");
