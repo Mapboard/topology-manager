@@ -1,14 +1,3 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
-const loader = require("tilelive-modules/loader");
-const { memoize } = require("underscore");
-const Promise = require("bluebird");
-const cache = require("tilelive-cache");
-const tilelive = cache(require("@mapbox/tilelive"));
 const { db, sql: __sql } = require("../../../src/util");
 
 const sql = (id) => __sql(require.resolve(`../procedures/${id}.sql`));
@@ -38,20 +27,6 @@ const interfaceFactory = async function (name, opts, buildTile) {
   return { getTile, content_type, format, layer_id };
 };
 
-const tileliveInterface = async function (name, uri) {
-  uri += "?tileSize=512&scale=2";
-  loader(tilelive, {});
-  const loadURI = Promise.promisify(tilelive.load);
-  const source = await loadURI(uri);
-  const opts = { context: source };
-  const getTile = Promise.promisify(source.getTile, opts);
-
-  return interfaceFactory(name, async function (tileArgs) {
-    const { z, x, y } = tileArgs;
-    return await getTile(z, x, y);
-  });
-};
-
 const vectorTileInterface = function (layer, opts) {
   if (opts == null) {
     opts = {};
@@ -63,4 +38,4 @@ const vectorTileInterface = function (layer, opts) {
   });
 };
 
-module.exports = { vectorTileInterface, tileliveInterface };
+module.exports = { vectorTileInterface };
