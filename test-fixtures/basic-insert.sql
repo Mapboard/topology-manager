@@ -7,16 +7,12 @@ WITH newline AS (
     certainty,
     zoom_level
   ) VALUES (
-    ST_Multi(
-      ST_MakeValid(
-        Linework_SnapEndpoints(
-          ST_Transform(
-            ST_SetSRID('LINESTRING(16.17 -24.364,16.182 -24.348)'::geometry, 4326),
-            ${data_schema~}.Linework_SRID()),
-          0, '{}'::text[]
-        )
-      )
-    ), 'bedrock', 4.16, 112.66, null, 11.36
+    (${data_schema~}.Linework_SnapEndpoints(
+      ST_Transform(
+        ST_SetSRID('LINESTRING(16.17 -24.364,16.182 -24.348)'::geometry, 4326),
+        ${data_schema~}.Linework_SRID()),
+      0, '{}'::text[]
+    )).geometry, 'bedrock', 4.16, 112.66, null, 11.36
   ) RETURNING *
 )
 SELECT

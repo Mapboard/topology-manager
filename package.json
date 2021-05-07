@@ -8,14 +8,14 @@
     "postgis-geologic-map": "bin/geologic-map"
   },
   "scripts": {
-    "preinstall": "npm --prefix packages/mapboard-server install",
     "compile": "./bin/compile",
     "start": "./bin/geologic-map-serve-dev",
     "build": "npm --prefix packages/mapboard-server run build",
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
     "dev": "npm-run-all --parallel dev:**",
-    "test": "ava --verbose"
+    "test": "ava --verbose",
+    "postinstall": "lerna bootstrap --hoist"
   },
   "browserslist": [
     "> 1%"
@@ -80,8 +80,8 @@
     "ava": "^3.14.0",
     "coffeescript": "^2.4.1",
     "cssnano": "^4.1.10",
+    "lerna": "^3.22.1",
     "linklocal": "^2.8.2",
-    "parcel-bundler": "^1.12.3",
     "stylus": "^0.54.5",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4"

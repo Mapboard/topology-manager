@@ -11,7 +11,11 @@ const { resolve, join, dirname, isAbsolute } = require("path");
 const { existsSync } = require("fs");
 
 if (GEOLOGIC_MAP_CONFIG == null) {
-  throw Error("Environment variable GEOLOGIC_MAP_CONFIG is not defined!");
+  console.log("Environment variable GEOLOGIC_MAP_CONFIG is not defined!");
+  console.log(
+    "It must be set to the absolute path to a JSON file to continue."
+  );
+  process.exit(1);
 }
 
 process.env.GEOLOGIC_MAP_SOURCE_DIR = __dirname;
@@ -29,7 +33,7 @@ let {
   extensions,
   commandName = "geologic-map",
   ...rest
-} = require(GEOLOGIC_MAP_CONFIG);
+} = require(GEOLOGIC_MAP_CONFIG) ?? {};
 
 if (host == null) {
   host = "localhost";
