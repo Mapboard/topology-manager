@@ -30,7 +30,9 @@
     "packages/*"
   ],
   "dependencies": {
+    "@mapbox/mbtiles": "^0.12.1",
     "@mapbox/postgis-vt-util": "^1.2.1",
+    "@mapbox/sphericalmercator": "^1.1.0",
     "@types/bluebird-global": "^3.5.12",
     "axios": "^0.18.1",
     "babel-polyfill": "^6.26.0",
@@ -45,6 +47,7 @@
     "mapboard-server": "file:./packages/mapboard-server",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
+    "morgan": "^1.10.0",
     "nodemon": "^2.0.6",
     "npm-run-all": "^4.1.5",
     "pg": "^8.5.0",
@@ -53,12 +56,14 @@
     "pkg": "^4.4.0",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
+    "response-time": "^2.3.2",
     "socket.io": "^2.2.0",
     "socket.io-client": "^2.2.0",
     "sql-strip-comments": "0.0.23",
     "tsparser": "^1.0.2",
     "underscore": "^1.9.1",
-    "yargs": "^16.2.0"
+    "yargs": "^16.2.0",
+    "zlib": "^1.0.5"
   },
   "pkg": {
     "assets": [
