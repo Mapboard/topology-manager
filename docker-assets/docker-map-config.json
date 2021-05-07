@@ -5,16 +5,16 @@
     "host": "db",
     "user": "postgres"
   },
-  "srid": 32733,
-  "tolerance": 0.1,
+  "srid": 4326,
+  "tolerance": 0.0001,
   "loadPosition": {
     "lon": 15.8,
     "lat": -24.6,
-    "width": 4000
+    "width": 40000
   },
   "live-tiles": {
-    "zoomRange": [5,15],
-    "bounds": [15.75, -24.60, 16.60, -23.7]
+    "zoomRange": [5, 15],
+    "bounds": [15.75, -24.6, 16.6, -23.7]
   },
   "extensions": {
     "demo-units": "demo-units",
