@@ -13,13 +13,25 @@ const handler = async function ({ file }) {
   if (!projectDb.endsWith("data.json")) projectDb = join(file, "data.json");
   const data = JSON.parse(readFileSync(projectDb));
   const spots = data.spotsDb;
-  console.log(Object.keys(spots).length);
+  const tags = data.projectDb.project.tags;
 
   await proc(sqlFile("create-tables"), {});
 
   for (const [id, data] of Object.entries(spots)) {
-    console.log(id);
     await db.query(sql(sqlFile("insert-spot")), { id, data });
+  }
+
+  for (const data of tags) {
+    const { id, spots = [] } = data;
+    console.log(data.name);
+    await db.query(sql(sqlFile("insert-tag")), { id, data });
+    for (const spot_id of spots) {
+      console.log(spot_id);
+      await db.query(sql(sqlFile("insert-tag-relationships")), {
+        tag_id: id,
+        spot_id,
+      });
+    }
   }
 };
 
