@@ -26,11 +26,14 @@ const handler = async function ({ file }) {
     console.log(data.name);
     await db.query(sql(sqlFile("insert-tag")), { id, data });
     for (const spot_id of spots) {
-      console.log(spot_id);
-      await db.query(sql(sqlFile("insert-tag-relationships")), {
-        tag_id: id,
-        spot_id,
-      });
+      try {
+        await db.query(sql(sqlFile("insert-tag-relationships")), {
+          tag_id: id,
+          spot_id,
+        });
+      } catch (err) {
+        console.log(err);
+      }
     }
   }
 };

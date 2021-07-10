@@ -16,3 +16,9 @@ CREATE TABLE IF NOT EXISTS strabo.spot_tags (
   tag_id varchar(14) REFERENCES strabo.tags(id),
   PRIMARY KEY (spot_id, tag_id)
 );
+
+ALTER TABLE ${data_schema~}.polygon
+  ADD COLUMN spot_id varchar(14) REFERENCES strabo.spots(id);
+
+ALTER TABLE ${data_schema~}.polygon_type
+  ADD COLUMN tag_id varchar(14) REFERENCES strabo.tags(id);
