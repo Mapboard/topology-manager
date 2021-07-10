@@ -24,7 +24,8 @@
     "geologic-map-display": "file:./extensions/display",
     "fill-patterns": "file:./extensions/fill-patterns",
     "live-tiles": "file:./extensions/live-tiles",
-    "demo-units": "file:./extensions/demo-units"
+    "demo-units": "file:./extensions/demo-units",
+    "strabo-integration": "file:./extensions/strabo-integration"
   },
   "workspaces": [
     "packages/*"
