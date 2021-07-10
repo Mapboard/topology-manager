@@ -22,3 +22,8 @@ ALTER TABLE ${data_schema~}.polygon
 
 ALTER TABLE ${data_schema~}.polygon_type
   ADD COLUMN tag_id varchar(14) REFERENCES strabo.tags(id);
+
+CREATE OR REPLACE VIEW map_digitizer.polygon_display AS
+SELECT p.*, pt.color, pt.symbol, pt.symbol_color FROM map_digitizer.polygon p
+JOIN map_digitizer.polygon_type pt
+  ON p.type = pt.id

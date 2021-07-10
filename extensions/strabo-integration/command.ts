@@ -36,6 +36,7 @@ const handler = async function ({ file }) {
       }
     }
   }
+  await proc(sqlFile("link-data"), {});
 };
 
 module.exports = {
