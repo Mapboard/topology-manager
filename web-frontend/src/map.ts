@@ -36,7 +36,7 @@ const reloadGeologySource = function (map) {
   map.addSource(newID, createGeologySource("http://localhost:3006"));
   map.U.setLayerSource(geologyLayerIDs(), newID);
   map.removeSource(oldID);
-  return (oldID = newID);
+  oldID = newID;
 };
 
 async function loadImage(map, url: string) {
