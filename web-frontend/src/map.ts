@@ -78,24 +78,18 @@ async function setupStyleImages(map, polygonTypes) {
   );
 }
 
-async function createMapStyle(map, cfg, enableGeology = true) {
+async function createMapStyle(map, url, enableGeology = true) {
   const { data: polygonTypes } = await get(
     "http://localhost:3006/polygon/types"
   );
-  let baseStyle = {};
-  if ("url" in cfg) {
-    const baseURL = cfg.url.replace(
-      "mapbox://styles",
-      "https://api.mapbox.com/styles/v1"
-    );
-    let baseStyle = await getMapboxStyle(baseURL, {
-      access_token: mapboxgl.accessToken,
-    });
-    baseStyle = createBasicStyle(baseStyle);
-  } else {
-    baseStyle = cfg.styleJSON;
-  }
-  console.log(baseStyle);
+  const baseURL = url.replace(
+    "mapbox://styles",
+    "https://api.mapbox.com/styles/v1"
+  );
+  let baseStyle = await getMapboxStyle(baseURL, {
+    access_token: mapboxgl.accessToken,
+  });
+  baseStyle = createBasicStyle(baseStyle);
   if (!enableGeology) return baseStyle;
   await setupLineSymbols(map);
   await setupStyleImages(map, polygonTypes);
@@ -118,13 +112,13 @@ async function initializeMap(el: HTMLElement) {
     const style = await createMapStyle(map, baseLayers[0].url, true);
     map.setStyle(style);
     if (map.getSource("mapbox-dem") == null) return;
-    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
   });
 
   map.on("style.load", async function () {
     console.log("Reloaded style");
     if (map.getSource("mapbox-dem") == null) return;
-    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
   });
 
   mbxUtils.init(map, mapboxgl);
@@ -145,30 +139,6 @@ async function initializeMap(el: HTMLElement) {
 }
 
 const baseLayers = [
-  {
-    id: "local-satellite",
-    name: "Local satellite",
-    styleJSON: {
-      version: 10,
-      sources: {
-        "raster-source": {
-          type: "raster",
-          tiles: ["http://localhost:3006/tiles/satellite/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "Mapboard | Bing",
-        },
-      },
-      layers: [
-        {
-          id: "simple-tiles",
-          type: "raster",
-          source: "raster-source",
-          minzoom: 0,
-          maxzoom: 18,
-        },
-      ],
-    },
-  },
   {
     id: "satellite",
     name: "Satellite",
@@ -205,7 +175,7 @@ function BaseLayerSwitcher({ layers, activeLayer, onSetLayer }) {
 export function MapComponent() {
   const ref = useRef<HTMLElement>();
 
-  const [enableGeology, setEnableGeology] = useState(false);
+  const [enableGeology, setEnableGeology] = useState(true);
   const [activeLayer, setActiveLayer] = useState(baseLayers[0]);
 
   const mapRef = useRef<Map>();
@@ -234,7 +204,7 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map == null) return;
-    createMapStyle(map, activeLayer).then((style) => map.setStyle(style));
+    createMapStyle(map, activeLayer.url).then((style) => map.setStyle(style));
   }, [mapRef, activeLayer]);
 
   return h("div.map-area", [

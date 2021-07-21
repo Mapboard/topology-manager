@@ -10,7 +10,7 @@ const sqlFile = (id) => resolve(join(__dirname, "sql", `${id}.sql`));
 const handler = async function ({ file }) {
   console.log(`Importing backup from ${file}`);
   let projectDb = file;
-  if (!projectDb.endsWith("data.json")) projectDb = join(file, "data.json");
+  if (!projectDb.endsWith(".json")) projectDb = join(file, "data.json");
   const data = JSON.parse(readFileSync(projectDb));
   const spots = data.spotsDb;
   const tags = data.projectDb.project.tags;
