@@ -7,4 +7,7 @@ clean:
 test:
 	bin/docker-test
 
+dist:
+	bin/docker-dist
+
 .PHONY: dev clean

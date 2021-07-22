@@ -1,6 +1,12 @@
 #!/bin/bash
 # This setup runs a demo application in a testing PostGIS database
 
+config=/conf/geologic-map-config.json
+if [ -f "$config" ]; then
+  echo "Loading config from $config"
+  export GEOLOGIC_MAP_CONFIG="$config"
+fi
+
 while ! pg_isready -h "${GEOLOGIC_MAP_HOST:-db}" -p "${GEOLOGIC_MAP_PORT:-5432}" ; do
   echo "Waiting for database..."
   sleep 1

@@ -15,7 +15,7 @@
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
     "dev": "npm run setup && npm-run-all --parallel dev:**",
     "test": "ava --verbose",
-    "setup": "lerna bootstrap --hoist"
+    "postinstall": "lerna bootstrap --hoist"
   },
   "browserslist": [
     "> 1%"

@@ -2,7 +2,7 @@ FROM node:14
 
 RUN apt-get update \
   && apt-get install -y libpq-dev postgresql-client \
-  && npm install -g npm@7 \
+  && npm install -g npm@7 lerna \
   && npm cache clean -f \
   && npm cache verify
 
@@ -10,8 +10,10 @@ WORKDIR /app/
 
 COPY ./packages/mapboard-server /app/packages/mapboard-server
 COPY ./package.json ./lerna.json /app/
-RUN npm install
+RUN lerna bootstrap --hoist -- --unsafe-perm
 
 COPY ./ /app/
 
-CMD /app/docker-assets/run
+EXPOSE 3006
+
+ENTRYPOINT [ "/app/docker-assets/entry-script" ]
