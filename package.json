@@ -13,9 +13,9 @@
     "build": "npm --prefix packages/mapboard-server run build",
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
-    "dev": "npm run setup && npm-run-all --parallel dev:**",
+    "dev": "npm install && npm-run-all --parallel dev:**",
     "test": "ava --verbose",
-    "setup": "lerna bootstrap --hoist"
+    "postinstall": "lerna bootstrap --hoist"
   },
   "browserslist": [
     "> 1%"
@@ -24,7 +24,8 @@
     "geologic-map-display": "file:./extensions/display",
     "fill-patterns": "file:./extensions/fill-patterns",
     "live-tiles": "file:./extensions/live-tiles",
-    "demo-units": "file:./extensions/demo-units"
+    "demo-units": "file:./extensions/demo-units",
+    "strabo-integration": "file:./extensions/strabo-integration"
   },
   "workspaces": [
     "packages/*"

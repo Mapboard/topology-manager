@@ -1,0 +1,11 @@
+#!/bin/bash
+# This script is mapped to the `geologic-map` entrypoint in Docker.
+
+config=/conf/geologic-map-config.json
+
+if [ -f "$config" ]; then
+  echo "Loading config from $config"
+  export GEOLOGIC_MAP_CONFIG="$config"
+fi
+
+/app/bin/geologic-map $@
