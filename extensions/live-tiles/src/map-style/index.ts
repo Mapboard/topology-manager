@@ -14,11 +14,10 @@ const createGeologySource = (host) => ({
   minzoom: 5,
 });
 
-const createStyle = function (polygonTypes, hostName) {
-  if (hostName == null) {
-    hostName = "http://localhost:3006";
-  }
-
+const createStyle = function (
+  polygonTypes,
+  hostName = "http://localhost:3006"
+) {
   const colors = {};
   for (let d of Array.from(polygonTypes)) {
     colors[d.id] = d.color;

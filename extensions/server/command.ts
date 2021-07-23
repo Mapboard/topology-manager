@@ -16,7 +16,13 @@ const cors = require("cors");
 const command = "serve";
 const describe = "Create a feature server";
 
-const { server: serverCfg = {}, data_schema, topo_schema, connection } = cfg;
+const {
+  server: serverCfg = {},
+  projectBounds,
+  data_schema,
+  topo_schema,
+  connection,
+} = cfg;
 
 const handler = function () {
   const { tiles = {}, port = 3006 } = serverCfg;
@@ -28,6 +34,7 @@ const handler = function () {
     schema: data_schema,
     topology: topo_schema,
     createFunctions: false,
+    projectBounds,
   });
   app.use(cors());
 
