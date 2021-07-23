@@ -1,10 +1,14 @@
-#!/bin/bash
+#!/bin/bash -e
 
 user=davenquinn
 image=ghcr.io/$user/geologic-map
 version=$(cat package.json | jq -r '.version') 
 
 docker build -t $image:$version -t $image:latest .
+
+if [ $1 == "--no-push" ]; then
+  exit 0
+fi
 
 GITHUB_ACCESS_TOKEN=$(security find-generic-password -w -s "GitHub access token")
 echo $GITHUB_ACCESS_TOKEN | docker login ghcr.io -u $user --password-stdin
