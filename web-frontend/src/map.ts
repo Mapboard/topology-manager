@@ -1,14 +1,10 @@
 import "babel-polyfill";
 import {
-  createGeologyStyle,
-  createBasicStyle,
   createGeologySource,
   geologyLayerIDs,
-  getMapboxStyle,
-} from "./map-style";
-import { createUnitFill } from "./map-style/pattern-fill";
+} from "./map-style/geology-layers";
+import { createMapStyle, terrain } from "./map-style";
 import io from "socket.io-client";
-import { get } from "axios";
 import { debounce } from "underscore";
 import mapboxgl, { Map } from "mapbox-gl";
 import mbxUtils from "mapbox-gl-utils";
@@ -16,84 +12,21 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
-import { lineSymbols } from "./map-style/symbol-layers";
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
 const sourceURL = process.env.GEOLOGIC_MAP_ADDRESS || "http://localhost:3006";
 
-const vizBaseURL = "//visualization-assets.s3.amazonaws.com";
-const patternBaseURL = vizBaseURL + "/geologic-patterns/png";
-const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
-
-const satellite = "mapbox://styles/mapbox/satellite-v9";
-const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
-
 let ix = 0;
 let oldID = "geology";
-const reloadGeologySource = function (map) {
+function reloadGeologySource(map) {
   ix += 1;
   const newID = `geology-${ix}`;
   map.addSource(newID, createGeologySource(sourceURL));
   map.U.setLayerSource(geologyLayerIDs(), newID);
   map.removeSource(oldID);
   oldID = newID;
-};
-
-async function loadImage(map, url: string) {
-  return new Promise((resolve, reject) => {
-    map.loadImage(url, function (err, image) {
-      // Throw an error if something went wrong
-      if (err) reject(err);
-      // Declare the image
-      resolve(image);
-    });
-  });
-}
-
-async function setupLineSymbols(map) {
-  return Promise.all(
-    lineSymbols.map(async function (symbol) {
-      const image = await loadImage(map, lineSymbolsURL + `/${symbol}.png`);
-      if (map.hasImage(symbol)) return;
-      map.addImage(symbol, image, { sdf: true, pixelRatio: 3 });
-    })
-  );
-}
-
-async function setupStyleImages(map, polygonTypes) {
-  return Promise.all(
-    Array.from(polygonTypes).map(async function (type: any) {
-      const { symbol, id } = type;
-      const uid = id + "_fill";
-      if (map.hasImage(uid)) return;
-      const url = symbol == null ? null : patternBaseURL + `/${symbol}.png`;
-      const img = await createUnitFill({
-        patternURL: url,
-        color: type.color,
-        patternColor: type.symbol_color,
-      });
-
-      map.addImage(uid, img, { sdf: false, pixelRatio: 12 });
-    })
-  );
-}
-
-async function createMapStyle(map, url, enableGeology = true) {
-  const { data: polygonTypes } = await get(sourceURL + "/polygon/types");
-  const baseURL = url.replace(
-    "mapbox://styles",
-    "https://api.mapbox.com/styles/v1"
-  );
-  let baseStyle = await getMapboxStyle(baseURL, {
-    access_token: mapboxgl.accessToken,
-  });
-  baseStyle = createBasicStyle(baseStyle);
-  if (!enableGeology) return baseStyle;
-  await setupLineSymbols(map);
-  await setupStyleImages(map, polygonTypes);
-  return createGeologyStyle(baseStyle, polygonTypes, sourceURL);
 }
 
 async function initializeMap(el: HTMLElement) {
@@ -109,7 +42,7 @@ async function initializeMap(el: HTMLElement) {
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
   map.on("load", async function () {
-    const style = await createMapStyle(map, baseLayers[0].url, true);
+    const style = await createMapStyle(map, baseLayers[0].url, sourceURL, true);
     map.setStyle(style);
     if (map.getSource("mapbox-dem") == null) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
@@ -129,7 +62,7 @@ async function initializeMap(el: HTMLElement) {
   };
   const reloadMap = debounce(_, 500);
 
-  const socket = io(sourceURL);
+  const socket = io(sourceURL, { path: "/owyhee-mapping/socket.io" });
   socket.on("topology", function (message) {
     console.log(message);
     return reloadMap();
@@ -151,7 +84,7 @@ const baseLayers = [
   },
 ];
 
-function BaseLayerSwitcher({ layers, activeLayer, onSetLayer }) {
+function BaseLayerSwitcher({ activeLayer, onSetLayer }) {
   return h(
     ButtonGroup,
     { vertical: true },
@@ -204,7 +137,9 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map == null) return;
-    createMapStyle(map, activeLayer.url).then((style) => map.setStyle(style));
+    createMapStyle(map, activeLayer.url, sourceURL).then((style) =>
+      map.setStyle(style)
+    );
   }, [mapRef, activeLayer]);
 
   return h("div.map-area", [
