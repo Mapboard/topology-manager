@@ -21,6 +21,8 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
+const sourceURL = process.env.GEOLOGIC_MAP_ADDRESS || "http://localhost:3006";
+
 const vizBaseURL = "//visualization-assets.s3.amazonaws.com";
 const patternBaseURL = vizBaseURL + "/geologic-patterns/png";
 const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
@@ -33,7 +35,7 @@ let oldID = "geology";
 const reloadGeologySource = function (map) {
   ix += 1;
   const newID = `geology-${ix}`;
-  map.addSource(newID, createGeologySource("http://localhost:3006"));
+  map.addSource(newID, createGeologySource(sourceURL));
   map.U.setLayerSource(geologyLayerIDs(), newID);
   map.removeSource(oldID);
   oldID = newID;
@@ -79,9 +81,7 @@ async function setupStyleImages(map, polygonTypes) {
 }
 
 async function createMapStyle(map, url, enableGeology = true) {
-  const { data: polygonTypes } = await get(
-    "http://localhost:3006/polygon/types"
-  );
+  const { data: polygonTypes } = await get(sourceURL + "/polygon/types");
   const baseURL = url.replace(
     "mapbox://styles",
     "https://api.mapbox.com/styles/v1"
@@ -93,7 +93,7 @@ async function createMapStyle(map, url, enableGeology = true) {
   if (!enableGeology) return baseStyle;
   await setupLineSymbols(map);
   await setupStyleImages(map, polygonTypes);
-  return createGeologyStyle(baseStyle, polygonTypes);
+  return createGeologyStyle(baseStyle, polygonTypes, sourceURL);
 }
 
 async function initializeMap(el: HTMLElement) {
@@ -129,7 +129,7 @@ async function initializeMap(el: HTMLElement) {
   };
   const reloadMap = debounce(_, 500);
 
-  const socket = io("http://localhost:3006");
+  const socket = io(sourceURL);
   socket.on("topology", function (message) {
     console.log(message);
     return reloadMap();
