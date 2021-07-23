@@ -32,7 +32,7 @@ const external = function (cmd, describe) {
 const createExtensionCommands = function (argv) {
   // Set verbosity
   global.verbose = argv.argv.verbose;
-  const config = require("../src/config");
+  const config = require("./config");
   global.config = config;
   for (const ext of config.extensions) {
     const { commands = [] } = ext;
@@ -77,14 +77,14 @@ GEOLOGIC_MAP_CONFIG environment variable`,
     global: true,
   })
   .command(external("set-colors [file]", "Set colors from csv file (id,color)"))
-  .command(require("../src/commands/update-contacts"))
-  .command(require("../src/commands/update-faces"))
-  .command(require("../src/commands/update"))
-  .command(require("../src/commands/create-tables"))
-  .command(require("../src/commands/reset"))
-  .command(require("../src/commands/delete"))
-  .command(require("../src/commands/clean-topology"))
-  .command(require("../extensions/server/command"))
+  .command(require("./commands/update-contacts"))
+  .command(require("./commands/update-faces"))
+  .command(require("./commands/update"))
+  .command(require("./commands/create-tables"))
+  .command(require("./commands/reset"))
+  .command(require("./commands/delete"))
+  .command(require("./commands/clean-topology"))
+  .command(require("./server"))
   .command(configCommand)
   .wrap(cli.terminalWidth()); //.exitProcess(false);
 
