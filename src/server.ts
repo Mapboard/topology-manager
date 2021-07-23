@@ -19,10 +19,13 @@ const {
 } = cfg;
 
 const handler = function () {
+  console.log(cfg);
   const { tiles = {}, port = 3006 } = serverCfg;
   const verbose = false;
 
-  const app = appFactory({
+  const app = express();
+
+  const featureServer = appFactory({
     connection,
     tiles,
     schema: data_schema,
@@ -30,16 +33,17 @@ const handler = function () {
     createFunctions: false,
     projectBounds,
   });
+
+  app.use("/feature-server", createServer(featureServer));
   app.use(cors());
 
   // This should be conditional
   const { liveTileServer } = require("../extensions/live-tiles/server");
   app.use("/live-tiles", liveTileServer(cfg));
 
-  const server = createServer(app);
   startWatcher(verbose);
 
-  server.listen(port, () => console.log(`Listening on port ${port}`));
+  app.listen(port, () => console.log(`Listening on port ${port}`));
 };
 
 module.exports = { command, describe, handler };
