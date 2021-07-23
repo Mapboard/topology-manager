@@ -53,7 +53,13 @@ const tileCoords = function* (zoomLevels, bounds) {
 };
 
 const handler = async function () {
-  const { layers, bounds, zoomRange } = cfg["live-tiles"];
+  const { layers, zoomRange = [5, 15] } = cfg["live-tiles"];
+  const bounds = cfg["live-tiles"].bounds ?? cfg.projectBounds;
+  if (bounds == null) {
+    throw new Error(
+      "Either 'live-tiles.bounds' or 'projectBounds' must be defined in the Geologic Map config."
+    );
+  }
   const zoomLevels = __range__(zoomRange[0], zoomRange[1], true);
 
   let total = 0;

@@ -18,6 +18,7 @@ services:
     build: .
     environment:
       - GEOLOGIC_MAP_CONFIG=/app/docker-assets/docker-map-config.json
+    command: /app/docker-assets/run
     ports:
       - "3006:3006"
     expose:
