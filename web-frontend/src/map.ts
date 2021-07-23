@@ -29,6 +29,9 @@ function reloadGeologySource(map) {
   oldID = newID;
 }
 
+const sourceURI = new URL(sourceURL);
+const hostName = sourceURI.protocol + "//" + sourceURI.hostname;
+
 async function initializeMap(el: HTMLElement) {
   //const style = createStyle(polygonTypes);
 
@@ -62,7 +65,9 @@ async function initializeMap(el: HTMLElement) {
   };
   const reloadMap = debounce(_, 500);
 
-  const socket = io(sourceURL, { path: "/owyhee-mapping/socket.io" });
+  const socket = io(hostName, {
+    path: sourceURI.pathname + "/socket.io",
+  });
   socket.on("topology", function (message) {
     console.log(message);
     return reloadMap();
