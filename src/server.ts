@@ -34,7 +34,9 @@ const handler = function () {
     projectBounds,
   });
 
-  app.use("/feature-server", createServer(featureServer));
+  app.use("/feature-server", featureServer);
+  // For now, we don't auto-reload on changes...
+  // this would require websockets to be set up
   app.use(cors());
 
   // This should be conditional
