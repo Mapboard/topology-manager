@@ -43,6 +43,12 @@ const handler = function () {
   const { liveTileServer } = require("../extensions/live-tiles/server");
   app.use("/live-tiles", liveTileServer(cfg));
 
+  // This should also be conditional
+  const {
+    measurementsServer,
+  } = require("../extensions/strabo-integration/server");
+  app.use("/measurements", measurementsServer());
+
   startWatcher(verbose);
 
   app.listen(port, () => console.log(`Listening on port ${port}`));
