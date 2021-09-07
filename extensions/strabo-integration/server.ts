@@ -13,8 +13,12 @@ const measurementsServer = function () {
   app.use(responseTime());
   app.get("/", async function (req, res) {
     const fn = require.resolve("./sql/get-spots.sql");
-    const spots = await db.one(sql(fn));
-    return res.json(spots);
+    const spots = await db.query(sql(fn));
+    const features = spots.map((spot) => {
+      const { data, id } = spot;
+      return data;
+    });
+    return res.json({ features, type: "FeatureCollection" });
   });
 
   return app;

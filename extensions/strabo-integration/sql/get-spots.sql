@@ -1,4 +1,4 @@
 SELECT
-  json_agg(data) features,
-  'FeatureCollection' AS "type"
+  id,
+  data
 FROM strabo.spots;

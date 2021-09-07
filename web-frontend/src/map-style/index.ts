@@ -11,6 +11,7 @@ import { get } from "axios";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { lineSymbols } from "./symbol-layers";
+import { measurementsSource, measurementsLayers } from "./point-features";
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 const vizBaseURL = "//visualization-assets.s3.amazonaws.com";
@@ -83,7 +84,17 @@ async function createMapStyle(map, url, sourceURL, enableGeology = true) {
   if (!enableGeology) return baseStyle;
   await setupLineSymbols(map);
   await setupStyleImages(map, polygonTypes);
-  return createGeologyStyle(baseStyle, polygonTypes, sourceURL);
+  let geologyStyle = createGeologyStyle(baseStyle, polygonTypes, sourceURL);
+
+  // Should be conditional on whether measurements are enabled
+  geologyStyle.sources = {
+    ...geologyStyle.sources,
+    ...measurementsSource(sourceURL),
+  };
+
+  geologyStyle.layers = [...geologyStyle.layers, ...measurementsLayers()];
+
+  return geologyStyle;
 }
 
 export { createMapStyle, createGeologySource, terrain };
