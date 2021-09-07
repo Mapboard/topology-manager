@@ -6,7 +6,11 @@ function measurementsSource(sourceURL) {
   return {
     measurements: {
       type: "geojson",
-      data: sourceURL + "/measurements",
+      data: sourceURL + "/strabo/measurements",
+    },
+    spots: {
+      type: "geojson",
+      data: sourceURL + "/strabo/spots",
     },
   };
 }
@@ -14,7 +18,7 @@ function measurementsSource(sourceURL) {
 function measurementsLayers() {
   return [
     {
-      source: "measurements",
+      source: "spots",
       id: "measurements",
       type: "circle",
       paint: {
@@ -29,12 +33,11 @@ function measurementsLayers() {
 }
 
 async function setupPointSymbols(map) {
-  console.log(pointSymbols);
   return Promise.all(
     Object.keys(pointSymbols).map(async function (symbol) {
       const image = await loadImage(map, pointSymbols[symbol]);
       if (map.hasImage(symbol)) return;
-      map.addImage(symbol, image, { sdf: true, pixelRatio: 3 });
+      map.addImage(symbol, image, { sdf: false, pixelRatio: 3 });
     })
   );
 }

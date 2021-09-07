@@ -4,7 +4,7 @@
  */
 
 const pointLayers = () => {
-  const isShowSpotLabelsOn = true;
+  const isShowSpotLabelsOn = false;
 
   // Get the rotation of the symbol, either strike, trend or failing both, 0
   const getIconRotation = () => {
@@ -243,9 +243,10 @@ const pointLayers = () => {
         "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
         "icon-image": getIconImage(),
         "icon-rotate": getIconRotation(),
+        "icon-rotation-alignment": "map",
         "icon-allow-overlap": true, // Need to be able to stack symbols at same location
         "icon-ignore-placement": true, // Need to be able to stack symbols at same location
-        "icon-size": 0.08,
+        "icon-size": 0.15,
         "symbol-spacing": 1,
       },
     },

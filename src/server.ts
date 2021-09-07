@@ -47,7 +47,7 @@ const handler = function () {
   const {
     measurementsServer,
   } = require("../extensions/strabo-integration/server");
-  app.use("/measurements", measurementsServer());
+  app.use("/strabo", measurementsServer());
 
   startWatcher(verbose);
 
