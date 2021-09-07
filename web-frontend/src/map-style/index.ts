@@ -48,9 +48,18 @@ async function setupStyleImages(map, polygonTypes) {
       const uid = id + "_fill";
       if (map.hasImage(uid)) return;
       const url = symbol == null ? null : patternBaseURL + `/${symbol}.png`;
+      let { color } = type;
+
+      // Handle special case where color is not a correct hex color
+      if (color.length == 6 && !color.startsWith("#")) {
+        color = "#" + color;
+      }
+
+      console.log(color);
+
       const img = await createUnitFill({
         patternURL: url,
-        color: type.color,
+        color: color,
         patternColor: type.symbol_color,
       });
 
@@ -60,7 +69,9 @@ async function setupStyleImages(map, polygonTypes) {
 }
 
 async function createMapStyle(map, url, sourceURL, enableGeology = true) {
-  const { data: polygonTypes } = await get(sourceURL + "/polygon/types");
+  const { data: polygonTypes } = await get(
+    sourceURL + "/feature-server/polygon/types"
+  );
   const baseURL = url.replace(
     "mapbox://styles",
     "https://api.mapbox.com/styles/v1"

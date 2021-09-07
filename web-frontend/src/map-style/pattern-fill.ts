@@ -63,6 +63,7 @@ function createSolidColorImage(imgColor) {
 }
 
 async function createUnitFill(spec: PatternFillSpec): Promise<ImageData> {
+  /** Create a fill image for a map unit. */
   if (spec.patternURL != null) {
     const img = await loadImage(spec.patternURL);
     return recolorPatternImage(img, spec.color, spec.patternColor ?? "#000000");

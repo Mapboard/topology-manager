@@ -31,7 +31,7 @@ function reloadGeologySource(map) {
 }
 
 async function fitBounds(map) {
-  const res = await axios.get(sourceURL + "/meta");
+  const res = await axios.get(sourceURL + "/feature-server/meta");
   const bounds = res.data?.projectBounds;
   if (bounds != null) {
     map.fitBounds(
