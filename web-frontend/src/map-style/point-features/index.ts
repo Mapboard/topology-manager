@@ -14,7 +14,7 @@ function measurementsLayers() {
       id: "measurements",
       type: "circle",
       paint: {
-        "circle-color": "#becaff",
+        "circle-color": ["get", "circleColor", ["get", "symbology"]],
         "circle-stroke-color": "#dee4fb",
         "circle-stroke-width": 1,
         "circle-radius": 3,
