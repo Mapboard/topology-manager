@@ -1,5 +1,6 @@
 import { loadImage } from "../utils";
 import pointSymbols from "./symbols/*.png";
+import { pointLayers } from "./symbol-layer";
 
 function measurementsSource(sourceURL) {
   return {
@@ -23,6 +24,7 @@ function measurementsLayers() {
         "circle-radius": 3,
       },
     },
+    ...pointLayers(),
   ];
 }
 
