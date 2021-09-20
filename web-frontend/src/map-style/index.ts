@@ -41,7 +41,7 @@ async function setupStyleImages(map, polygonTypes) {
     Array.from(polygonTypes).map(async function (type: any) {
       const { symbol, id } = type;
       const uid = id + "_fill";
-      if (map.hasImage(uid)) return;
+      if (map.style != null && map.hasImage(uid)) return;
       const url = symbol == null ? null : patternBaseURL + `/${symbol}.png`;
       let { color } = type;
 
@@ -49,8 +49,6 @@ async function setupStyleImages(map, polygonTypes) {
       if (color.length == 6 && !color.startsWith("#")) {
         color = "#" + color;
       }
-
-      console.log(color);
 
       const img = await createUnitFill({
         patternURL: url,

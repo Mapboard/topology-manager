@@ -19,7 +19,7 @@ function measurementsLayers() {
   return [
     {
       source: "spots",
-      id: "measurements",
+      id: "spots",
       type: "circle",
       paint: {
         "circle-color": ["get", "circleColor", ["get", "symbology"]],

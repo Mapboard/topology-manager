@@ -14,6 +14,7 @@ import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
+import mapboxgl = require("mapbox-gl");
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
@@ -70,6 +71,7 @@ async function initializeMap(el: HTMLElement) {
 
   map.on("style.load", async function () {
     console.log("Reloaded style");
+    setupPointInteractivity(map);
     if (map.getSource("mapbox-dem") == null) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
   });
@@ -84,6 +86,7 @@ async function initializeMap(el: HTMLElement) {
 
   const socket = io(hostName, {
     path: sourceURI.pathname + "/socket.io",
+    reconnectionAttempts: 5,
   });
   socket.on("topology", function (message) {
     console.log(message);
@@ -127,6 +130,41 @@ function BaseLayerSwitcher({ activeLayer, onSetLayer }) {
   );
 }
 
+function setupPointInteractivity(map: mapboxgl.Map) {
+  var popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+  });
+
+  console.log("Setting up point interactivity");
+
+  map.on("mouseenter", "spots", function (e) {
+    console.log(e);
+    return;
+    var coordinates = e.features[0].geometry.coordinates.slice();
+    var description: string = e.features[0].properties.notes;
+    console.log(description);
+    if (description == null || description == "null") return;
+    // Change the cursor style as a UI indicator.
+    map.getCanvas().style.cursor = "pointer";
+    // Ensure that if the map is zoomed out such that multiple
+    // copies of the feature are visible, the popup appears
+    // over the copy being pointed to.
+    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+      coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+    }
+
+    // Populate the popup and set its coordinates
+    // based on the feature found.
+    popup.setLngLat(coordinates).setHTML(description).addTo(map);
+  });
+
+  map.on("mouseleave", "spots", function () {
+    map.getCanvas().style.cursor = "";
+    popup.remove();
+  });
+}
+
 export function MapComponent() {
   const ref = useRef<HTMLElement>();
 
@@ -140,6 +178,7 @@ export function MapComponent() {
     initializeMap(ref.current).then((mapObj) => {
       mapRef.current = mapObj;
     });
+
     return () => mapRef.current.remove();
   }, [ref]);
 
@@ -159,9 +198,9 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map == null) return;
-    createMapStyle(map, activeLayer.url, sourceURL).then((style) =>
-      map.setStyle(style)
-    );
+    createMapStyle(map, activeLayer.url, sourceURL).then((style) => {
+      map.setStyle(style);
+    });
   }, [mapRef, activeLayer]);
 
   return h("div.map-area", [
