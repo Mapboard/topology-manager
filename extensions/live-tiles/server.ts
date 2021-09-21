@@ -33,7 +33,9 @@ const tileLayerServer = function ({ getTile, content_type, format, layer_id }) {
       }
       res.set({ "Content-Type": content_type });
       // this should really only be set if tile is pbf
-      //res.set({ "Content-Encoding": "gzip" });
+      if (format === "pbf") {
+        res.set({ "Content-Encoding": "gzip" });
+      }
 
       return res.status(200).send(tile);
     } catch (err) {

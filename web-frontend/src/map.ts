@@ -9,12 +9,16 @@ import { debounce } from "underscore";
 import mapboxgl, { Map } from "mapbox-gl";
 import mbxUtils from "mapbox-gl-utils";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useReducer } from "react";
 import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
-import mapboxgl = require("mapbox-gl");
+import {
+  LayerDescription,
+  baseLayers,
+  BaseLayerSwitcher,
+} from "./layer-switcher";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
@@ -96,41 +100,7 @@ async function initializeMap(el: HTMLElement) {
   return map;
 }
 
-const baseLayers = [
-  {
-    id: "satellite",
-    name: "Satellite",
-    url: "mapbox://styles/mapbox/satellite-v9",
-  },
-  {
-    id: "hillshade",
-    name: "Hillshade",
-    url: terrain,
-  },
-];
-
-function BaseLayerSwitcher({ activeLayer, onSetLayer }) {
-  return h(
-    ButtonGroup,
-    { vertical: true },
-    baseLayers.map((d) => {
-      return h(
-        Button,
-        {
-          active: d == activeLayer,
-          //disabled: d == activeLayer,
-          onClick() {
-            if (d == activeLayer) return;
-            onSetLayer(d);
-          },
-        },
-        d.name
-      );
-    })
-  );
-}
-
-function setupPointInteractivity(map: mapboxgl.Map) {
+function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
   var popup = new mapboxgl.Popup({
     closeButton: false,
     closeOnClick: false,
@@ -138,38 +108,72 @@ function setupPointInteractivity(map: mapboxgl.Map) {
 
   console.log("Setting up point interactivity");
 
-  map.on("mouseenter", "spots", function (e) {
-    console.log(e);
-    return;
-    var coordinates = e.features[0].geometry.coordinates.slice();
-    var description: string = e.features[0].properties.notes;
-    console.log(description);
-    if (description == null || description == "null") return;
-    // Change the cursor style as a UI indicator.
-    map.getCanvas().style.cursor = "pointer";
-    // Ensure that if the map is zoomed out such that multiple
-    // copies of the feature are visible, the popup appears
-    // over the copy being pointed to.
-    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-      coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-    }
+  // map.on("mouseenter", "spots", function (e) {
+  //   map.getCanvas().style.cursor = "pointer";
+  //   // return;
+  //   // var coordinates = e.features[0].geometry.coordinates.slice();
+  //   // var description: string = e.features[0].properties.notes;
+  //   // console.log(description);
+  //   // if (description == null || description == "null") return;
+  //   // // Change the cursor style as a UI indicator.
+  //   // map.getCanvas().style.cursor = "pointer";
+  //   // // Ensure that if the map is zoomed out such that multiple
+  //   // // copies of the feature are visible, the popup appears
+  //   // // over the copy being pointed to.
+  //   // while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+  //   //   coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+  //   // }
 
-    // Populate the popup and set its coordinates
-    // based on the feature found.
-    popup.setLngLat(coordinates).setHTML(description).addTo(map);
-  });
+  //   // // Populate the popup and set its coordinates
+  //   // // based on the feature found.
+  //   // popup.setLngLat(coordinates).setHTML(description).addTo(map);
+  // });
 
-  map.on("mouseleave", "spots", function () {
-    map.getCanvas().style.cursor = "";
-    popup.remove();
+  // map.on("mouseleave", "spots", function () {
+  //   map.getCanvas().style.cursor = "";
+  //   //popup.remove();
+  // });
+
+  map.on("click", "spots", function (e) {
+    onClick?.(e.features[0]);
   });
 }
+
+interface MapState {
+  enableGeology: boolean;
+  activeLayer: LayerDescription;
+  activeSpot: Object | null;
+}
+
+type SetActiveLayer = { type: "set-active-layer"; layer: LayerDescription };
+type ToggleGeology = { type: "toggle-geology" };
+type SetActiveSpot = { type: "set-active-spot"; spot: Object | null };
+
+type MapAction = SetActiveLayer | ToggleGeology | SetActiveSpot;
+
+function mapReducer(state: MapState, action: MapAction) {
+  switch (action.type) {
+    case "set-active-layer":
+      return { ...state, activeLayer: action.layer };
+    case "toggle-geology":
+      return { ...state, enableGeology: !state.enableGeology };
+    case "set-active-spot":
+      return { ...state, activeSpot: action.spot };
+    default:
+      return state;
+  }
+}
+
+const defaultState: MapState = {
+  enableGeology: true,
+  activeLayer: baseLayers[0],
+  activeSpot: null,
+};
 
 export function MapComponent() {
   const ref = useRef<HTMLElement>();
 
-  const [enableGeology, setEnableGeology] = useState(true);
-  const [activeLayer, setActiveLayer] = useState(baseLayers[0]);
+  const [state, dispatch] = useReducer(mapReducer, defaultState);
 
   const mapRef = useRef<Map>();
 
@@ -185,23 +189,22 @@ export function MapComponent() {
   useEffect(() => {
     const map = mapRef.current;
     if (map?.style == null) return;
-    console.log(enableGeology);
     for (const lyr of geologyLayerIDs()) {
       map.setLayoutProperty(
         lyr,
         "visibility",
-        enableGeology ? "visible" : "none"
+        state.enableGeology ? "visible" : "none"
       );
     }
-  }, [mapRef, enableGeology]);
+  }, [mapRef, state.enableGeology]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (map == null) return;
-    createMapStyle(map, activeLayer.url, sourceURL).then((style) => {
+    createMapStyle(map, state.activeLayer.url, sourceURL).then((style) => {
       map.setStyle(style);
     });
-  }, [mapRef, activeLayer]);
+  }, [mapRef, state.activeLayer]);
 
   return h("div.map-area", [
     h("div.map", { ref }),
@@ -209,18 +212,17 @@ export function MapComponent() {
       h(
         Button,
         {
-          active: enableGeology,
+          active: state.enableGeology,
           onClick() {
-            setEnableGeology(!enableGeology);
+            dispatch({ type: "toggle-geology" });
           },
         },
         "Geology"
       ),
       h(BaseLayerSwitcher, {
-        layers: baseLayers,
-        activeLayer: activeLayer,
+        activeLayer: state.activeLayer,
         onSetLayer(layer) {
-          setActiveLayer(layer);
+          dispatch({ type: "set-active-layer", layer });
         },
       }),
     ]),
