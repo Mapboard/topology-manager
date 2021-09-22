@@ -113,6 +113,7 @@ const pointLayers = () => {
   };
 
   // Get the image for the symbol
+  // NOTE: this is somewhat broken, it would seem.
   const getIconImage = () => {
     return [
       "case",
@@ -233,7 +234,7 @@ const pointLayers = () => {
 
   const symbolLayers = [
     {
-      id: "points",
+      id: "measurement-points",
       type: "symbol",
       source: "measurements",
       layout: {

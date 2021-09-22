@@ -108,6 +108,19 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
 
   console.log("Setting up point interactivity");
 
+  map.on("click", (e) => {
+    // Set `bbox` as 5px reactangle area around clicked point.
+    const bbox = [
+      [e.point.x - 5, e.point.y - 5],
+      [e.point.x + 5, e.point.y + 5],
+    ];
+    // Find features intersecting the bounding box.
+    const selectedFeatures = map.queryRenderedFeatures(bbox, {
+      layers: ["unit"],
+    });
+    console.log(selectedFeatures);
+  });
+
   // map.on("mouseenter", "spots", function (e) {
   //   map.getCanvas().style.cursor = "pointer";
   //   // return;
@@ -134,9 +147,10 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
   //   //popup.remove();
   // });
 
-  map.on("click", "spots", function (e) {
-    onClick?.(e.features[0]);
-  });
+  // map.on("click", "spots", function (e) {
+  //   console.log(e);
+  //   onClick?.(e.features[0]);
+  // });
 }
 
 interface MapState {

@@ -141,9 +141,9 @@ SELECT
 INTO line
 FROM (
 SELECT
-  null AS edge_id,
-  l.id AS line_id,
+  l.id,
   l.type,
+  null AS edge_id,
   ST_AsMVTGeom(
     ST_ChaikinSmoothing(
       ST_Segmentize(

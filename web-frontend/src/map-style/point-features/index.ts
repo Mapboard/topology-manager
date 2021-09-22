@@ -23,8 +23,8 @@ function measurementsLayers() {
       type: "circle",
       paint: {
         "circle-color": ["get", "circleColor", ["get", "symbology"]],
-        "circle-stroke-color": "#9993a1",
-        "circle-stroke-width": 1,
+        //"circle-stroke-color": "#9993a1",
+        //"circle-stroke-width": 0.5,
         "circle-radius": 3,
       },
     },
