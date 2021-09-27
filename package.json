@@ -31,6 +31,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@macrostrat/hyper": "^1.3.0",
     "@mapbox/mbtiles": "^0.12.1",
     "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/sphericalmercator": "^1.1.0",
