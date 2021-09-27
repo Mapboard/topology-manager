@@ -12,6 +12,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
+import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
@@ -29,6 +30,20 @@ function reloadGeologySource(map) {
   oldID = newID;
 }
 
+async function fitBounds(map) {
+  const res = await axios.get(sourceURL + "/meta");
+  const bounds = res.data?.projectBounds;
+  if (bounds != null) {
+    map.fitBounds(
+      [
+        [bounds[0], bounds[1]],
+        [bounds[2], bounds[3]],
+      ],
+      { duration: 0 }
+    );
+  }
+}
+
 const sourceURI = new URL(sourceURL);
 const hostName = sourceURI.protocol + "//" + sourceURI.hostname;
 
@@ -42,6 +57,8 @@ async function initializeMap(el: HTMLElement) {
     center: [16.1987, -24.2254],
     zoom: 10,
   });
+
+  fitBounds(map);
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
   map.on("load", async function () {

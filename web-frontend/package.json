@@ -2,10 +2,11 @@
   "name": "postgis-geologic-map-frontend",
   "version": "1.0.0",
   "description": "This folder contains a standalone web frontend application for PostGIS Geologic Map. Unlike earlier iterations of this frontend, this application will be highly decoupled from the mapping server. It will also have more features geared towards high-end graphical representation of geologic maps.",
-  "main": "index.js",
+  "main": "dist/index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "parcel index.html"
+    "dev": "parcel index.html",
+    "build": "parcel build --public-url ./ index.html"
   },
   "author": "Daven Quinn",
   "license": "ISC",

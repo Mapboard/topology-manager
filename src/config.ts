@@ -42,8 +42,14 @@ if (port == null) {
   port = 5432;
 }
 if (connection == null) {
+  // Handle old format of connection information
   connection = { host, port, database };
 } // Also needs user, password
+if (process.env.GEOLOGIC_MAP_DATABASE_CONNECTION != null) {
+  // Override connection information from environment variable
+  connection = process.env.GEOLOGIC_MAP_DATABASE_CONNECTION;
+}
+
 if (data_schema == null) {
   data_schema = "map_digitizer";
 }
@@ -61,6 +67,10 @@ const cfgDir = dirname(GEOLOGIC_MAP_CONFIG);
 
 const basedir = resolve(join(__dirname, ".."));
 const packageCfg = require("../package.json");
+
+if (process.env.GEOLOGIC_MAP_SERVER_PORT != null) {
+  server.port = parseInt(process.env.GEOLOGIC_MAP_SERVER_PORT);
+}
 
 const prefix = "file:";
 

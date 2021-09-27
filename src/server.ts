@@ -1,12 +1,6 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
-const { db } = require("../../src/util");
-const cfg = require("../../src/config");
-const { startWatcher } = require("../../src/commands/update");
+const { db } = require("./util");
+const cfg = require("./config");
+const { startWatcher } = require("./commands/update");
 const { appFactory, createServer } = require("mapboard-server");
 const express = require("express");
 const { join } = require("path");
@@ -25,10 +19,13 @@ const {
 } = cfg;
 
 const handler = function () {
+  console.log(cfg);
   const { tiles = {}, port = 3006 } = serverCfg;
   const verbose = false;
 
-  const app = appFactory({
+  const app = express();
+
+  const featureServer = appFactory({
     connection,
     tiles,
     schema: data_schema,
@@ -36,16 +33,19 @@ const handler = function () {
     createFunctions: false,
     projectBounds,
   });
+
+  app.use("/feature-server", featureServer);
+  // For now, we don't auto-reload on changes...
+  // this would require websockets to be set up
   app.use(cors());
 
   // This should be conditional
-  const { liveTileServer } = require("../live-tiles/server");
+  const { liveTileServer } = require("../extensions/live-tiles/server");
   app.use("/live-tiles", liveTileServer(cfg));
 
-  const server = createServer(app);
   startWatcher(verbose);
 
-  return server.listen(port, () => console.log(`Listening on port ${port}`));
+  app.listen(port, () => console.log(`Listening on port ${port}`));
 };
 
 module.exports = { command, describe, handler };
