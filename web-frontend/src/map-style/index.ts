@@ -73,6 +73,7 @@ async function createMapStyle(map, url, sourceURL, enableGeology = true) {
     access_token: mapboxgl.accessToken,
   });
   baseStyle = createBasicStyle(baseStyle);
+  console.log("Creating style", sourceURL);
   if (!enableGeology) return baseStyle;
   await Promise.all([
     setupLineSymbols(map),
@@ -82,6 +83,7 @@ async function createMapStyle(map, url, sourceURL, enableGeology = true) {
 
   let geologyStyle = createGeologyStyle(baseStyle, polygonTypes, sourceURL);
 
+  console.log(geologyStyle);
   // Should be conditional on whether measurements are enabled
   geologyStyle.sources = {
     ...geologyStyle.sources,

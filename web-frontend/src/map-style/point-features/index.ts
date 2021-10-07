@@ -35,8 +35,10 @@ function measurementsLayers() {
 async function setupPointSymbols(map) {
   return Promise.all(
     Object.keys(pointSymbols).map(async function (symbol) {
+      console.log(pointSymbols[symbol]);
       const image = await loadImage(map, pointSymbols[symbol]);
       if (map.hasImage(symbol)) return;
+      console.log(image);
       map.addImage(symbol, image, { sdf: false, pixelRatio: 3 });
     })
   );
