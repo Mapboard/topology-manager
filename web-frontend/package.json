@@ -5,8 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "parcel index.html",
-    "build": "parcel build --public-url ./ index.html"
+    "build": "parcel build --public-url ./"
   },
+  "source": "./index.html",
   "author": "Daven Quinn",
   "license": "ISC",
   "devDependencies": {

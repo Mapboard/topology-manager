@@ -14,8 +14,7 @@
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
     "dev": "npm install && npm-run-all --parallel dev:**",
-    "test": "ava --verbose",
-    "postinstall": "lerna bootstrap --hoist"
+    "test": "ava --verbose"
   },
   "browserslist": [
     "> 1%"
