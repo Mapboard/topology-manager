@@ -16,6 +16,7 @@ function measurementsSource(sourceURL) {
 }
 
 function measurementsLayers() {
+  /** Spot and measurement symbol layers to add to the map */
   return [
     {
       source: "spots",
@@ -33,6 +34,7 @@ function measurementsLayers() {
 }
 
 async function setupPointSymbols(map) {
+  /** Load and prepare all symbols for measurements */
   return Promise.all(
     Object.keys(pointSymbols).map(async function (symbol) {
       console.log(pointSymbols[symbol]);

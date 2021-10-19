@@ -16,7 +16,7 @@ function createFeature(baseFeature, measurement, features = []) {
     properties: {
       ...baseFeature.properties,
       orientation,
-      id: id.toString(),
+      id: features.length + 1,
     },
   });
 
@@ -33,8 +33,12 @@ const measurementsServer = function () {
   app.get("/spots", async function (req, res) {
     const fn = require.resolve("./sql/get-spots.sql");
     const spots = await db.query(sql(fn));
-    const features = spots.map((spot) => {
-      const { data, id } = spot;
+    const features = spots.map((spot, i) => {
+      let { data, id } = spot;
+      delete data.properties.viewed_timestamp;
+      delete data.properties.modified_timestamp;
+      //data.properties._id = id;
+      data.properties.id = i;
       return data;
     });
     return res.json({ features, type: "FeatureCollection" });
