@@ -20,6 +20,7 @@ import {
   baseLayers,
   BaseLayerSwitcher,
 } from "./layer-switcher";
+import { Spot } from "./spots";
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
@@ -235,16 +236,28 @@ export function MapComponent() {
       }),
     ]),
     h("div.map-info", [
-      h.if(isOpen)(
-        ModalPanel,
-        {
-          title: "Spots",
-          onClose() {
-            dispatch({ type: "set-active-spots", spots: null });
-          },
+      h(InfoModal, {
+        isOpen,
+        onClose() {
+          dispatch({ type: "set-active-spots", spots: null });
         },
-        h(JSONView, { data: state.activeSpots })
-      ),
+        spots: state.activeSpots,
+      }),
     ]),
   ]);
+}
+
+function InfoModal({ isOpen, onClose, spots = [] }) {
+  if (!isOpen) return null;
+
+  return h(
+    ModalPanel,
+    {
+      title: "Spots",
+      onClose,
+    },
+    spots.map((spot) => {
+      return h(Spot, { data: spot.properties });
+    })
+  );
 }
