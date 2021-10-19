@@ -11,20 +11,35 @@ const { db, sql } = require("../../src/util");
 function createFeature(baseFeature, measurement, features = []) {
   const { associated_orientation = [], id, ...orientation } = measurement;
 
-  features.push({
+  const newFeature = {
     ...baseFeature,
     properties: {
       ...baseFeature.properties,
       orientation,
       id: features.length + 1,
     },
-  });
+  };
+
+  features.push(stringifyProperties(newFeature));
 
   for (const orientation of associated_orientation) {
     createFeature(baseFeature, orientation, features);
   }
 
   return features;
+}
+
+function stringifyProperties(data) {
+  /** Strabo uses integer representations of timestamps and UUIDs
+   * which Mapbox GL seems to choke on. We stringify property values that seem to
+   * match that description so that the GeoJSON will behave better on parsing.
+   */
+  for (const [key, value] of Object.entries(data.properties)) {
+    if (Number.isInteger(value) && value > 1000000) {
+      data.properties[key] = value.toString();
+    }
+  }
+  return data;
 }
 
 const measurementsServer = function () {
@@ -35,11 +50,7 @@ const measurementsServer = function () {
     const spots = await db.query(sql(fn));
     const features = spots.map((spot, i) => {
       let { data, id } = spot;
-      delete data.properties.viewed_timestamp;
-      delete data.properties.modified_timestamp;
-      //data.properties._id = id;
-      data.properties.id = i;
-      return data;
+      return stringifyProperties(data);
     });
     return res.json({ features, type: "FeatureCollection" });
   });
@@ -57,7 +68,7 @@ const measurementsServer = function () {
       const baseFeature = {
         ...spotData,
         properties: {
-          spot_id: spot_id.toString(),
+          spot_id,
           date,
           name,
         },
