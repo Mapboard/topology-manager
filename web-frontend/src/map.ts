@@ -14,7 +14,7 @@ import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
-import { ModalPanel } from "@macrostrat/ui-components";
+import { ModalPanel, JSONView } from "@macrostrat/ui-components";
 import {
   LayerDescription,
   baseLayers,
@@ -212,6 +212,8 @@ export function MapComponent() {
     });
   }, [mapRef, state.activeLayer]);
 
+  const isOpen = state.activeSpots != null;
+
   return h("div.map-area", [
     h("div.map", { ref }),
     h("div.map-controls", null, [
@@ -233,12 +235,16 @@ export function MapComponent() {
       }),
     ]),
     h("div.map-info", [
-      h(ModalPanel, {
-        title: "Map info",
-        onClose() {
-          dispatch({ type: "set-active-spots", spots: null });
+      h.if(isOpen)(
+        ModalPanel,
+        {
+          title: "Spots",
+          onClose() {
+            dispatch({ type: "set-active-spots", spots: null });
+          },
         },
-      }),
+        h(JSONView, { data: state.activeSpots })
+      ),
     ]),
   ]);
 }
