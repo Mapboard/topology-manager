@@ -14,6 +14,7 @@ import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
+import { ModalPanel } from "@macrostrat/ui-components";
 import {
   LayerDescription,
   baseLayers,
@@ -52,8 +53,13 @@ async function fitBounds(map) {
 const sourceURI = new URL(sourceURL);
 const hostName = sourceURI.protocol + "//" + sourceURI.hostname;
 
-async function initializeMap(el: HTMLElement) {
+interface MapOptions {
+  onClickSpot?: Function;
+}
+
+async function initializeMap(el: HTMLElement, options: MapOptions = {}) {
   //const style = createStyle(polygonTypes);
+  const { onClickSpot } = options;
 
   const map = new mapboxgl.Map({
     container: el,
@@ -75,7 +81,7 @@ async function initializeMap(el: HTMLElement) {
 
   map.on("style.load", async function () {
     console.log("Reloaded style");
-    setupPointInteractivity(map);
+    setupPointInteractivity(map, onClickSpot);
     if (map.getSource("mapbox-dem") == null) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
   });
@@ -123,23 +129,6 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
 
   map.on("mouseenter", "spots", function (e) {
     map.getCanvas().style.cursor = "pointer";
-    // return;
-    // var coordinates = e.features[0].geometry.coordinates.slice();
-    // var description: string = e.features[0].properties.notes;
-    // console.log(description);
-    // if (description == null || description == "null") return;
-    // // Change the cursor style as a UI indicator.
-    // map.getCanvas().style.cursor = "pointer";
-    // // Ensure that if the map is zoomed out such that multiple
-    // // copies of the feature are visible, the popup appears
-    // // over the copy being pointed to.
-    // while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-    //   coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-    // }
-
-    // // Populate the popup and set its coordinates
-    // // based on the feature found.
-    // popup.setLngLat(coordinates).setHTML(description).addTo(map);
   });
 
   map.on("mouseleave", "spots", function () {
@@ -148,20 +137,19 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
   });
 
   map.on("click", "spots", function (e) {
-    console.log(e);
-    onClick?.(e.features[0]);
+    onClick?.(e.features);
   });
 }
 
 interface MapState {
   enableGeology: boolean;
   activeLayer: LayerDescription;
-  activeSpot: Object | null;
+  activeSpots: Object[] | null;
 }
 
 type SetActiveLayer = { type: "set-active-layer"; layer: LayerDescription };
 type ToggleGeology = { type: "toggle-geology" };
-type SetActiveSpot = { type: "set-active-spot"; spot: Object | null };
+type SetActiveSpot = { type: "set-active-spots"; spots: Object[] | null };
 
 type MapAction = SetActiveLayer | ToggleGeology | SetActiveSpot;
 
@@ -171,8 +159,8 @@ function mapReducer(state: MapState, action: MapAction) {
       return { ...state, activeLayer: action.layer };
     case "toggle-geology":
       return { ...state, enableGeology: !state.enableGeology };
-    case "set-active-spot":
-      return { ...state, activeSpot: action.spot };
+    case "set-active-spots":
+      return { ...state, activeSpots: action.spots };
     default:
       return state;
   }
@@ -181,7 +169,7 @@ function mapReducer(state: MapState, action: MapAction) {
 const defaultState: MapState = {
   enableGeology: true,
   activeLayer: baseLayers[0],
-  activeSpot: null,
+  activeSpots: null,
 };
 
 export function MapComponent() {
@@ -193,7 +181,11 @@ export function MapComponent() {
 
   useEffect(() => {
     if (ref.current == null) return;
-    initializeMap(ref.current).then((mapObj) => {
+    initializeMap(ref.current, {
+      onClickSpot(features) {
+        dispatch({ type: "set-active-spots", spots: features });
+      },
+    }).then((mapObj) => {
       mapRef.current = mapObj;
     });
 
@@ -237,6 +229,14 @@ export function MapComponent() {
         activeLayer: state.activeLayer,
         onSetLayer(layer) {
           dispatch({ type: "set-active-layer", layer });
+        },
+      }),
+    ]),
+    h("div.map-info", [
+      h(ModalPanel, {
+        title: "Map info",
+        onClose() {
+          dispatch({ type: "set-active-spots", spots: null });
         },
       }),
     ]),

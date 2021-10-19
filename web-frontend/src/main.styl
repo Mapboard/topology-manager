@@ -1,4 +1,6 @@
-//@import "mapbox-gl/dist/mapbox-gl.css"
+@import "@blueprintjs/core/lib/css/blueprint.css"
+@import "@macrostrat/ui-components/lib/esm/index.css"
+
 
 body
   margin 0
@@ -8,11 +10,26 @@ body
   height 100vh
   position fixed
 
-.map-controls
+.map-controls, .map-info
   position fixed
   top 1em
-  left 1em
   display flex
   flex-direction column
   &>*
     margin-bottom 0.5em
+
+.map-controls
+  left 1em
+
+
+.map-info
+  right 1em
+  min-width: 200px
+
+  .panel-header
+    align-items baseline
+    div.expander
+      flex-grow 1
+    h1
+      font-size 1.2em
+    margin-top 0
