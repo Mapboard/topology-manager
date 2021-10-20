@@ -25,7 +25,10 @@ interface MeasurementData {
 }
 
 function getOrientationSymbolName(o: OrientationData) {
-  /** Get a symbol for a measurement based on its orientation */
+  /** Get a symbol for a measurement based on its orientation.
+   * This straightforward construction is more or less
+   * equivalent to the logic in the Mapbox GL style specification above.
+   */
   let { feature_type } = o;
   const symbol_orientation = o.dip ?? o.plunge ?? 0;
 
@@ -48,9 +51,6 @@ function getOrientationSymbolName(o: OrientationData) {
     symbol_orientation <= 90 &&
     ["bedding", "contact", "foliation", "shear_zone"].includes(feature_type)
   ) {
-    if (feature_type == "foliation") {
-      feature_type = "foliation_general";
-    }
     if (symbol_orientation == 90) {
       return `${feature_type}_vertical`;
     }
@@ -77,22 +77,18 @@ function preprocessMeasurement(measurement: MeasurementData) {
     measurement.properties.orientation
   );
 
-  console.log(
-    measurement.properties.orientation,
-    measurement.properties.symbol_name
-  );
-
   return measurement;
 }
 
 async function measurementsSource(sourceURL) {
-  const measurements = await axios.get(sourceURL + "/strabo/measurements");
-  const features = measurements.data?.features.map(preprocessMeasurement);
+  const measurementsURL = sourceURL + "/strabo/measurements";
+  //const measurements = await axios.get(sourceURL + "/strabo/measurements");
+  //const features = measurements.data?.features.map(preprocessMeasurement);
 
   return {
     measurements: {
       type: "geojson",
-      data: { type: "FeatureCollection", features },
+      data: measurementsURL, //{ type: "FeatureCollection", features },
     },
     spots: {
       type: "geojson",
