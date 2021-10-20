@@ -17,14 +17,29 @@ import {
   setupPointSymbols,
 } from "./point-features";
 import { loadImage } from "./utils";
-import "@blueprintjs/core/lib/css/blueprint.css";
+
+export interface LayerDescription {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export const baseLayers: LayerDescription[] = [
+  {
+    id: "satellite",
+    name: "Satellite",
+    url: "mapbox://styles/mapbox/satellite-v9",
+  },
+  {
+    id: "hillshade",
+    name: "Hillshade",
+    url: "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75",
+  },
+];
 
 const vizBaseURL = "//visualization-assets.s3.amazonaws.com";
 const patternBaseURL = vizBaseURL + "/geologic-patterns/png";
 const lineSymbolsURL = vizBaseURL + "/geologic-line-symbols/png";
-
-const satellite = "mapbox://styles/mapbox/satellite-v9";
-const terrain = "mapbox://styles/jczaplewski/ckml6tqii4gvn17o073kujk75";
 
 async function setupLineSymbols(map) {
   return Promise.all(
@@ -96,4 +111,4 @@ async function createMapStyle(map, url, sourceURL, enableGeology = true) {
   return geologyStyle;
 }
 
-export { createMapStyle, createGeologySource, terrain };
+export { createMapStyle, createGeologySource };

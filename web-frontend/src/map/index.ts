@@ -1,9 +1,6 @@
 import "babel-polyfill";
-import {
-  createGeologySource,
-  geologyLayerIDs,
-} from "./map-style/geology-layers";
-import { createMapStyle, terrain } from "./map-style";
+import { createGeologySource, geologyLayerIDs } from "./style/geology-layers";
+import { createMapStyle, terrain } from "./style";
 import io from "socket.io-client";
 import { debounce } from "underscore";
 import mapboxgl, { Map } from "mapbox-gl";
@@ -15,12 +12,9 @@ import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import { ModalPanel, JSONView } from "@macrostrat/ui-components";
-import {
-  LayerDescription,
-  baseLayers,
-  BaseLayerSwitcher,
-} from "./layer-switcher";
-import { Spot } from "./spots";
+import { LayerDescription, baseLayers } from "./style";
+import { Spot } from "../spots";
+import React = require("react");
 
 mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
 
@@ -168,16 +162,14 @@ function mapReducer(state: MapState, action: MapAction) {
   }
 }
 
-const defaultState: MapState = {
-  enableGeology: true,
-  activeLayer: baseLayers[0],
-  activeSpots: null,
-};
-
-export function MapComponent() {
+export function MapComponent({
+  state,
+  dispatch,
+}: {
+  state: MapState;
+  dispatch: React.Dispatch<MapAction>;
+}) {
   const ref = useRef<HTMLElement>();
-
-  const [state, dispatch] = useReducer(mapReducer, defaultState);
 
   const mapRef = useRef<Map>();
 
@@ -216,49 +208,5 @@ export function MapComponent() {
 
   const isOpen = state.activeSpots != null;
 
-  return h("div.map-area", [
-    h("div.map", { ref }),
-    h("div.map-controls", null, [
-      h(
-        Button,
-        {
-          active: state.enableGeology,
-          onClick() {
-            dispatch({ type: "toggle-geology" });
-          },
-        },
-        "Geology"
-      ),
-      h(BaseLayerSwitcher, {
-        activeLayer: state.activeLayer,
-        onSetLayer(layer) {
-          dispatch({ type: "set-active-layer", layer });
-        },
-      }),
-    ]),
-    h("div.map-info", [
-      h(InfoModal, {
-        isOpen,
-        onClose() {
-          dispatch({ type: "set-active-spots", spots: null });
-        },
-        spots: state.activeSpots,
-      }),
-    ]),
-  ]);
-}
-
-function InfoModal({ isOpen, onClose, spots = [] }) {
-  if (!isOpen) return null;
-
-  return h(
-    ModalPanel,
-    {
-      title: "Spots",
-      onClose,
-    },
-    spots.map((spot) => {
-      return h(Spot, { data: spot.properties });
-    })
-  );
+  return h("div.map", { ref });
 }

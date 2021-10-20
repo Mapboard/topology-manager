@@ -1,25 +1,6 @@
 import h from "@macrostrat/hyper";
 import { ButtonGroup, Button } from "@blueprintjs/core";
-import { terrain } from "./map-style";
-
-export interface LayerDescription {
-  id: string;
-  name: string;
-  url: string;
-}
-
-export const baseLayers: LayerDescription[] = [
-  {
-    id: "satellite",
-    name: "Satellite",
-    url: "mapbox://styles/mapbox/satellite-v9",
-  },
-  {
-    id: "hillshade",
-    name: "Hillshade",
-    url: terrain,
-  },
-];
+import { baseLayers, LayerDescription } from "./map/style";
 
 export function BaseLayerSwitcher({
   activeLayer,
