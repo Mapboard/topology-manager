@@ -67,11 +67,14 @@ const measurementsServer = function () {
     const features = spots.map((spot) => {
       let { data, tag_color, id } = spot;
       const { symbology = {} } = data.properties;
-      data.properties.tag_color =
+      tag_color =
         tag_color ??
         symbology.circleColor ??
         symbology.lineColor ??
-        symbology.fillColor;
+        symbology.fillColor ??
+        "#000000";
+
+      data.properties.tag_color = tag_color;
       return stringifyProperties(data);
     });
     return res.json({ features, type: "FeatureCollection" });
@@ -85,13 +88,11 @@ const measurementsServer = function () {
 
     // Unnest measurement data from spots data structure
     for (const spot of spots) {
-      const { tag_color, data } = spot;
-      const { properties, ...spotData } = data;
+      const { properties, ...spotData } = spot.data;
       const { orientation_data = [], date, name, id: spot_id } = properties;
       const baseFeature = {
         ...spotData,
         properties: {
-          associated: false,
           spot_id,
           date,
           name,

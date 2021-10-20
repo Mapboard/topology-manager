@@ -50,7 +50,12 @@ function measurementsLayers() {
         "circle-opacity": 0.8,
         //"circle-stroke-color": "#9993a1",
         //"circle-stroke-width": 0.5,
-        "circle-radius": 3,
+        "circle-radius": [
+          "case",
+          ["has", "tag_color"],
+          ["case", ["==", ["get", "tag_color"], "#000000"], 1.5, 3],
+          1.5,
+        ],
       },
     },
     ...pointLayers(),
