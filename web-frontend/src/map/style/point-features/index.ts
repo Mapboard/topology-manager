@@ -3,67 +3,78 @@ import pointSymbols from "./symbols/*.png";
 import { pointLayers } from "./symbol-layer";
 import axios from "axios";
 
-async function measurementsSource(sourceURL) {
-  const measurementsURL = sourceURL + "/strabo/measurements";
-  const measurements = await axios.get(measurementsURL);
-  const features = measurements.data?.features; //.map(preprocessMeasurement);
-
-  function createMeasurementsSource(features, index = null) {
-    if (index != null) {
-      features = features.filter((d) => d.properties.spot_index == index);
-    }
-    return {
-      type: "geojson",
-      data: {
-        type: "FeatureCollection",
-        features,
-      },
-    };
+function createMeasurementsSource(features, index = null) {
+  if (index != null) {
+    features = features.filter((d) => d.properties.spot_index == index);
   }
-
   return {
-    measurements: createMeasurementsSource(features),
-    measurements_0: createMeasurementsSource(features, 0),
-    measurements_1: createMeasurementsSource(features, 1),
-    measurements_2: createMeasurementsSource(features, 2),
-    spots: {
-      type: "geojson",
-      data: sourceURL + "/strabo/spots",
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features,
     },
   };
 }
 
-function measurementsLayers() {
-  /** Spot and measurement symbol layers to add to the map */
-  return [
-    {
-      source: "spots",
-      id: "spots",
-      type: "circle",
-      paint: {
-        "circle-color": [
-          "case",
-          ["has", "tag_color"],
-          ["get", "tag_color"],
-          ["get", "circleColor", ["get", "symbology"]],
-        ],
-        "circle-opacity": 0.8,
-        //"circle-stroke-color": "#9993a1",
-        //"circle-stroke-width": 0.5,
-        "circle-radius": [
-          "case",
-          ["has", "tag_color"],
-          ["case", ["==", ["get", "tag_color"], "#000000"], 1.5, 3],
-          1.5,
-        ],
-      },
-    },
-    ...pointLayers(),
-  ];
-}
+type MeasurementStylerOptions = {
+  showAll?: boolean;
+};
+class MeasurementStyler {
+  opts: MeasurementStylerOptions;
+  sourceURL: string;
+  constructor(sourceURL: string, options: MeasurementStylerOptions = {}) {
+    this.opts = options;
+    this.sourceURL = sourceURL;
+  }
 
-function measurementLayerIDs() {
-  return measurementsLayers().map((layer) => layer.id);
+  async sources() {
+    const measurementsURL = this.sourceURL + "/strabo/measurements";
+    const measurements = await axios.get(measurementsURL);
+    const features = measurements.data?.features; //.map(preprocessMeasurement);
+
+    return {
+      measurements: createMeasurementsSource(features),
+      measurements_0: createMeasurementsSource(features, 0),
+      measurements_1: createMeasurementsSource(features, 1),
+      measurements_2: createMeasurementsSource(features, 2),
+      spots: {
+        type: "geojson",
+        data: this.sourceURL + "/strabo/spots",
+      },
+    };
+  }
+  layers() {
+    /** Spot and measurement symbol layers to add to the map */
+    return [
+      {
+        source: "spots",
+        id: "spots",
+        type: "circle",
+        paint: {
+          "circle-color": [
+            "case",
+            ["has", "tag_color"],
+            ["get", "tag_color"],
+            ["get", "circleColor", ["get", "symbology"]],
+          ],
+          "circle-opacity": 0.5,
+          //"circle-stroke-color": "#9993a1",
+          //"circle-stroke-width": 0.5,
+          "circle-radius": [
+            "case",
+            ["has", "tag_color"],
+            ["case", ["==", ["get", "tag_color"], "#000000"], 1.5, 3],
+            1.5,
+          ],
+        },
+      },
+      ...pointLayers(),
+    ];
+  }
+
+  layerIDs(): string[] {
+    return this.layers().map((layer) => layer.id);
+  }
 }
 
 async function setupPointSymbols(map) {
@@ -79,9 +90,4 @@ async function setupPointSymbols(map) {
   );
 }
 
-export {
-  measurementsSource,
-  measurementsLayers,
-  setupPointSymbols,
-  measurementLayerIDs,
-};
+export { MeasurementStyler, setupPointSymbols };

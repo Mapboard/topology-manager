@@ -4,9 +4,9 @@
  */
 import { getIconImageExt } from "./icon-image";
 
-const pointLayers = () => {
+const pointLayers = (opts: { showAll?: boolean } = {}) => {
+  const { showAll = false } = opts;
   const isShowSpotLabelsOn = false;
-  const showAllFeatures = false;
 
   // Get the rotation of the symbol, either strike, trend or failing both, 0
   const getIconRotation = () => {
@@ -138,7 +138,7 @@ const pointLayers = () => {
     },
   };
 
-  if (showAllFeatures) {
+  if (showAll) {
     return [allMeasurementsLayer];
   }
 

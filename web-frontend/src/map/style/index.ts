@@ -11,11 +11,7 @@ import { get } from "axios";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { lineSymbols } from "./symbol-layers";
-import {
-  measurementsSource,
-  measurementsLayers,
-  setupPointSymbols,
-} from "./point-features";
+import { setupPointSymbols, MeasurementStyler } from "./point-features";
 import { loadImage } from "./utils";
 
 export interface LayerDescription {
@@ -76,39 +72,59 @@ async function setupStyleImages(map, polygonTypes) {
   );
 }
 
-async function createMapStyle(map, url, sourceURL, enableGeology = true) {
-  const { data: polygonTypes } = await get(
-    sourceURL + "/feature-server/polygon/types"
-  );
-  const baseURL = url.replace(
-    "mapbox://styles",
-    "https://api.mapbox.com/styles/v1"
-  );
-  let baseStyle = await getMapboxStyle(baseURL, {
-    access_token: mapboxgl.accessToken,
-  });
-  baseStyle = createBasicStyle(baseStyle);
-  console.log("Creating style", sourceURL);
-  if (!enableGeology) return baseStyle;
-  await Promise.all([
-    setupLineSymbols(map),
-    setupStyleImages(map, polygonTypes),
-    setupPointSymbols(map),
-  ]);
+interface GeologyStylerOptions {
+  enableGeology: boolean;
+  enableMeasurements: boolean;
+}
+class GeologyStyler {
+  opts: GeologyStylerOptions;
+  sourceURL: string;
+  measurementsStyler: MeasurementStyler;
+  constructor(sourceURL: string, options: Partial<GeologyStylerOptions> = {}) {
+    this.sourceURL = sourceURL;
+    const { enableGeology = true, enableMeasurements = true } = options;
+    this.opts = { enableGeology, enableMeasurements };
+    this.measurementsStyler = new MeasurementStyler(sourceURL, {
+      showAll: true,
+    });
+  }
 
-  let geologyStyle = createGeologyStyle(baseStyle, polygonTypes, sourceURL);
-  const measurements = await measurementsSource(sourceURL);
+  async createStyle(map: mapboxgl.Map, baseStyleURL: string) {
+    const { data: polygonTypes } = await get(
+      this.sourceURL + "/feature-server/polygon/types"
+    );
+    const baseURL = baseStyleURL.replace(
+      "mapbox://styles",
+      "https://api.mapbox.com/styles/v1"
+    );
+    let baseStyle = await getMapboxStyle(baseURL, {
+      access_token: mapboxgl.accessToken,
+    });
+    baseStyle = createBasicStyle(baseStyle);
+    if (!this.opts.enableGeology) return baseStyle;
+    await Promise.all([
+      setupLineSymbols(map),
+      setupStyleImages(map, polygonTypes),
+      setupPointSymbols(map),
+    ]);
 
-  console.log(geologyStyle);
-  // Should be conditional on whether measurements are enabled
-  geologyStyle.sources = {
-    ...geologyStyle.sources,
-    ...measurements,
-  };
+    let geologyStyle = createGeologyStyle(
+      baseStyle,
+      polygonTypes,
+      this.sourceURL
+    );
 
-  geologyStyle.layers = [...geologyStyle.layers, ...measurementsLayers()];
+    geologyStyle.sources = {
+      ...geologyStyle.sources,
+      ...(await this.measurementsStyler.sources()),
+    };
 
-  return geologyStyle;
+    geologyStyle.layers = [
+      ...geologyStyle.layers,
+      ...this.measurementsStyler.layers(),
+    ];
+    return geologyStyle;
+  }
 }
 
-export { createMapStyle, createGeologySource };
+export { GeologyStyler, createGeologySource };
