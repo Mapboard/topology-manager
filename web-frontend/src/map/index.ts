@@ -1,24 +1,17 @@
-import "babel-polyfill";
 import { createGeologySource, geologyLayerIDs } from "./style/geology-layers";
-import { createMapStyle, terrain } from "./style";
+import { createMapStyle } from "./style";
 import io from "socket.io-client";
 import { debounce } from "underscore";
 import mapboxgl, { Map } from "mapbox-gl";
 import mbxUtils from "mapbox-gl-utils";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, Dispatch, Ref } from "react";
 import h from "@macrostrat/hyper";
-import { ButtonGroup, Button } from "@blueprintjs/core";
 import axios from "axios";
-import "@blueprintjs/core/lib/css/blueprint.css";
-import { ModalPanel, JSONView } from "@macrostrat/ui-components";
-import { LayerDescription, baseLayers } from "./style";
-import { Spot } from "../spots";
-import React = require("react");
-
-mapboxgl.accessToken = process.env.MAPBOX_TOKEN;
-
-const sourceURL = process.env.GEOLOGIC_MAP_ADDRESS || "http://localhost:3006";
+import { baseLayers } from "./style";
+import { MapState, MapAction } from "../actions";
+import { sourceURL } from "../config";
+import { measurementLayerIDs } from "./style/point-features";
 
 let ix = 0;
 let oldID = "geology";
@@ -52,6 +45,13 @@ interface MapOptions {
   onClickSpot?: Function;
 }
 
+async function reloadStyle(map: Map, baseLayer: string) {
+  const style = await createMapStyle(map, baseLayer, sourceURL, true);
+  map.setStyle(style);
+  if (map.getSource("mapbox-dem") == null) return;
+  map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
+}
+
 async function initializeMap(el: HTMLElement, options: MapOptions = {}) {
   //const style = createStyle(polygonTypes);
   const { onClickSpot } = options;
@@ -69,10 +69,7 @@ async function initializeMap(el: HTMLElement, options: MapOptions = {}) {
 
   //map.setStyle("mapbox://styles/jczaplewski/cklb8aopu2cnv18mpxwfn7c9n");
   map.on("load", async function () {
-    const style = await createMapStyle(map, baseLayers[0].url, sourceURL, true);
-    map.setStyle(style);
-    if (map.getSource("mapbox-dem") == null) return;
-    map.setTerrain({ source: "mapbox-dem", exaggeration: 1.0 });
+    await reloadStyle(map, baseLayers[0].url);
   });
 
   map.on("style.load", async function () {
@@ -120,7 +117,6 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
     const selectedFeatures = map.queryRenderedFeatures(bbox, {
       layers: ["unit"],
     });
-    console.log(selectedFeatures);
   });
 
   map.on("mouseenter", "spots", function (e) {
@@ -137,29 +133,18 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
   });
 }
 
-interface MapState {
-  enableGeology: boolean;
-  activeLayer: LayerDescription;
-  activeSpots: Object[] | null;
-}
-
-type SetActiveLayer = { type: "set-active-layer"; layer: LayerDescription };
-type ToggleGeology = { type: "toggle-geology" };
-type SetActiveSpot = { type: "set-active-spots"; spots: Object[] | null };
-
-type MapAction = SetActiveLayer | ToggleGeology | SetActiveSpot;
-
-function mapReducer(state: MapState, action: MapAction) {
-  switch (action.type) {
-    case "set-active-layer":
-      return { ...state, activeLayer: action.layer };
-    case "toggle-geology":
-      return { ...state, enableGeology: !state.enableGeology };
-    case "set-active-spots":
-      return { ...state, activeSpots: action.spots };
-    default:
-      return state;
-  }
+function useLayerVisibility(
+  mapRef: Ref<Map>,
+  layers: string[],
+  enabled: boolean
+) {
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map?.style == null) return;
+    for (const lyr of layers) {
+      map.setLayoutProperty(lyr, "visibility", enabled ? "visible" : "none");
+    }
+  }, [mapRef, layers, enabled]);
 }
 
 export function MapComponent({
@@ -167,7 +152,7 @@ export function MapComponent({
   dispatch,
 }: {
   state: MapState;
-  dispatch: React.Dispatch<MapAction>;
+  dispatch: Dispatch<MapAction>;
 }) {
   const ref = useRef<HTMLElement>();
 
@@ -186,27 +171,14 @@ export function MapComponent({
     return () => mapRef.current.remove();
   }, [ref]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (map?.style == null) return;
-    for (const lyr of geologyLayerIDs()) {
-      map.setLayoutProperty(
-        lyr,
-        "visibility",
-        state.enableGeology ? "visible" : "none"
-      );
-    }
-  }, [mapRef, state.enableGeology]);
+  useLayerVisibility(mapRef, measurementLayerIDs(), state.enableSpots);
+  useLayerVisibility(mapRef, geologyLayerIDs(), state.enableGeology);
 
+  // Base layer management
   useEffect(() => {
-    const map = mapRef.current;
-    if (map == null) return;
-    createMapStyle(map, state.activeLayer.url, sourceURL).then((style) => {
-      map.setStyle(style);
-    });
+    if (mapRef.current == null) return;
+    reloadStyle(mapRef.current, state.activeLayer.url);
   }, [mapRef, state.activeLayer]);
-
-  const isOpen = state.activeSpots != null;
 
   return h("div.map", { ref });
 }

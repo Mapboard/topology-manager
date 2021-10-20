@@ -62,6 +62,10 @@ function measurementsLayers() {
   ];
 }
 
+function measurementLayerIDs() {
+  return measurementsLayers().map((layer) => layer.id);
+}
+
 async function setupPointSymbols(map) {
   /** Load and prepare all symbols for measurements */
   return Promise.all(
@@ -75,4 +79,9 @@ async function setupPointSymbols(map) {
   );
 }
 
-export { measurementsSource, measurementsLayers, setupPointSymbols };
+export {
+  measurementsSource,
+  measurementsLayers,
+  setupPointSymbols,
+  measurementLayerIDs,
+};

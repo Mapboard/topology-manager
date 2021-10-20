@@ -1,15 +1,12 @@
 import { useReducer } from "react";
 import h from "@macrostrat/hyper";
-import { Button } from "@blueprintjs/core";
+import { Button, ButtonGroup } from "@blueprintjs/core";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import { ModalPanel } from "@macrostrat/ui-components";
 import { BaseLayerSwitcher } from "./layer-switcher";
 import { Spot } from "./spots";
 import { mapReducer, defaultState } from "./actions";
 import { MapComponent } from "./map";
-
-const sourceURL = process.env.GEOLOGIC_MAP_ADDRESS || "http://localhost:3006";
-const sourceURI = new URL(sourceURL);
 
 function InfoModal({ isOpen, onClose, spots = [] }) {
   if (!isOpen) return null;
@@ -34,16 +31,29 @@ export function MapApp() {
   return h("div.map-area", [
     h(MapComponent, { state, dispatch }),
     h("div.map-controls", null, [
-      h(
-        Button,
-        {
-          active: state.enableGeology,
-          onClick() {
-            dispatch({ type: "toggle-geology" });
+      h(ButtonGroup, { vertical: true }, [
+        h(
+          Button,
+          {
+            active: state.enableSpots,
+            onClick() {
+              dispatch({ type: "toggle-spots" });
+            },
           },
-        },
-        "Geology"
-      ),
+          "Spots"
+        ),
+        h(
+          Button,
+          {
+            active: state.enableGeology,
+            onClick() {
+              dispatch({ type: "toggle-geology" });
+            },
+          },
+          "Geology"
+        ),
+      ]),
+
       h(BaseLayerSwitcher, {
         activeLayer: state.activeLayer,
         onSetLayer(layer) {
