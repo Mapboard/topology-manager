@@ -112,9 +112,8 @@ const pointLayers = () => {
     ];
   };
 
-  // Get the image for the symbol
-  // NOTE: this is somewhat broken, it would seem.
   const getIconImage = () => {
+    /** Get the image for a symbol using case-based logic. Taken as-is from StraboSpot codebase. Currently somewhat broken. */
     return [
       "case",
       ["has", "orientation"],
@@ -232,9 +231,19 @@ const pointLayers = () => {
     ];
   };
 
+  function getIconImageExt() {
+    /** Extension to Strabo-provided getIconImage that modifies the style tree to use programmatic definition of icon image if provided. */
+    return [
+      "case",
+      ["has", "symbol_name"],
+      ["get", "symbol_name"],
+      getIconImage(),
+    ];
+  }
+
   const symbolLayers = [
     {
-      id: "measurement-points",
+      id: "measurements",
       type: "symbol",
       source: "measurements",
       layout: {
@@ -242,7 +251,7 @@ const pointLayers = () => {
         "text-anchor": "left",
         "text-offset": getLabelOffset(),
         "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
-        "icon-image": getIconImage(),
+        "icon-image": getIconImageExt(),
         "icon-rotate": getIconRotation(),
         "icon-rotation-alignment": "map",
         "icon-allow-overlap": true, // Need to be able to stack symbols at same location

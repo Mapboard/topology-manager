@@ -1,12 +1,98 @@
 import { loadImage } from "../utils";
 import pointSymbols from "./symbols/*.png";
 import { pointLayers } from "./symbol-layer";
+import axios from "axios";
 
-function measurementsSource(sourceURL) {
+interface PlanarOrientationData {
+  dip: number;
+  strike: number;
+  foliation_type: string;
+  foliation_defined_by?: string;
+  type: string;
+}
+
+interface LinearOrientationData {
+  feature_type: string;
+  trend: number;
+  plunge: number;
+  rake_calculated?: boolean;
+}
+
+type OrientationData = PlanarOrientationData | LinearOrientationData;
+
+interface MeasurementData {
+  orientation: OrientationData;
+}
+
+function getOrientationSymbolName(o: OrientationData) {
+  /** Get a symbol for a measurement based on its orientation */
+  let { feature_type } = o;
+  const symbol_orientation = o.dip ?? o.plunge ?? 0;
+
+  if (["fault", "fracture", "vein"].includes(feature_type)) {
+    return feature_type;
+  }
+
+  if (o.facing == "overturned" && feature_type == "bedding") {
+    return "bedding-overturned";
+  }
+
+  if (
+    symbol_orientation == 0 &&
+    (feature_type == "bedding" || feature_type == "foliation")
+  ) {
+    return `${feature_type}_horizontal`;
+  }
+  if (
+    symbol_orientation > 0 &&
+    symbol_orientation <= 90 &&
+    ["bedding", "contact", "foliation", "shear_zone"].includes(feature_type)
+  ) {
+    if (feature_type == "foliation") {
+      feature_type = "foliation_general";
+    }
+    if (symbol_orientation == 90) {
+      return `${feature_type}_vertical`;
+    }
+    return `${feature_type}_inclined`;
+  }
+
+  if (o.type == "linear_orientation") {
+    return "lineation_general";
+  }
+
+  return "default_point";
+}
+
+function preprocessMeasurement(measurement: MeasurementData) {
+  /**
+   * Prepare a measurement for use in the map
+   * @param {Object}
+   */
+
+  console.log(measurement.properties);
+
+  measurement.properties.symbology ??= {};
+  measurement.properties.symbol_name = getOrientationSymbolName(
+    measurement.properties.orientation
+  );
+
+  console.log(
+    measurement.properties.orientation,
+    measurement.properties.symbol_name
+  );
+
+  return measurement;
+}
+
+async function measurementsSource(sourceURL) {
+  const measurements = await axios.get(sourceURL + "/strabo/measurements");
+  const features = measurements.data?.features.map(preprocessMeasurement);
+
   return {
     measurements: {
       type: "geojson",
-      data: sourceURL + "/strabo/measurements",
+      data: { type: "FeatureCollection", features },
     },
     spots: {
       type: "geojson",

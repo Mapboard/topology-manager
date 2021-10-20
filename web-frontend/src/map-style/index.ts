@@ -82,12 +82,13 @@ async function createMapStyle(map, url, sourceURL, enableGeology = true) {
   ]);
 
   let geologyStyle = createGeologyStyle(baseStyle, polygonTypes, sourceURL);
+  const measurements = await measurementsSource(sourceURL);
 
   console.log(geologyStyle);
   // Should be conditional on whether measurements are enabled
   geologyStyle.sources = {
     ...geologyStyle.sources,
-    ...measurementsSource(sourceURL),
+    ...measurements,
   };
 
   geologyStyle.layers = [...geologyStyle.layers, ...measurementsLayers()];
