@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@blueprintjs/core": "^3.41.0",
+    "@blueprintjs/popover2": "^0.12.7",
     "@macrostrat/hyper": "^1.4.2",
     "@macrostrat/ui-components": "^1.0.2",
     "@types/mapbox-gl": "^2.1.1",

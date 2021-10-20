@@ -164,6 +164,7 @@ export function MapComponent({
     new GeologyStyler(sourceURL, {
       enableGeology: true,
       enableMeasurements: true,
+      showAllMeasurements: state.showAllSpots,
     })
   );
 
@@ -186,6 +187,16 @@ export function MapComponent({
     state.enableSpots
   );
   useLayerVisibility(mapRef, geologyLayerIDs(), state.enableGeology);
+
+  useEffect(() => {
+    if (mapRef.current == null) return;
+    stylerRef.current = new GeologyStyler(sourceURL, {
+      enableGeology: true,
+      enableMeasurements: true,
+      showAllMeasurements: state.showAllSpots,
+    });
+    reloadStyle(mapRef.current, stylerRef.current, state.activeLayer.url);
+  }, [mapRef, state.showAllSpots]);
 
   // Base layer management
   useEffect(() => {

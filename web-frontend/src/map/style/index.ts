@@ -75,6 +75,7 @@ async function setupStyleImages(map, polygonTypes) {
 interface GeologyStylerOptions {
   enableGeology: boolean;
   enableMeasurements: boolean;
+  showAllMeasurements: boolean;
 }
 class GeologyStyler {
   opts: GeologyStylerOptions;
@@ -82,10 +83,14 @@ class GeologyStyler {
   measurementsStyler: MeasurementStyler;
   constructor(sourceURL: string, options: Partial<GeologyStylerOptions> = {}) {
     this.sourceURL = sourceURL;
-    const { enableGeology = true, enableMeasurements = true } = options;
+    const {
+      enableGeology = true,
+      enableMeasurements = true,
+      showAllMeasurements = false,
+    } = options;
     this.opts = { enableGeology, enableMeasurements };
     this.measurementsStyler = new MeasurementStyler(sourceURL, {
-      showAll: true,
+      showAll: showAllMeasurements,
     });
   }
 

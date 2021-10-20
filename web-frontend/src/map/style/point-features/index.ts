@@ -68,7 +68,7 @@ class MeasurementStyler {
           ],
         },
       },
-      ...pointLayers(),
+      ...pointLayers({ showAll: this.opts.showAll ?? false }),
     ];
   }
 

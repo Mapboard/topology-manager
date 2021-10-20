@@ -1,7 +1,9 @@
 import { useReducer } from "react";
 import h from "@macrostrat/hyper";
-import { Button, ButtonGroup } from "@blueprintjs/core";
+import { Button, ButtonGroup, Switch, Icon } from "@blueprintjs/core";
 import "@blueprintjs/core/lib/css/blueprint.css";
+import "@blueprintjs/popover2/lib/css/blueprint-popover2.css";
+import { Popover2 } from "@blueprintjs/popover2";
 import { ModalPanel } from "@macrostrat/ui-components";
 import { BaseLayerSwitcher } from "./layer-switcher";
 import { Spot } from "./spots";
@@ -32,6 +34,7 @@ export function MapApp() {
     h(MapComponent, { state, dispatch }),
     h("div.map-controls", null, [
       h(ButtonGroup, { vertical: true }, [
+        //h(Popover2, { content: "Toggle" }, [
         h(
           Button,
           {
@@ -42,6 +45,7 @@ export function MapApp() {
           },
           "Spots"
         ),
+        ///]),
         h(
           Button,
           {
@@ -53,6 +57,11 @@ export function MapApp() {
           "Geology"
         ),
       ]),
+      h(Switch, {
+        checked: state.showAllSpots,
+        label: "Show all spots",
+        onChange: () => dispatch({ type: "toggle-all-spots" }),
+      }),
 
       h(BaseLayerSwitcher, {
         activeLayer: state.activeLayer,
