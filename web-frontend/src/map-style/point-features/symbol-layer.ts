@@ -28,7 +28,7 @@ const pointLayers = () => {
   };
 
   // Get the label for the point symbol, either dip, plunge or failing both, the Spot name
-  const getPointLabel = () => {
+  const getPointLabel = ({ showNames = false } = {}) => {
     return [
       "case",
       ["has", "orientation"],
@@ -43,7 +43,7 @@ const pointLayers = () => {
           ["get", "name"],
         ],
       ],
-      ["get", "name"],
+      showNames ? ["get", "name"] : "",
     ];
 
     // Does not work on iOS - iOS doesn't build if there is more than 1 condition and a fallback in a case expression
@@ -113,25 +113,27 @@ const pointLayers = () => {
     ];
   };
 
-  const symbolLayers = [
-    {
-      id: "measurements",
-      type: "symbol",
-      source: "measurements",
-      layout: {
-        "text-ignore-placement": true, // Need to be able to stack symbols at same location
-        "text-anchor": "left",
-        "text-offset": getLabelOffset(),
-        "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
-        "icon-image": getIconImageExt(),
-        "icon-rotate": getIconRotation(),
-        "icon-rotation-alignment": "map",
-        "icon-allow-overlap": true, // Need to be able to stack symbols at same location
-        "icon-ignore-placement": true, // Need to be able to stack symbols at same location
-        "icon-size": 0.15,
-        "symbol-spacing": 1,
-      },
+  const allMeasurementsLayer = {
+    id: "measurements",
+    type: "symbol",
+    source: "measurements",
+    layout: {
+      "text-ignore-placement": true, // Need to be able to stack symbols at same location
+      "text-anchor": "left",
+      "text-offset": getLabelOffset(),
+      "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
+      "icon-image": getIconImageExt(),
+      "icon-rotate": getIconRotation(),
+      "icon-rotation-alignment": "map",
+      "icon-allow-overlap": true, // Need to be able to stack symbols at same location
+      "icon-ignore-placement": true, // Need to be able to stack symbols at same location
+      "icon-size": 0.15,
+      "symbol-spacing": 1,
     },
+  };
+
+  const symbolLayers = [
+    allMeasurementsLayer,
     // {
     //   id: "point-color-halo",
     //   type: "circle",

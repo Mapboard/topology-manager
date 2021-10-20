@@ -8,22 +8,38 @@ const express = require("express");
 const responseTime = require("response-time");
 const { db, sql } = require("../../src/util");
 
-function createFeature(baseFeature, measurement, features = []) {
+function createFeature(
+  baseFeature,
+  measurement,
+  features = [],
+  extraProperties = {}
+) {
   const { associated_orientation = [], id, ...orientation } = measurement;
+
+  const lastFeature = features[features.length - 1];
+
+  // Index of an orientation in a spot
+  let spot_index = 0;
+  if (lastFeature?.properties?.spot_id === baseFeature.properties.spot_id) {
+    spot_index = lastFeature.properties.spot_index + 1;
+  }
 
   const newFeature = {
     ...baseFeature,
     properties: {
+      associated: false,
       ...baseFeature.properties,
       orientation,
+      spot_index,
       id: features.length + 1,
+      ...extraProperties,
     },
   };
 
   features.push(stringifyProperties(newFeature));
 
   for (const orientation of associated_orientation) {
-    createFeature(baseFeature, orientation, features);
+    createFeature(baseFeature, orientation, features, { associated: true });
   }
 
   return features;
@@ -48,8 +64,14 @@ const measurementsServer = function () {
   app.get("/spots", async function (req, res) {
     const fn = require.resolve("./sql/get-spots.sql");
     const spots = await db.query(sql(fn));
-    const features = spots.map((spot, i) => {
-      let { data, id } = spot;
+    const features = spots.map((spot) => {
+      let { data, tag_color, id } = spot;
+      const { symbology = {} } = data.properties;
+      data.properties.tag_color =
+        tag_color ??
+        symbology.circleColor ??
+        symbology.lineColor ??
+        symbology.fillColor;
       return stringifyProperties(data);
     });
     return res.json({ features, type: "FeatureCollection" });
@@ -63,11 +85,13 @@ const measurementsServer = function () {
 
     // Unnest measurement data from spots data structure
     for (const spot of spots) {
-      const { properties, ...spotData } = spot.data;
+      const { tag_color, data } = spot;
+      const { properties, ...spotData } = data;
       const { orientation_data = [], date, name, id: spot_id } = properties;
       const baseFeature = {
         ...spotData,
         properties: {
+          associated: false,
           spot_id,
           date,
           name,

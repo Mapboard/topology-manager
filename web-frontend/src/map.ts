@@ -128,10 +128,6 @@ function setupPointInteractivity(map: mapboxgl.Map, onClick?: Function) {
     console.log(selectedFeatures);
   });
 
-  map.on("click", "measurements", function (e) {
-    console.log(e);
-  });
-
   map.on("mouseenter", "spots", function (e) {
     map.getCanvas().style.cursor = "pointer";
   });
