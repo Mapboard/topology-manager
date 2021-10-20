@@ -1,17 +1,31 @@
 import { loadImage } from "../utils";
 import pointSymbols from "./symbols/*.png";
 import { pointLayers } from "./symbol-layer";
+import axios from "axios";
 
 async function measurementsSource(sourceURL) {
   const measurementsURL = sourceURL + "/strabo/measurements";
-  //const measurements = await axios.get(sourceURL + "/strabo/measurements");
-  //const features = measurements.data?.features.map(preprocessMeasurement);
+  const measurements = await axios.get(measurementsURL);
+  const features = measurements.data?.features; //.map(preprocessMeasurement);
+
+  function createMeasurementsSource(features, index = null) {
+    if (index != null) {
+      features = features.filter((d) => d.properties.spot_index == index);
+    }
+    return {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features,
+      },
+    };
+  }
 
   return {
-    measurements: {
-      type: "geojson",
-      data: measurementsURL, //{ type: "FeatureCollection", features },
-    },
+    measurements: createMeasurementsSource(features),
+    measurements_0: createMeasurementsSource(features, 0),
+    measurements_1: createMeasurementsSource(features, 1),
+    measurements_2: createMeasurementsSource(features, 2),
     spots: {
       type: "geojson",
       data: sourceURL + "/strabo/spots",

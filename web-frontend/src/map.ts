@@ -68,6 +68,7 @@ async function initializeMap(el: HTMLElement, options: MapOptions = {}) {
     hash: true,
     center: [16.1987, -24.2254],
     zoom: 10,
+    crossSourceCollisions: false,
   });
 
   fitBounds(map);

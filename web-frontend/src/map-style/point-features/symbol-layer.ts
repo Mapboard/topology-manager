@@ -6,6 +6,7 @@ import { getIconImageExt } from "./icon-image";
 
 const pointLayers = () => {
   const isShowSpotLabelsOn = false;
+  const showAllFeatures = false;
 
   // Get the rotation of the symbol, either strike, trend or failing both, 0
   const getIconRotation = () => {
@@ -113,35 +114,42 @@ const pointLayers = () => {
     ];
   };
 
+  const baseLayout = {
+    "text-anchor": "left",
+    "text-offset": getLabelOffset(),
+    "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
+    "icon-image": getIconImageExt(),
+    "icon-rotate": getIconRotation(),
+    "icon-rotation-alignment": "map",
+    "icon-size": 0.15,
+    "symbol-spacing": 1,
+    "icon-padding": 0,
+  };
+
   const allMeasurementsLayer = {
     id: "measurements",
     type: "symbol",
     source: "measurements",
     layout: {
+      ...baseLayout,
       "text-ignore-placement": true, // Need to be able to stack symbols at same location
-      "text-anchor": "left",
-      "text-offset": getLabelOffset(),
-      "text-field": isShowSpotLabelsOn ? getPointLabel() : "",
-      "icon-image": getIconImageExt(),
-      "icon-rotate": getIconRotation(),
-      "icon-rotation-alignment": "map",
       "icon-allow-overlap": true, // Need to be able to stack symbols at same location
       "icon-ignore-placement": true, // Need to be able to stack symbols at same location
-      "icon-size": 0.15,
-      "symbol-spacing": 1,
     },
   };
 
-  const symbolLayers = [
-    allMeasurementsLayer,
-    // {
-    //   id: "point-color-halo",
-    //   type: "circle",
-    //   source: "measurements",
-    //   circleRadius: 17,
-    //   circleColor: ["get", "circleColor", ["get", "symbology"]],
-    // },
-  ];
+  if (showAllFeatures) {
+    return [allMeasurementsLayer];
+  }
+
+  const symbolLayers = [0, 1, 2].map((d) => {
+    return {
+      id: `measurements_${d}`,
+      type: "symbol",
+      source: `measurements_${d}`,
+      layout: baseLayout,
+    };
+  });
 
   return symbolLayers;
 };

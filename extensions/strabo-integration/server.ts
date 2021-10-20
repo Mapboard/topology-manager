@@ -20,7 +20,7 @@ function createFeature(
 
   // Index of an orientation in a spot
   let spot_index = 0;
-  if (lastFeature?.properties?.spot_id === baseFeature.properties.spot_id) {
+  if (lastFeature?.properties?.spot_id == baseFeature.properties.spot_id) {
     spot_index = lastFeature.properties.spot_index + 1;
   }
 
