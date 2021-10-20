@@ -28,6 +28,9 @@ body
     max-height 100%
   .panel-content
     transition: height 0.5s ease-in-out
+    // This fixes a really weird CSS issue I think introduced by the JSON data component
+    &>ul
+      background-color: transparent !important
 
   .panel-header
     align-items baseline
