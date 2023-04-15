@@ -10,7 +10,8 @@ WORKDIR /app/
 
 COPY ./packages/mapboard-server /app/packages/mapboard-server
 COPY ./package.json ./lerna.json /app/
-RUN lerna bootstrap --hoist -- --unsafe-perm
+RUN npm --prefix packages/mapboard-server install
+RUN npm install
 
 COPY ./ /app/
 

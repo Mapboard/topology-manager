@@ -14,8 +14,7 @@
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
     "dev": "npm install && npm-run-all --parallel dev:**",
-    "test": "ava --verbose",
-    "postinstall": "lerna bootstrap --hoist"
+    "test": "ava --verbose"
   },
   "browserslist": [
     "> 1%"
@@ -31,6 +30,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@macrostrat/hyper": "^1.3.0",
     "@mapbox/mbtiles": "^0.12.1",
     "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/sphericalmercator": "^1.1.0",
@@ -55,6 +55,7 @@
     "pg-copy-streams": "^5.1.1",
     "pg-promise": "^10.7.3",
     "pkg": "^4.4.0",
+    "prettier": "^2.4.1",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
     "response-time": "^2.3.2",

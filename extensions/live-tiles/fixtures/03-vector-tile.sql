@@ -41,14 +41,14 @@ FROM (
     unit_id,
     ST_AsMVTGeom(
       ST_Simplify(
-        ST_Transform(ST_Difference(geometry, bedrock_clip), 3857),
+        ST_Transform(geometry, 3857),
         zres/2
       ),
       mercator_bbox
     ) geom
   FROM ${topo_schema~}.face_display
   WHERE ST_Intersects(geometry, projected_bbox)
-    AND topology = 'bedrock'
+    AND topology = 'main'
 ) a;
 
 SELECT
@@ -141,9 +141,9 @@ SELECT
 INTO line
 FROM (
 SELECT
-  null AS edge_id,
-  l.id AS line_id,
+  l.id,
   l.type,
+  null AS edge_id,
   ST_AsMVTGeom(
     ST_ChaikinSmoothing(
       ST_Segmentize(

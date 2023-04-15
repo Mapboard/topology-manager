@@ -3,9 +3,7 @@ import { createLineSymbolLayers } from "./symbol-layers";
 
 const createGeologySource = (host) => ({
   type: "vector",
-
   tiles: [`${host}/live-tiles/map-data/{z}/{x}/{y}.pbf`],
-
   maxzoom: 15,
   minzoom: 5,
 });
@@ -34,6 +32,7 @@ function createBasicStyle(baseStyle) {
 }
 
 const geologyLayerDefs = function (colors = {}, patterns = {}) {
+  console.log(colors, patterns);
   return [
     {
       id: "unit",
@@ -43,7 +42,7 @@ const geologyLayerDefs = function (colors = {}, patterns = {}) {
       minzoom: 11,
       paint: {
         "fill-pattern": ["concat", ["get", "unit_id"], "_fill"],
-        "fill-opacity": 1,
+        "fill-opacity": 0.9,
       },
     },
     {

@@ -1,11 +1,13 @@
+import "babel-polyfill";
 import h from "@macrostrat/hyper";
 import { render } from "react-dom";
-import { MapComponent } from "./map";
+import { FocusStyleManager } from "@blueprintjs/core";
+
+import { MapApp } from "./app";
+import "@blueprintjs/core/lib/css/blueprint.css";
+import "@macrostrat/ui-components/lib/esm/index.css";
 import "./main.styl";
 
-function App() {
-  return h(MapComponent);
-}
+FocusStyleManager.onlyShowFocusOnTabs();
 
-const el = document.getElementById("app");
-render(h(App), el);
+render(h(MapApp), document.getElementById("app"));

@@ -84,6 +84,7 @@ GEOLOGIC_MAP_CONFIG environment variable`,
   .command(require("./commands/reset"))
   .command(require("./commands/delete"))
   .command(require("./commands/clean-topology"))
+  .command(require("./commands/show-errors"))
   .command(require("./server"))
   .command(configCommand)
   .wrap(cli.terminalWidth()); //.exitProcess(false);
