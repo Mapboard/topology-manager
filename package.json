@@ -4,9 +4,7 @@
   "description": "A PostGIS helper library to manage a geologic map",
   "author": "Daven Quinn",
   "license": "MIT",
-  "bin": {
-    "postgis-geologic-map": "bin/geologic-map"
-  },
+  "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
     "start": "npm run setup && ./bin/geologic-map-serve-dev",
@@ -87,5 +85,6 @@
     "stylus": "^0.54.5",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4"
-  }
+  },
+  "packageManager": "yarn@3.6.4"
 }
