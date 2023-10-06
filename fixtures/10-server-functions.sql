@@ -1,1 +1,0 @@
-../packages/mapboard-server/db-fixtures/snap-function.sql

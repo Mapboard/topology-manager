@@ -7,7 +7,8 @@
   "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "start": "npm run setup && ./bin/geologic-map-serve-dev",
+    "start:old": "npm run setup && ./bin/geologic-map-serve-dev",
+    "start": "ts-node --transpile-only src/geologic-map watch",
     "build": "npm --prefix packages/mapboard-server run build",
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
@@ -43,7 +44,6 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "mapboard-server": "file:./packages/mapboard-server",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
     "morgan": "^1.10.0",
