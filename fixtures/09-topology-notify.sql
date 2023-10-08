@@ -44,6 +44,7 @@ BEGIN
   );
 
   PERFORM pg_notify('topology', __payload);
+  PERFORM pg_notify('qgis', 'refresh qgis');
   RETURN null;
 END;
 $$ LANGUAGE plpgsql;
