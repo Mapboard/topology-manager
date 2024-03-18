@@ -6,11 +6,23 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 let v, loc;
-const { GEOLOGIC_MAP_CONFIG } = process.env;
+const { GEOLOGIC_MAP_CONFIG, GEOLOGIC_MAP_CONFIG_JSON } = process.env;
 const { resolve, join, dirname, isAbsolute } = require("path");
 const { existsSync } = require("fs");
 
-if (GEOLOGIC_MAP_CONFIG == null) {
+process.env.GEOLOGIC_MAP_SOURCE_DIR = __dirname;
+
+let configuration = {}
+let cfgDir = __dirname;
+if (GEOLOGIC_MAP_CONFIG_JSON != null && GEOLOGIC_MAP_CONFIG_JSON != "") {
+  // Parse hex-encoded JSON
+  let cfg_ = GEOLOGIC_MAP_CONFIG_JSON;
+  const buf = Buffer.from(cfg_, "hex").toString("utf-8");
+  configuration = JSON.parse(buf);
+} else if (GEOLOGIC_MAP_CONFIG != null && GEOLOGIC_MAP_CONFIG != "" && existsSync(GEOLOGIC_MAP_CONFIG)) {
+  configuration = require(GEOLOGIC_MAP_CONFIG);
+  cfgDir = dirname(GEOLOGIC_MAP_CONFIG);
+} else {
   console.log("Environment variable GEOLOGIC_MAP_CONFIG is not defined!");
   console.log(
     "It must be set to the absolute path to a JSON file to continue."
@@ -18,7 +30,7 @@ if (GEOLOGIC_MAP_CONFIG == null) {
   process.exit(1);
 }
 
-process.env.GEOLOGIC_MAP_SOURCE_DIR = __dirname;
+console.log(configuration);
 
 let {
   database,
@@ -33,7 +45,7 @@ let {
   extensions,
   commandName = "geologic-map",
   ...rest
-} = require(GEOLOGIC_MAP_CONFIG) ?? {};
+} = configuration;
 
 if (host == null) {
   host = "localhost";
@@ -62,8 +74,6 @@ if (tolerance == null) {
 if (srid == null) {
   srid = 4326;
 }
-
-const cfgDir = dirname(GEOLOGIC_MAP_CONFIG);
 
 const basedir = resolve(join(__dirname, ".."));
 const packageCfg = require("../package.json");
