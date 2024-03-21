@@ -1,7 +1,10 @@
 from contextvars import ContextVar
 
+from dotenv import load_dotenv
 from macrostrat.database import Database
 from typer import Option, Typer
+
+load_dotenv()
 
 app = Typer(no_args_is_help=True)
 
@@ -21,7 +24,7 @@ def test():
     db = get_database()
 
     print("Welcome to Topology Manager!")
-    print(db.query("SELECT 1"))
+    print(db.run_query("SELECT 1").scalar())
 
 
 @app.callback()

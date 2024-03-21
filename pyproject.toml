@@ -13,6 +13,7 @@ python = "^3.11"
 "macrostrat.utils" = "^1.2.1"
 typer = "^0.9.0"
 rich = "^13.7.1"
+python-dotenv = "^1.0.1"
 
 
 [tool.poetry.group.dev.dependencies]
