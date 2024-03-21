@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## `[4.0.0]` - 2024-03
+
+- Shift orchestration code to Python
+- Remove the `mapboard-server` application
+
+## `[3.0.0]` - 2022
+
+- Create testing integration with StraboSpot
+- Move to yarn package manager
+
 ## `[2.0.0]` = 2021-04-25
 
 - Shift from Coffeescript to Typescript
