@@ -1,21 +1,8 @@
-from contextvars import ContextVar
-
-from dotenv import load_dotenv
-from macrostrat.database import Database
 from typer import Option, Typer
 
-load_dotenv()
+from .settings import get_database, set_database
 
 app = Typer(no_args_is_help=True)
-
-db_ctx: ContextVar[Database] = ContextVar("db_ctx", default=None)
-
-
-def get_database() -> Database:
-    db = db_ctx.get()
-    if db is None:
-        raise RuntimeError("Database not initialized")
-    return db
 
 
 @app.command()
@@ -34,4 +21,4 @@ def main(
     ),
 ):
     if database is not None:
-        db_ctx.set(Database(database))
+        set_database(database)
