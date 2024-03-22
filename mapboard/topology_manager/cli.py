@@ -1,8 +1,19 @@
 from typer import Option, Typer
 
-from .settings import get_database, set_database
+from .commands import clean_topology, create_tables
+from .database import get_database, set_database
 
-app = Typer(no_args_is_help=True)
+
+class App(Typer):
+    def __init__(self, *args, **kwargs):
+        kwargs["no_args_is_help"] = True
+        super().__init__(*args, **kwargs)
+
+    def add_command(self, f, *args, **kwargs):
+        return self.command(*args, **kwargs)(f)
+
+
+app = App()
 
 
 @app.command()
@@ -22,3 +33,7 @@ def main(
 ):
     if database is not None:
         set_database(database)
+
+
+app.add_command(create_tables, name="create-tables")
+app.add_command(clean_topology, name="clean-topology")
