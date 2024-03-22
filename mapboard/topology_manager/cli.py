@@ -1,7 +1,9 @@
+from rich.prompt import Confirm
 from typer import Option, Typer
 
 from .commands import clean_topology, create_tables
-from .database import get_database, set_database
+from .database import get_database, set_database, sql
+from .utilities import console
 
 
 class App(Typer):
@@ -37,3 +39,30 @@ def main(
 
 app.add_command(create_tables, name="create-tables")
 app.add_command(clean_topology, name="clean-topology")
+
+
+def _operation_command(name):
+    # Prompt user for confirmation
+    res = Confirm.ask(f"Do you really want to {name} the topology?")
+    if not res:
+        return
+    db = get_database()
+    db.proc(f"procedures/{name}-topology")
+
+
+for op in ["delete", "reset"]:
+
+    def command():
+        _operation_command(op)
+
+    app.add_command(command, name=op, short_help=f"{op.capitalize()} the topology")
+
+
+@app.command(name="show-errors")
+def show_errors():
+    """Show topology errors"""
+    db = get_database()
+    _query = sql("procedures/get-contacts-with-errors")
+    res = db.run_query(_query)
+    for row in res:
+        console.print(f"[dim]{row.id}[/dim] [red]{row.topology_error}[/red]")
