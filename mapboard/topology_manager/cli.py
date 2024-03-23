@@ -1,7 +1,7 @@
 from rich.prompt import Confirm
 from typer import Option, Typer
 
-from .commands import clean_topology, create_tables
+from .commands import add_all_commands
 from .database import get_database, set_database, sql
 from .utilities import console
 
@@ -18,15 +18,6 @@ class App(Typer):
 app = App()
 
 
-@app.command()
-def test():
-    # Your code here
-    db = get_database()
-
-    print("Welcome to Topology Manager!")
-    print(db.run_query("SELECT 1").scalar())
-
-
 @app.callback()
 def main(
     database: str = Option(
@@ -37,8 +28,7 @@ def main(
         set_database(database)
 
 
-app.add_command(create_tables, name="create-tables")
-app.add_command(clean_topology, name="clean-topology")
+add_all_commands(app)
 
 
 def _operation_command(name):

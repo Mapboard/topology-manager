@@ -35,8 +35,8 @@ def sql(key_path: str) -> TextClause:
     if key_path in _statement_cache.get():
         return _statement_cache.get()[key_path]
 
-    path = relative_path(Path(__file__).parent / f"{key_path}.sql")
-    with open(path) as f:
+    _path = Path(__file__).parent / f"{key_path}.sql"
+    with open(_path) as f:
         stmt = text(f.read())
         _statement_cache.get()[key_path] = stmt
         return stmt
