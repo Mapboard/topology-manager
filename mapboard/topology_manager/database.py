@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from os import environ, getenv
+from os import environ
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -52,6 +52,7 @@ def get_params():
     return {
         "data_schema": Identifier(data_schema),
         "topo_schema": Identifier(topo_schema),
+        "topo_name": topo_schema,
     }
 
 

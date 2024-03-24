@@ -25,11 +25,11 @@ WHERE edge_id NOT IN (
 AND left_face = right_face;
 
 SELECT
-  topology.ST_RemEdgeModFace(  :topo_name , edge_id)
+  topology.ST_RemEdgeModFace(:topo_name , edge_id)
 FROM {topo_schema}.edge_data
 WHERE edge_id NOT IN (SELECT edge_id FROM {topo_schema}.edge_topology);
 
-SELECT topology.ST_RemIsoNode(  :topo_name ,node_id)
+SELECT topology.ST_RemIsoNode(:topo_name ,node_id)
 FROM {topo_schema}.node
 WHERE node_id NOT IN (SELECT node_id FROM {topo_schema}.node_edge);
 
