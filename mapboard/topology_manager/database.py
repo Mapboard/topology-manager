@@ -53,6 +53,7 @@ def get_params():
         "data_schema": Identifier(data_schema),
         "topo_schema": Identifier(topo_schema),
         "topo_name": topo_schema,
+        "data_schema_name": data_schema,
     }
 
 
