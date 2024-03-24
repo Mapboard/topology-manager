@@ -1,7 +1,7 @@
 SELECT
   l.id,
   l.topology_error
-FROM ${data_schema~}.linework l
+FROM {data_schema}.linework l
 WHERE
-  ${topo_schema~}.line_topology(l.type) IS NOT null
+  {topo_schema}.line_topology(l.type) IS NOT null
   AND l.topology_error IS NOT null

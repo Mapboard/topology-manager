@@ -19,13 +19,13 @@ test.before(async (d) => {
 
   // These are needed because it the mapboard-server tests get run first
   // by default.
-  await db.query(prepare("TRUNCATE TABLE ${data_schema~}.linework CASCADE"));
-  await db.query(prepare("TRUNCATE TABLE ${data_schema~}.polygon CASCADE"));
+  await db.query(prepare("TRUNCATE TABLE {data_schema}.linework CASCADE"));
+  await db.query(prepare("TRUNCATE TABLE {data_schema}.polygon CASCADE"));
 });
 
 test("demo units have been created", async (t) => {
   const res = await db.query(
-    prepare("SELECT id FROM ${data_schema~}.polygon_type")
+    prepare("SELECT id FROM {data_schema}.polygon_type")
   );
   t.true(res.length >= 1);
   const ids = res.map((d) => d.id);
@@ -95,7 +95,7 @@ test("insert a polygon identifying unit within the triangle", async (t) => {
 
 test("solve topology and check that we have a map face", async (t) => {
   await updateAll();
-  const res = await db.query(prepare("SELECT * FROM ${topo_schema~}.map_face"));
+  const res = await db.query(prepare("SELECT * FROM {topo_schema}.map_face"));
   t.is(res["length"], 1);
 });
 
@@ -103,7 +103,7 @@ test("change a line type", async (t) => {
   const line_id = lineChangeID;
   const res = await db.query(
     prepare(
-      "UPDATE ${data_schema~}.linework SET type = 'anticline-hinge' WHERE id = ${line_id} RETURNING id"
+      "UPDATE {data_schema}.linework SET type = 'anticline-hinge' WHERE id = ${line_id} RETURNING id"
     ),
     { line_id }
   );
@@ -111,7 +111,7 @@ test("change a line type", async (t) => {
 
   await updateAll();
   const res1 = await db.query(
-    prepare("SELECT * FROM ${topo_schema~}.map_face")
+    prepare("SELECT * FROM {topo_schema}.map_face")
   );
   t.is(res1.length, 0);
 });

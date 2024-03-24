@@ -6,20 +6,19 @@ def delete_edges():
     db = get_database()
     db.proc("procedures/clean-topology-01")
 
-    with db.session.begin():
-        console.print("Deleting edges", style="header")
-        res = db.run_query(sql("procedures/get-edges-to-delete"))
-        for row in res:
-            edge_id = row.edge_id
-            console.print(f"Deleting edge {row.id}", style="error")
-            try:
-                db.run_query(
-                    sql("procedures/clean-topology-rem-edge"), {"edge_id": edge_id}
-                ).one()
-            except Exception as e:
-                console.print(f"Error deleting edge {edge_id}: {e}", style="error")
-                continue
-        db.proc("procedures/clean-topology-02")
+    console.print("Deleting edges", style="header")
+    res = db.run_query(sql("procedures/get-edges-to-delete"))
+    for row in res:
+        edge_id = row.edge_id
+        console.print(f"Deleting edge {edge_id}", style="error")
+        try:
+            db.run_query(
+                sql("procedures/clean-topology-rem-edge"), {"edge_id": edge_id}
+            ).one()
+        except Exception as e:
+            console.print(f"Error deleting edge {edge_id}: {e}", style="error")
+            continue
+    db.proc("procedures/clean-topology-02")
 
 
 verbose = True
@@ -32,7 +31,7 @@ def clean_topology():
     delete_edges()
 
     with db.session.begin():
-        console.print("Healing edgeds", style="header")
+        console.print("Healing edges", style="header")
         res = db.run_query(sql("procedures/get-edges-to-heal"))
         counter = 0
         for row in res:
