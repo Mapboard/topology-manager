@@ -64,10 +64,12 @@ def _start_watcher():
         update_in_progress.set(False)
 
     conn = db.engine.connect()
+    # Get a raw connection to listen for notifications
+    conn = conn.connection
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
     cursor = conn.cursor()
-    cursor.execute(text("LISTEN events;"))
+    cursor.execute("LISTEN events;")
 
     def handle_notify():
         conn.poll()

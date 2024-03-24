@@ -5,7 +5,6 @@ from ..database import get_database, sql
 from ..utilities import console
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
-update_face_ = "SELECT {topo_schema}.update_map_face()"
 
 
 def update_faces(
@@ -31,6 +30,10 @@ def update_faces(
     with Progress() as progress:
         bar = progress.add_task("Updating faces", total=nfaces)
         while nfaces > 0:
-            db.run_query(update_face_).one()
+            try:
+                db.run_query("SELECT {topo_schema}.update_map_face()").one()
+            except Exception as e:
+                console.print(f"Error updating faces: {e}", style="error")
             next_count = db.run_query(count_).scalar()
-            bar.update(completed=nfaces - next_count)
+            progress.update(bar, completed=nfaces - next_count)
+            nfaces = next_count
