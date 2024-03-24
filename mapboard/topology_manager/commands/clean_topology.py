@@ -11,13 +11,10 @@ def delete_edges():
     for row in res:
         edge_id = row.edge_id
         console.print(f"Deleting edge {edge_id}", style="error")
-        try:
-            db.run_query(
-                sql("procedures/clean-topology-rem-edge"), {"edge_id": edge_id}
-            ).one()
-        except Exception as e:
-            console.print(f"Error deleting edge {edge_id}: {e}", style="error")
-            continue
+        db.run_sql(
+            sql("procedures/clean-topology-rem-edge"),
+            {"edge_id": edge_id},
+        )
     db.proc("procedures/clean-topology-02")
 
 

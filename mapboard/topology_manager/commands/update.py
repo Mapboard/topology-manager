@@ -75,7 +75,10 @@ def _start_watcher():
         conn.poll()
         for notify in conn.notifies:
             print(notify.payload)
+            needs_update.set(True)
             _update_topology()
+            if needs_update.get():
+                _update_topology()
         conn.notifies.clear()
 
     loop = asyncio.get_event_loop()
