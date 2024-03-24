@@ -4,9 +4,9 @@ from ..database import get_database, sql
 from ..utilities import console
 
 count = sql("procedures/count-contact")
+get_contacts = sql("procedures/get-contacts-to-update")
 update_contacts = sql("procedures/update-contact")  # Called `proc` in the original code
 reset_errors = sql("procedures/reset-linework-errors")
-get_contacts = sql("procedures/get-contacts-to-update")
 post_update = sql("procedures/post-update-contacts")
 
 
@@ -22,8 +22,8 @@ def update_contacts(fix_failed: bool = False):
     if nlines == 0:
         console.print("No contacts to update")
 
-    res = db.run_query(get_contacts)
-    remaining = res.count()
+    res = db.run_query(get_contacts).all()
+    remaining = len(res)
     with Progress() as progress:
         bar = progress.add_task("Updating lines", total=nlines)
         while remaining > 0:

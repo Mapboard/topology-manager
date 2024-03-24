@@ -2,8 +2,8 @@
 mapping data stored in `data_schema`. */
 
 SELECT topology.DropTopoGeometryColumn(${data_schema}, 'linework', 'topo');
-SELECT topology.DropTopology(${topo_schema});
+SELECT topology.DropTopology( :topo_name );
 
-UPDATE ${data_schema~}.linework
+UPDATE {data_schema}.linework
 SET
   geometry_hash = null;

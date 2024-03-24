@@ -4,8 +4,8 @@ from typer import Option
 from ..database import get_database, sql
 from ..utilities import console
 
-count_ = "SELECT count(*)::integer nfaces FROM ${topo_schema~}.__dirty_face"
-update_face_ = "SELECT ${topo_schema~}.update_map_face()"
+count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
+update_face_ = "SELECT {topo_schema}.update_map_face()"
 
 
 def update_faces(

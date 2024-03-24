@@ -3,16 +3,16 @@ Functions allowing changes to topological relations
 // Should merge with similar functions for Naukluft
 */
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.__map_face_layer_id()
+CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name= ${topo_schema}
+WHERE schema_name=  :topo_name 
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.topologizeGeometry(geom geometry, tolerance numeric = 1)
+CREATE OR REPLACE FUNCTION {topo_schema}.topologizeGeometry(geom geometry, tolerance numeric = 1)
 RETURNS topology.topogeometry AS
 $$
 DECLARE
@@ -22,10 +22,10 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name= ${topo_schema}
+      WHERE schema_name=  :topo_name 
       AND table_name='contact';
 
-  topo := topology.toTopoGeom(geom,  ${topo_schema}, layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom,   :topo_name , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added geometry';
   RETURN topo;
 EXCEPTION WHEN others THEN
@@ -36,7 +36,7 @@ END;
 $$
 LANGUAGE 'plpgsql' IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.addMapFace(geom geometry, tolerance numeric = 1)
+CREATE OR REPLACE FUNCTION {topo_schema}.addMapFace(geom geometry, tolerance numeric = 1)
 RETURNS topology.topogeometry AS
 $$
 DECLARE
@@ -46,10 +46,10 @@ BEGIN
   SELECT l.layer_id
       INTO layer_id
       FROM topology.layer l
-      WHERE schema_name= ${topo_schema}
+      WHERE schema_name=  :topo_name 
       AND table_name='map_face';
 
-  topo := topology.toTopoGeom(geom,  ${topo_schema}, layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom,   :topo_name , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added map face';
   RETURN topo;
 EXCEPTION WHEN others THEN
@@ -60,7 +60,7 @@ END;
 $$
 LANGUAGE 'plpgsql' IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.removeNodeMaybe(node_id integer)
+CREATE OR REPLACE FUNCTION {topo_schema}.removeNodeMaybe(node_id integer)
 RETURNS boolean AS
 $$
 DECLARE
@@ -69,17 +69,17 @@ len int;
 outnode int;
 BEGIN
   SELECT
-    abs((GetNodeEdges( ${topo_schema}, node_id)).edge) edge_id
+    abs((GetNodeEdges(  :topo_name , node_id)).edge) edge_id
   INTO edge_id
-  FROM ${topo_schema~}.edge;
+  FROM {topo_schema}.edge;
 
   len := array_length(edge_id);
 
   IF len = 2 THEN
-    outnode := ST_ModEdgeHeal( ${topo_schema},edge_id[1], edge_id[2]);
+    outnode := ST_ModEdgeHeal(  :topo_name ,edge_id[1], edge_id[2]);
     RETURN true;
   ELSIF len = 0 THEN
-    outnode := ST_RemIsoNode( ${topo_schema}, node_id);
+    outnode := ST_RemIsoNode(  :topo_name , node_id);
     RETURN true;
   END IF;
   RETURN false;
@@ -89,13 +89,13 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.removeEdgeMaybe(eid integer)
+CREATE OR REPLACE FUNCTION {topo_schema}.removeEdgeMaybe(eid integer)
 RETURNS integer AS
 $$
 DECLARE
 fid integer;
 BEGIN
-  RETURN ST_RemEdgeModFace( ${topo_schema}, eid);
+  RETURN ST_RemEdgeModFace(  :topo_name , eid);
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;
   RAISE NOTICE 'Error message: %', SQLERRM;
@@ -107,7 +107,7 @@ LANGUAGE 'plpgsql';
 /*
 Get the map face that defines a polygon for a specific topology
 */
-CREATE OR REPLACE FUNCTION ${topo_schema~}.unitForArea(in_face geometry, in_topology text)
+CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(in_face geometry, in_topology text)
 RETURNS text AS $$
 DECLARE result text;
 BEGIN
@@ -117,8 +117,8 @@ SELECT
   p.id,
   p.type,
   p.geometry
-FROM ${data_schema~}.polygon p
-JOIN ${data_schema~}.polygon_type t
+FROM {data_schema}.polygon p
+JOIN {data_schema}.polygon_type t
   ON p.type = t.id
 WHERE t.topology = in_topology
   AND ST_Contains(in_face, p.geometry)
@@ -137,27 +137,27 @@ RETURN result;
 END
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.unitForFace(face_id integer, in_topology text)
+CREATE OR REPLACE FUNCTION {topo_schema}.unitForFace(face_id integer, in_topology text)
 RETURNS text AS $$
 SELECT
   unit_id
-FROM ${topo_schema~}.relation r
-JOIN ${topo_schema~}.map_face f
+FROM {topo_schema}.relation r
+JOIN {topo_schema}.map_face f
   ON (f.topo).id = r.topogeo_id
 WHERE element_id = $1
   AND element_type = 3
-  AND r.layer_id = ${topo_schema~}.__map_face_layer_id()
+  AND r.layer_id = {topo_schema}.__map_face_layer_id()
   AND topology = $2;
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION ${topo_schema~}.containing_face(face_id integer, in_topology text)
-RETURNS ${topo_schema~}.map_face AS $$
+CREATE OR REPLACE FUNCTION {topo_schema}.containing_face(face_id integer, in_topology text)
+RETURNS {topo_schema}.map_face AS $$
 SELECT f.*
-FROM ${topo_schema~}.relation r
-JOIN ${topo_schema~}.map_face f
+FROM {topo_schema}.relation r
+JOIN {topo_schema}.map_face f
   ON (f.topo).id = r.topogeo_id
 WHERE element_id = $1
   AND element_type = 3
-  AND r.layer_id = ${topo_schema~}.__map_face_layer_id()
+  AND r.layer_id = {topo_schema}.__map_face_layer_id()
   AND topology = $2;
 $$ LANGUAGE SQL IMMUTABLE;

@@ -1,1 +1,1 @@
-SELECT topology.ST_RemEdgeNewFace( ${topo_schema}, ${edge_id})
+SELECT topology.ST_RemEdgeNewFace(  :topo_name , ${edge_id})

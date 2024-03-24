@@ -8,7 +8,7 @@ This table representation serves as a minimal interface that must
 be implemented for a data_schema's compatibility with the Map-Digitizer server.
 */
 
-ALTER TABLE ${data_schema~}.linework
+ALTER TABLE {data_schema}.linework
   ADD COLUMN certainty integer,
   ADD COLUMN zoom_level integer,
   ADD COLUMN pixel_width numeric,
@@ -16,7 +16,7 @@ ALTER TABLE ${data_schema~}.linework
   ADD COLUMN hidden boolean DEFAULT false,
   ADD COLUMN source text;
 
-ALTER TABLE ${data_schema~}.polygon
+ALTER TABLE {data_schema}.polygon
   ADD COLUMN certainty integer,
   ADD COLUMN zoom_level integer,
   ADD COLUMN pixel_width numeric,

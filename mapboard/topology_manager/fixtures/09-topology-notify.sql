@@ -4,7 +4,7 @@ Post a notification each time the output topology changes
 We use PostgreSQL 10 "transition tables" to get the set of changed rows
 https://www.postgresql.org/docs/current/plpgsql-trigger.html#PLPGSQL-TRIGGER-AUDIT-TRANSITION-EXAMPLE
 */
-CREATE OR REPLACE FUNCTION ${topo_schema~}.map_face_topology_notify()
+CREATE OR REPLACE FUNCTION {topo_schema}.map_face_topology_notify()
 RETURNS trigger AS $$
 DECLARE
 __payload text;
@@ -40,7 +40,7 @@ BEGIN
     'envelope', ST_AsGeoJSON(__envelope)::jsonb,
     'n_deleted', __deleted,
     'n_created', __added,
-    'n_faces', (SELECT count(*) FROM ${topo_schema~}.map_face)
+    'n_faces', (SELECT count(*) FROM {topo_schema}.map_face)
   );
 
   PERFORM pg_notify('topology', __payload);
@@ -51,30 +51,30 @@ $$ LANGUAGE plpgsql;
 
 
 DROP TRIGGER IF EXISTS map_topology_topo_map_face_trigger_insert
-ON ${topo_schema~}.map_face;
+ON {topo_schema}.map_face;
 DROP TRIGGER IF EXISTS map_topology_topo_map_face_trigger_update
-ON ${topo_schema~}.map_face;
+ON {topo_schema}.map_face;
 DROP TRIGGER IF EXISTS map_topology_topo_map_face_trigger_delete
-ON ${topo_schema~}.map_face;
+ON {topo_schema}.map_face;
 
 CREATE TRIGGER map_topology_topo_map_face_trigger_insert
-AFTER INSERT ON ${topo_schema~}.map_face
+AFTER INSERT ON {topo_schema}.map_face
 REFERENCING
   NEW TABLE AS new_table
 FOR EACH STATEMENT
-EXECUTE PROCEDURE ${topo_schema~}.map_face_topology_notify();
+EXECUTE PROCEDURE {topo_schema}.map_face_topology_notify();
 
 CREATE TRIGGER map_topology_topo_map_face_trigger_update
-AFTER UPDATE ON ${topo_schema~}.map_face
+AFTER UPDATE ON {topo_schema}.map_face
 REFERENCING
   OLD TABLE AS old_table
   NEW TABLE AS new_table
 FOR EACH STATEMENT
-EXECUTE PROCEDURE ${topo_schema~}.map_face_topology_notify();
+EXECUTE PROCEDURE {topo_schema}.map_face_topology_notify();
 
 CREATE TRIGGER map_topology_topo_map_face_trigger_delete
-AFTER DELETE ON ${topo_schema~}.map_face
+AFTER DELETE ON {topo_schema}.map_face
 REFERENCING
   OLD TABLE AS old_table
 FOR EACH STATEMENT
-EXECUTE PROCEDURE ${topo_schema~}.map_face_topology_notify();
+EXECUTE PROCEDURE {topo_schema}.map_face_topology_notify();

@@ -9,9 +9,9 @@ const { db, sql, proc, prepare } = require("../util");
 const { deleteEdges } = require("./clean-topology");
 
 const countQuery = prepare(
-  "SELECT count(*)::integer nfaces FROM ${topo_schema~}.__dirty_face"
+  "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 );
-const updateFaceQuery = prepare("SELECT ${topo_schema~}.update_map_face()");
+const updateFaceQuery = prepare("SELECT {topo_schema}.update_map_face()");
 
 const command = "update-faces [--reset] [--fill-holes]";
 const describe = "Update map faces";

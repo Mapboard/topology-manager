@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS strabo.spot_tags (
   PRIMARY KEY (spot_id, tag_id)
 );
 
-ALTER TABLE ${data_schema~}.polygon
+ALTER TABLE {data_schema}.polygon
   ADD COLUMN spot_id varchar(14) REFERENCES strabo.spots(id);
 
-ALTER TABLE ${data_schema~}.polygon_type
+ALTER TABLE {data_schema}.polygon_type
   ADD COLUMN tag_id varchar(14) REFERENCES strabo.tags(id);
 
 CREATE OR REPLACE VIEW map_digitizer.polygon_display AS
