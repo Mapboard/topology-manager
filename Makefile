@@ -8,7 +8,7 @@ build:
 	bin/docker-dist --no-push
 
 test:
-	bin/docker-test
+	poetry run pytest
 
 dist:
 	bin/docker-dist

@@ -19,6 +19,7 @@ python-dotenv = "^1.0.1"
 [tool.poetry.group.dev.dependencies]
 isort = "^5.13.2"
 black = "^24.3.0"
+pytest = "^8.1.1"
 
 [tool.poetry.scripts]
 topo = "mapboard.topology_manager.cli:app"
