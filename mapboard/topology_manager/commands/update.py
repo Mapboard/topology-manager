@@ -35,7 +35,6 @@ def _update(
     fix_failed: bool = False,
 ):
     """Update the topology"""
-
     console.print("Updating contacts", style="header")
     update_contacts(fix_failed=fix_failed)
     console.print("Updating faces", style="header")

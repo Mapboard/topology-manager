@@ -65,6 +65,8 @@ def get_params():
 
 
 def set_database(database: str):
+    if _db_ctx.get() is not None:
+        return
     _db_ctx.set(Database(database))
 
 
