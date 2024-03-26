@@ -19,8 +19,8 @@ test.before(async (d) => {
 
   // These are needed because it the mapboard-server tests get run first
   // by default.
-  await db.query(prepare("TRUNCATE TABLE {data_schema}.linework CASCADE"));
-  await db.query(prepare("TRUNCATE TABLE {data_schema}.polygon CASCADE"));
+  // await db.query(prepare("TRUNCATE TABLE {data_schema}.linework CASCADE"));
+  // await db.query(prepare("TRUNCATE TABLE {data_schema}.polygon CASCADE"));
 });
 
 test("demo units have been created", async (t) => {

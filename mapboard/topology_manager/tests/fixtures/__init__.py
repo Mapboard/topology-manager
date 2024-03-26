@@ -3,8 +3,9 @@ import os
 from macrostrat.database.utils import temp_database
 from pytest import fixture
 
-from ..commands.create_tables import _create_tables
-from ..database import Database, _db_ctx
+from ...commands.create_tables import _create_tables
+from ...database import Database, _db_ctx
+from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
 
@@ -25,4 +26,5 @@ def empty_db(pytestconfig):
 @fixture(scope="session")
 def db(empty_db):
     _create_tables(empty_db)
+    create_demo_units(empty_db)
     return empty_db
