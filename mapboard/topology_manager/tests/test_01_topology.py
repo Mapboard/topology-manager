@@ -73,8 +73,9 @@ class TestTopology:
         assert len(res) == 1
 
     def test_change_line_type(self, db):
-        """Change a line type to a non-topological type"""
-
+        """Change a line type and check that the map face is NOT removed
+        NOTE: No longer works because topology is now controlled by map layers.
+        """
         # Get the ID of the last inserted line
         id = db.run_query(
             "SELECT id FROM {data_schema}.linework ORDER BY id DESC LIMIT 1"
@@ -82,6 +83,25 @@ class TestTopology:
 
         res = db.run_query(
             "UPDATE {data_schema}.linework SET type = 'anticline-hinge' WHERE id = :line_id RETURNING id",
+            {"line_id": id},
+        ).fetchall()
+        assert len(res) == 1
+
+        _update(db)
+        res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
+        assert len(res) == 1
+
+    def test_change_line_layer(self, db):
+        """Change a line type and check that the map face is NOT removed
+        NOTE: No longer works because topology is now controlled by map layers.
+        """
+        # Get the ID of the last inserted line
+        id = db.run_query(
+            "SELECT id FROM {data_schema}.linework ORDER BY id DESC LIMIT 1"
+        ).scalar()
+
+        res = db.run_query(
+            "UPDATE {data_schema}.linework SET type = 'anticline-hinge', layer = 'other' WHERE id = :line_id RETURNING id",
             {"line_id": id},
         ).fetchall()
         assert len(res) == 1
