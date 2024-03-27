@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from mapboard.topology_manager.tests.fixtures import db, empty_db
+from mapboard.topology_manager.tests.fixtures import *
 
 
 # Add option to keep the database after tests

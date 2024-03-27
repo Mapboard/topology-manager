@@ -2,6 +2,8 @@ import os
 
 from macrostrat.database.utils import temp_database
 from pytest import fixture
+from sqlalchemy import event
+from sqlalchemy.orm import Session, scoped_session
 
 from ...commands.create_tables import _create_tables
 from ...database import Database
@@ -27,7 +29,40 @@ def empty_db(pytestconfig):
 
 
 @fixture(scope="session")
-def db(empty_db):
+def base_db(empty_db):
     _create_tables(empty_db)
     create_demo_units(empty_db)
     yield empty_db
+
+
+@fixture(scope="class")
+def db(base_db):
+    """Create a database session that is rolled back after each test
+
+    This is based on the Sparrow's implementation:
+    https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
+    """
+    connection = base_db.engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+
+    # start the session in a SAVEPOINT...
+    # start the session in a SAVEPOINT...
+    session.begin_nested()
+
+    # then each time that SAVEPOINT ends, reopen it
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(session, transaction):
+        if transaction.nested and not transaction._parent.nested:
+            # ensure that state is expired the way
+            # session.commit() at the top level normally does
+            # (optional step)
+            session.expire_all()
+            session.begin_nested()
+
+    base_db.session = session
+
+    yield base_db
+    session.close()
+    transaction.rollback()
+    connection.close()
