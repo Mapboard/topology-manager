@@ -2,8 +2,6 @@ import os
 
 from macrostrat.database.utils import temp_database
 from pytest import fixture
-from sqlalchemy import event
-from sqlalchemy.orm import Session, scoped_session
 
 from ...commands.create_tables import _create_tables
 from ...database import Database
