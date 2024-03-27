@@ -43,5 +43,5 @@ def db(base_db):
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
 
-    with base_db.savepoint() as db:
+    with base_db.rollback() as db:
         yield db

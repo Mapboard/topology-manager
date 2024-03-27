@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from macrostrat.database import Database as _Database
 from psycopg2.sql import SQL, Identifier
 from sqlalchemy import event
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import TextClause, text
 
 load_dotenv()
@@ -36,7 +36,7 @@ class Database(_Database):
         _db_ctx.set(self)
 
     @contextmanager
-    def savepoint(self):
+    def rollback(self):
         """Create a database session that is rolled back after each test
 
         This is based on the Sparrow's implementation:
@@ -60,14 +60,19 @@ class Database(_Database):
                 session.expire_all()
                 session.begin_nested()
 
+        prev_session = self.session
         self.session = session
 
-        yield self
-        session.close()
-        transaction.rollback()
-        connection.close()
+        try:
+            yield self
+        except Exception as e:
+            raise e
+        finally:
+            session.close()
+            transaction.rollback()
+            connection.close()
 
-        self.session = scoped_session(self._session_factory)
+            self.session = prev_session
 
 
 _db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
