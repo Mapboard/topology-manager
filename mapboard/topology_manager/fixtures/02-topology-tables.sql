@@ -1,15 +1,3 @@
-CREATE TABLE IF NOT EXISTS {topo_schema}.subtopology (
-  id text PRIMARY KEY REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE
-);
-
-/** Future map-layer support
-INSERT INTO {topo_schema}.subtopology (id)
-SELECT name
-FROM {data_schema}.map_layer
-WHERE NOT EXISTS (SELECT * FROM {topo_schema}.subtopology)
-ON CONFLICT DO NOTHING;
-*/
-
 -- Create an initial linework type (if nothing exists)
 INSERT INTO {data_schema}.linework_type (id, name, color)
 SELECT
@@ -34,13 +22,6 @@ INSERT INTO {data_schema}.map_layer (id, name, topological)
 VALUES
   ('default', 'Default', true);
 
--- Insert initial values into subtopology column
-INSERT INTO {topo_schema}.subtopology (id)
-SELECT id
-FROM {data_schema}.map_layer
-WHERE topological
-ON CONFLICT DO NOTHING;
-
 /* Add topology columns to table
 TODO: we should consider migrating this to a separate table within the topology schema.
 */
@@ -53,14 +34,14 @@ ALTER TABLE {data_schema}.linework
 CREATE TABLE IF NOT EXISTS {topo_schema}.map_face (
   id SERIAL PRIMARY KEY,
   unit_id text,
-  topology text REFERENCES {topo_schema}.subtopology (id),
+  topology text REFERENCES {data_schema}.map_layer (id),
   geometry geometry(MultiPolygon, :srid)
 );
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.face_type (
   face_id integer REFERENCES {topo_schema}.face (face_id) ON DELETE CASCADE,
   map_face integer REFERENCES {topo_schema}.map_face (id) ON DELETE CASCADE,
-  topology text REFERENCES {topo_schema}.subtopology (id) ON UPDATE CASCADE,
+  topology text REFERENCES {data_schema}.map_layer (id) ON UPDATE CASCADE,
   unit_id text,
   PRIMARY KEY (face_id, topology)
 );
@@ -73,7 +54,7 @@ CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 /* A table to hold dirty faces */
 CREATE TABLE IF NOT EXISTS {topo_schema}.__dirty_face (
   id integer REFERENCES {topo_schema}.face ON DELETE CASCADE,
-  topology text references {topo_schema}.subtopology ON DELETE CASCADE,
+  topology text references {data_schema}.map_layer ON DELETE CASCADE,
   PRIMARY KEY(id, topology)
 );
 
@@ -81,7 +62,7 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.__dirty_face (
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
   edge_id integer REFERENCES {topo_schema}.edge_data ON DELETE CASCADE,
-  topology text REFERENCES {topo_schema}.subtopology ON DELETE CASCADE,
+  topology text REFERENCES {data_schema}.map_layer ON DELETE CASCADE,
   line_id integer REFERENCES {data_schema}.linework ON DELETE CASCADE,
   "type" text
       REFERENCES {data_schema}.linework_type

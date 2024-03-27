@@ -49,10 +49,3 @@ WHERE id NOT IN (SELECT id FROM tmp_polygon_type);
 
 DROP TABLE tmp_linework_type;
 DROP TABLE tmp_polygon_type;
-
-/** Temporary: sync with subtopologies */
-INSERT INTO {topo_schema}.subtopology (id)
-SELECT id
-FROM {data_schema}.map_layer
-WHERE topological
-ON CONFLICT DO NOTHING;
