@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=  :topo_name 
+WHERE schema_name=:topo_name 
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -22,10 +22,10 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name=  :topo_name 
+      WHERE schema_name=:topo_name 
       AND table_name='contact';
 
-  topo := topology.toTopoGeom(geom,   :topo_name , layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added geometry';
   RETURN topo;
 EXCEPTION WHEN others THEN
@@ -49,7 +49,7 @@ BEGIN
       WHERE schema_name=  :topo_name 
       AND table_name='map_face';
 
-  topo := topology.toTopoGeom(geom,   :topo_name , layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added map face';
   RETURN topo;
 EXCEPTION WHEN others THEN

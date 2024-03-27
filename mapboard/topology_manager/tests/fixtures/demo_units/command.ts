@@ -1,8 +1,8 @@
-import { db, proc, sql, logQueryInfo, prepare } from "../../src/util";
-import { join, resolve } from "path";
 import Promise from "bluebird";
 import { createReadStream } from "fs";
+import { join, resolve } from "path";
 import { from as copyFrom } from "pg-copy-streams";
+import { db, logQueryInfo, prepare, proc, sql } from "../../../../../__archive/src/util";
 
 const sqlFile = (id) => resolve(join(__dirname, "procedures", `${id}.sql`));
 

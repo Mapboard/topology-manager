@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name= ${data_schema}
+WHERE schema_name=:data_schema_name
   AND table_name='linework'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;

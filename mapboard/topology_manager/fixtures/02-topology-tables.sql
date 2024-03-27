@@ -2,11 +2,13 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.subtopology (
   id text PRIMARY KEY
 );
 
+/** Future map-layer support
 INSERT INTO {topo_schema}.subtopology (id)
 SELECT name
 FROM {data_schema}.map_layer
 WHERE NOT EXISTS (SELECT * FROM {topo_schema}.subtopology)
 ON CONFLICT DO NOTHING;
+*/
 
 -- Create an initial linework type (if nothing exists)
 INSERT INTO {data_schema}.linework_type (
@@ -42,13 +44,12 @@ ON CONFLICT DO NOTHING;
 
 -- Refer to this on our linework tables
 ALTER TABLE {data_schema}.linework_type
-ADD CONSTRAINT ${topo_schema^}_linework_topology
+ADD CONSTRAINT {topo_prefix}_linework_topology
 FOREIGN KEY (topology)
   REFERENCES {topo_schema}.subtopology(id) ON UPDATE CASCADE;
 
 /* Add topology columns to table */
-SELECT topology.AddTopoGeometryColumn( :topo_name ,
-  ${data_schema},'linework', 'topo','LINE');
+SELECT topology.AddTopoGeometryColumn(:topo_name, :data_schema_name,'linework', 'topo','LINE');
 ALTER TABLE {data_schema}.linework
   ADD COLUMN geometry_hash uuid,
   ADD COLUMN topology_error text;
@@ -58,7 +59,7 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.map_face (
   id SERIAL PRIMARY KEY,
   unit_id text,
   topology text REFERENCES {topo_schema}.subtopology (id),
-  geometry geometry(MultiPolygon, ${srid})
+  geometry geometry(MultiPolygon, :srid)
 );
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.face_type (
@@ -70,8 +71,7 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.face_type (
 );
 CREATE INDEX face_type_ix ON {topo_schema}.face_type (face_id);
 
-SELECT topology.AddTopoGeometryColumn( :topo_name ,
-   :topo_name , 'map_face', 'topo', 'MULTIPOLYGON');
+SELECT topology.AddTopoGeometryColumn(:topo_name, :topo_name , 'map_face', 'topo', 'MULTIPOLYGON');
 
 CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 
