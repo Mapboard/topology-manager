@@ -1,8 +1,10 @@
-CREATE OR REPLACE FUNCTION {topo_schema}.polygon_topology(type_id text)
+/** Get the topology for a polygon */
+CREATE OR REPLACE FUNCTION {topo_schema}.polygon_topology(poly {data_schema}.polygon)
 RETURNS text AS $$
-SELECT topology
-FROM {data_schema}.polygon_type
-WHERE id = type_id
+SELECT id
+FROM {data_schema}.map_layer l
+WHERE l.id = poly.layer
+  AND l.topological;
 $$ LANGUAGE SQL;
 
 /*
@@ -20,13 +22,13 @@ BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   affected_area := OLD.geometry;
-  __topology := {topo_schema}.polygon_topology(OLD.type);
+  __topology := {topo_schema}.polygon_topology(OLD);
 ELSIF (TG_OP = 'INSERT') THEN
   affected_area := NEW.geometry;
-  __topology := {topo_schema}.polygon_topology(NEW.type);
+  __topology := {topo_schema}.polygon_topology(NEW);
 ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
   affected_area := ST_Union(OLD.geometry, NEW.geometry);
-  __topology := {topo_schema}.polygon_topology(NEW.type);
+  __topology := {topo_schema}.polygon_topology(NEW);
 END IF;
 
 -- TODO: there might be an issue with topology here...

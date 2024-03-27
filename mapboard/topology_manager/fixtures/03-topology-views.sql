@@ -60,9 +60,12 @@ SELECT
   f.id,
   f.unit_id,
   f.geometry,
-  t.topology,
+  l.id layer_id,
   t.color,
   t.name
 FROM {topo_schema}.map_face f
 LEFT JOIN {data_schema}.polygon_type t
-  ON f.unit_id = t.id;
+  ON f.unit_id = t.id
+LEFT JOIN {data_schema}.map_layer l
+  ON t.id = l.id
+WHERE l.topological;

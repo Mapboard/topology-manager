@@ -5,11 +5,13 @@ to `map_topology.map_face`
 
 /* Util functions */
 
-CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(type_id text)
+/** Get the topology for a line */
+CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(line {data_schema}.linework)
 RETURNS text AS $$
-SELECT topology
-FROM {data_schema}.linework_type
-WHERE id = type_id;
+SELECT id
+FROM {data_schema}.map_layer l
+WHERE l.id = line.layer
+  AND l.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(line {data_schema}.linework)
@@ -45,7 +47,7 @@ DECLARE
   __faces integer[];
   __topology text;
 BEGIN
-  __topology := {topo_schema}.line_topology(line.type);
+  __topology := {topo_schema}.line_topology(line);
 
   IF (line.topo IS null OR __topology IS null) THEN
     RETURN;
@@ -96,7 +98,7 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__dest_topology := {topo_schema}.line_topology(NEW.type);
+__dest_topology := {topo_schema}.line_topology(NEW);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
@@ -139,7 +141,7 @@ IF (
      if it doesn't we'll have to reset
   */
   (OLD.topo).id = (NEW.topo).id AND
-  {topo_schema}.line_topology(OLD.type) = __dest_topology
+  {topo_schema}.line_topology(OLD) = __dest_topology
 ) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;

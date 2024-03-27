@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS {topo_schema}.subtopology (
-  id text PRIMARY KEY
+  id text PRIMARY KEY REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE
 );
 
 /** Future map-layer support
@@ -11,42 +11,39 @@ ON CONFLICT DO NOTHING;
 */
 
 -- Create an initial linework type (if nothing exists)
-INSERT INTO {data_schema}.linework_type (id, name,color,topology)
+INSERT INTO {data_schema}.linework_type (id, name, color)
 SELECT
   'default',
   'Default',
-  '#000000',
-  'default'
+  '#000000'
 FROM topology.topology -- dummy table
 WHERE NOT EXISTS (SELECT * FROM {data_schema}.linework_type)
 ON CONFLICT DO NOTHING;
 
 -- Same for polygon-types
-INSERT INTO {data_schema}.polygon_type (id, name,color,topology)
+INSERT INTO {data_schema}.polygon_type (id, name, color)
 SELECT
   'default',
   'Default',
-  '#000000',
-  'default'
+  '#000000'
 FROM topology.topology -- dummy table
 WHERE NOT EXISTS (SELECT * FROM {data_schema}.polygon_type)
 ON CONFLICT DO NOTHING;
 
+INSERT INTO {data_schema}.map_layer (id, name, topological)
+VALUES
+  ('default', 'Default', true);
+
 -- Insert initial values into subtopology column
 INSERT INTO {topo_schema}.subtopology (id)
-SELECT DISTINCT ON (topology)
-  topology
-FROM {data_schema}.linework_type
-WHERE topology IS NOT NULL
+SELECT id
+FROM {data_schema}.map_layer
+WHERE topological
 ON CONFLICT DO NOTHING;
 
--- Refer to this on our linework tables
-ALTER TABLE {data_schema}.linework_type
-ADD CONSTRAINT {topo_prefix}_linework_topology
-FOREIGN KEY (topology)
-  REFERENCES {topo_schema}.subtopology(id) ON UPDATE CASCADE;
-
-/* Add topology columns to table */
+/* Add topology columns to table
+TODO: we should consider migrating this to a separate table within the topology schema.
+*/
 SELECT topology.AddTopoGeometryColumn(:topo_name, :data_schema_name,'linework', 'topo','LINE');
 ALTER TABLE {data_schema}.linework
   ADD COLUMN geometry_hash uuid,
