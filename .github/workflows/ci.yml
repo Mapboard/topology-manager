@@ -1,25 +1,3 @@
-name: Continuous integration testing
-on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    name: Build and test
-    steps:
-      - uses: actions/checkout@v2
-      - name: Update submodules
-        run: git submodule update --init --recursive
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "12"
-      - name: Install dependencies
-        run: lerna bootstrap
-      - name: Run tests
-        run: make test
-
 name: Continuous integration tests
 
 on:
@@ -45,7 +23,9 @@ jobs:
           poetry config virtualenvs.create true --local
           poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
-        name: Define a cache for the virtual environment based on the dependencies lock file
+        name:
+          Define a cache for the virtual environment based on the dependencies
+          lock file
         with:
           path: ./.venv
           key: venv-${{ hashFiles('poetry.lock') }}
@@ -53,7 +33,9 @@ jobs:
         run: poetry install
       # Create a PostGIS database (in a Docker container) for tests
       - name: Start the PostGIS Docker container
-        run: docker run --name postgis -e POSTGRES_PASSWORD=postgres -d -p 5432:5432 postgis/postgis:16-3.4-alpine
+        run:
+          docker run --name postgis -e POSTGRES_PASSWORD=postgres -d -p
+          5432:5432 postgis/postgis:16-3.4-alpine
       # Set environment variables
       - name: Set environment variables
         run: |
