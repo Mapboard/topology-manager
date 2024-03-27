@@ -1,8 +1,6 @@
 from pathlib import Path
 
-from macrostrat.database import Database
-
-from ..database import get_database
+from ..database import Database, get_database
 
 fixtures_dir = Path(__file__).parent.parent / "fixtures"
 

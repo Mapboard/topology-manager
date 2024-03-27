@@ -5,11 +5,11 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import text
 from typer import Option
 
-from ..database import get_database
+from ..database import Database, get_database
 from ..utilities import console
-from .clean_topology import clean_topology
-from .update_contacts import update_contacts
-from .update_faces import update_faces
+from .clean_topology import _clean_topology
+from .update_contacts import _update_contacts
+from .update_faces import _update_faces
 
 verbose = True
 
@@ -26,21 +26,24 @@ def update(
         _start_watcher()
         return
 
-    _update(reset=reset, fill_holes=fill_holes, fix_failed=fix_failed)
+    db = get_database()
+
+    _update(db, reset=reset, fill_holes=fill_holes, fix_failed=fix_failed)
 
 
 def _update(
+    db: Database,
     reset: bool = False,
     fill_holes: bool = False,
     fix_failed: bool = False,
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")
-    update_contacts(fix_failed=fix_failed)
+    _update_contacts(db, fix_failed=fix_failed)
     console.print("Updating faces", style="header")
-    update_faces(reset=reset, fill_holes=fill_holes)
+    _update_faces(db, reset=reset, fill_holes=fill_holes)
     console.print("Cleaning topology", style="header")
-    clean_topology()
+    _clean_topology(db)
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)
@@ -59,7 +62,8 @@ def _start_watcher():
 
         update_in_progress.set(True)
         needs_update.set(False)
-        _update()
+        # Do the update
+        _update(db)
         update_in_progress.set(False)
 
     conn = db.engine.connect()

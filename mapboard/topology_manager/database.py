@@ -29,6 +29,9 @@ class Database(_Database):
         params.update(get_params())
         return super().run_query(sql, params, **kwargs)
 
+    def set_active(self):
+        _db_ctx.set(self)
+
 
 _db_ctx: ContextVar[Database] = ContextVar("db_ctx", default=None)
 _statement_cache: ContextVar[dict[str, TextClause]] = ContextVar(

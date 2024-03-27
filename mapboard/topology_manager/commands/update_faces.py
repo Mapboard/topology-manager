@@ -13,7 +13,10 @@ def update_faces(
 ):
     """Update faces"""
     db = get_database()
+    _update_faces(db, reset, fill_holes)
 
+
+def _update_faces(db, reset: bool = False, fill_holes: bool = False):
     if reset:
         db.run_sql(sql("procedures/reset-map_face"))
 

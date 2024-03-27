@@ -11,8 +11,7 @@ ON CONFLICT DO NOTHING;
 */
 
 -- Create an initial linework type (if nothing exists)
-INSERT INTO {data_schema}.linework_type (
-  id, name,color,topology)
+INSERT INTO {data_schema}.linework_type (id, name,color,topology)
 SELECT
   'default',
   'Default',
@@ -23,8 +22,7 @@ WHERE NOT EXISTS (SELECT * FROM {data_schema}.linework_type)
 ON CONFLICT DO NOTHING;
 
 -- Same for polygon-types
-INSERT INTO {data_schema}.polygon_type (
-  id, name,color,topology)
+INSERT INTO {data_schema}.polygon_type (id, name,color,topology)
 SELECT
   'default',
   'Default',

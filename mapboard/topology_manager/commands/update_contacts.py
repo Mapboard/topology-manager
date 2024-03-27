@@ -1,6 +1,6 @@
 from rich.progress import Progress
 
-from ..database import get_database, sql
+from ..database import Database, get_database, sql
 from ..utilities import console
 
 count = sql("procedures/count-contact")
@@ -12,6 +12,10 @@ post_update = sql("procedures/post-update-contacts")
 def update_contacts(fix_failed: bool = False):
     """Update contacts"""
     db = get_database()
+    _update_contacts(db, fix_failed)
+
+
+def _update_contacts(db: Database, fix_failed: bool = False):
 
     nlines = db.run_query(count).scalar()
 

@@ -2,8 +2,12 @@ from ..database import get_database, sql
 from ..utilities import console
 
 
-def delete_edges():
+def clean_topology():
     db = get_database()
+    _clean_topology(db)
+
+
+def _delete_edges(db):
     db.proc("procedures/clean-topology-01")
 
     console.print("Deleting edges", style="header")
@@ -21,11 +25,9 @@ def delete_edges():
 verbose = True
 
 
-def clean_topology():
+def _clean_topology(db):
     """Clean topology"""
-    db = get_database()
-
-    delete_edges()
+    _delete_edges(db)
 
     with db.session.begin():
         console.print("Healing edges", style="header")
