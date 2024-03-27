@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from contextvars import ContextVar
 from os import environ
 from pathlib import Path
@@ -5,6 +6,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from macrostrat.database import Database as _Database
 from psycopg2.sql import SQL, Identifier
+from sqlalchemy import event
+from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import TextClause, text
 
 load_dotenv()
@@ -32,8 +35,42 @@ class Database(_Database):
     def set_active(self):
         _db_ctx.set(self)
 
+    @contextmanager
+    def savepoint(self):
+        """Create a database session that is rolled back after each test
 
-_db_ctx: ContextVar[Database] = ContextVar("db_ctx", default=None)
+        This is based on the Sparrow's implementation:
+        https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
+        """
+        connection = self.engine.connect()
+        transaction = connection.begin()
+        session = Session(bind=connection)
+
+        # start the session in a SAVEPOINT...
+        # start the session in a SAVEPOINT...
+        session.begin_nested()
+
+        # then each time that SAVEPOINT ends, reopen it
+        @event.listens_for(session, "after_transaction_end")
+        def restart_savepoint(session, transaction):
+            if transaction.nested and not transaction._parent.nested:
+                # ensure that state is expired the way
+                # session.commit() at the top level normally does
+                # (optional step)
+                session.expire_all()
+                session.begin_nested()
+
+        self.session = session
+
+        yield self
+        session.close()
+        transaction.rollback()
+        connection.close()
+
+        self.session = scoped_session(self._session_factory)
+
+
+_db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
 _statement_cache: ContextVar[dict[str, TextClause]] = ContextVar(
     "_statement_cache", default={}
 )
