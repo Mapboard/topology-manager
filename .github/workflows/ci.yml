@@ -36,13 +36,12 @@ jobs:
         run:
           docker run --name postgis -e POSTGRES_PASSWORD=postgres -d -p
           5432:5432 postgis/postgis:16-3.4-alpine
-      # Set environment variables
-      - name: Set environment variables
-        run: |
-          export TOPO_TESTING_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mapboard_topology_test
       - name: Run the automated tests
         run: make test
+        env:
+          TOPO_TESTING_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mapboard_topology_test
       - name: Stop the PostGIS Docker container
+        if: always()
         run: |
           docker stop postgis
           docker rm postgis
