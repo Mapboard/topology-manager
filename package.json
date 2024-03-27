@@ -34,7 +34,7 @@
     "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/sphericalmercator": "^1.1.0",
     "@types/bluebird-global": "^3.5.12",
-    "axios": "^0.18.1",
+    "axios": "^0.28.0",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "cli-progress": "^3.4.0",
