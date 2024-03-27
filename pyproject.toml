@@ -20,6 +20,8 @@ python-dotenv = "^1.0.1"
 isort = "^5.13.2"
 black = "^24.3.0"
 pytest = "^8.1.1"
+shapely = "^2.0.3"
+geoalchemy2 = "^0.14.6"
 
 [tool.poetry.scripts]
 topo = "mapboard.topology_manager.cli:app"
