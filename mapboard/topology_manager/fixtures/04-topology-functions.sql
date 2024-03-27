@@ -150,7 +150,7 @@ JOIN {topo_schema}.map_face f
 WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
-  AND topology = $2;
+  AND f.layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.containing_face(face_id integer, in_topology text)
@@ -162,5 +162,5 @@ JOIN {topo_schema}.map_face f
 WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
-  AND topology = $2;
+  AND f.layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;

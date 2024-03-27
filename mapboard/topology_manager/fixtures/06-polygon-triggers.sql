@@ -33,7 +33,7 @@ END IF;
 
 -- TODO: there might be an issue with topology here...
 UPDATE {topo_schema}.map_face mf
-SET unit_id = {topo_schema}.unitForArea(geometry, mf.topology)
+SET unit_id = {topo_schema}.unitForArea(geometry, mf.layer)
 WHERE ST_Intersects(affected_area, geometry);
 RETURN null;
 END;
@@ -54,17 +54,17 @@ WITH t AS (
 SELECT
   id map_face,
   unit_id,
-  topology,
+  layer,
   (topo).*
 FROM {topo_schema}.map_face
 WHERE id = __map_face_id
 )
-INSERT INTO {topo_schema}.face_type AS ft (face_id, map_face, unit_id, topology)
+INSERT INTO {topo_schema}.face_type AS ft (face_id, map_face, unit_id, layer)
 SELECT
   face_id,
   map_face,
   unit_id,
-  topology
+  layer
 FROM t
 JOIN {topo_schema}.relation r
   ON r.layer_id = t.layer_id
@@ -72,12 +72,12 @@ JOIN {topo_schema}.relation r
   AND r.topogeo_id = t.id
 JOIN {topo_schema}.face f
   ON r.element_id = f.face_id
-ON CONFLICT (face_id, topology) DO
+ON CONFLICT (face_id, layer) DO
 UPDATE SET
   map_face = EXCLUDED.map_face,
   unit_id = EXCLUDED.unit_id
 WHERE ft.face_id = EXCLUDED.face_id
-  AND ft.topology = EXCLUDED.topology;
+  AND ft.layer = EXCLUDED.layer;
 $$ LANGUAGE SQL;
 
 

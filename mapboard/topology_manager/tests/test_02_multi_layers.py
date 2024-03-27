@@ -25,18 +25,18 @@ class TestMultiLayers:
         _update(db)
 
         # Check that we have two map faces at the center
-        res = db.run_query(
-            "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
-            dict(geom=point(3, 3)),
-        ).fetchall()
+        res = intersecting_faces(
+            db,
+            point(3, 3),
+        )
         assert len(res) == 2
         has_bedrock = False
         has_surficial = False
         for r in res:
-            if r.topology == "bedrock":
+            if r.layer == "bedrock":
                 has_bedrock = True
                 assert r.area == 36.0
-            if r.topology == "surficial":
+            if r.layer == "surficial":
                 has_surficial = True
                 assert r.area == 4.0
         assert has_bedrock
@@ -49,11 +49,11 @@ class TestMultiLayers:
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'surficial'")
             _update(db)
             res = db.run_query(
-                "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+                "SELECT layer, ST_Area(geometry) area FROM test_topology.map_face"
             ).fetchall()
 
             assert len(res) == 1
-            assert res[0].topology == "bedrock"
+            assert res[0].layer == "bedrock"
 
     def test_remove_bedrock(self, db):
         assert n_faces(db) == 2
@@ -63,19 +63,26 @@ class TestMultiLayers:
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
             _update(db)
             res = db.run_query(
-                "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+                "SELECT layer, ST_Area(geometry) area FROM test_topology.map_face"
             ).fetchall()
 
             assert len(res) == 1
-            assert res[0].topology == "surficial"
+            assert res[0].layer == "surficial"
 
     def test_remove_bedrock_no_nested_transaction(self, db):
         assert n_faces(db) == 2
         db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
         _update(db)
         res = db.run_query(
-            "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+            "SELECT layer, ST_Area(geometry) area FROM test_topology.map_face"
         ).fetchall()
 
         assert len(res) == 1
-        assert res[0].topology == "surficial"
+        assert res[0].layer == "surficial"
+
+
+def intersecting_faces(db, geom):
+    return db.run_query(
+        "SELECT layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
+        dict(geom=geom),
+    ).fetchall()

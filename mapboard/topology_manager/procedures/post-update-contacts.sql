@@ -5,12 +5,12 @@ what contact it is associated with.
 The trigger *should* keep integrity but we can just be safe
 */
 
-INSERT INTO {topo_schema}.__edge_relation (edge_id, topology, line_id, type)
+INSERT INTO {topo_schema}.__edge_relation (edge_id, layer, line_id, type)
 WITH line_data AS (
   SELECT
     l.id,
     l.topo,
-    {topo_schema}.line_topology(l) topology,
+    {topo_schema}.line_topology(l) layer,
     l.type
   FROM {data_schema}.linework l
   JOIN {data_schema}.linework_type t
@@ -19,9 +19,9 @@ WITH line_data AS (
 )
 SELECT
   (topology.GetTopoGeomElements(topo))[1] edge_id,
-  l.topology,
+  l.layer,
   l.id,
   l.type
 FROM line_data l
-WHERE l.topology IS NOT null
-ON CONFLICT (edge_id, topology) DO NOTHING;
+WHERE layer IS NOT null
+ON CONFLICT (edge_id, layer) DO NOTHING;

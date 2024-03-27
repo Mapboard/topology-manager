@@ -33,17 +33,18 @@ ALTER TABLE {data_schema}.linework
 /* Map Face */
 CREATE TABLE IF NOT EXISTS {topo_schema}.map_face (
   id SERIAL PRIMARY KEY,
-  unit_id text,
-  topology text REFERENCES {data_schema}.map_layer (id),
+  -- TODO: rename unit_id to type
+  unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE,
+  layer text REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE,
   geometry geometry(MultiPolygon, :srid)
 );
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.face_type (
   face_id integer REFERENCES {topo_schema}.face (face_id) ON DELETE CASCADE,
   map_face integer REFERENCES {topo_schema}.map_face (id) ON DELETE CASCADE,
-  topology text REFERENCES {data_schema}.map_layer (id) ON UPDATE CASCADE,
-  unit_id text,
-  PRIMARY KEY (face_id, topology)
+  layer text REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE,
+  unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE,
+  PRIMARY KEY (face_id, layer)
 );
 CREATE INDEX face_type_ix ON {topo_schema}.face_type (face_id);
 
@@ -53,21 +54,21 @@ CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 
 /* A table to hold dirty faces */
 CREATE TABLE IF NOT EXISTS {topo_schema}.__dirty_face (
-  id integer REFERENCES {topo_schema}.face ON DELETE CASCADE,
-  topology text references {data_schema}.map_layer ON DELETE CASCADE,
-  PRIMARY KEY(id, topology)
+  id integer REFERENCES {topo_schema}.face(face_id) ON DELETE CASCADE,
+  layer text references {data_schema}.map_layer(id) ON DELETE CASCADE,
+  PRIMARY KEY(id, layer)
 );
 
 /* EDGE INFRASTRUCTURE */
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
   edge_id integer REFERENCES {topo_schema}.edge_data ON DELETE CASCADE,
-  topology text REFERENCES {data_schema}.map_layer ON DELETE CASCADE,
+  layer text REFERENCES {data_schema}.map_layer ON DELETE CASCADE,
   line_id integer REFERENCES {data_schema}.linework ON DELETE CASCADE,
   "type" text
       REFERENCES {data_schema}.linework_type
       ON UPDATE CASCADE
       ON DELETE SET NULL,
-  PRIMARY KEY(edge_id, topology)
+  PRIMARY KEY(edge_id, layer)
 );
 

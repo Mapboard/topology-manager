@@ -49,7 +49,7 @@ LEFT JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = e.edge_id
 WHERE (e.left_face = fid OR e.right_face = fid)
   AND e.left_face != e.right_face
-  AND er.topology IS DISTINCT FROM topoid
+  AND er.layer IS DISTINCT FROM topoid
 UNION
 SELECT DISTINCT ON ({topo_schema}.other_face(e,r1.adjacent))
   r1.faces || {topo_schema}.other_face(e,r1.adjacent) faces,
@@ -63,7 +63,7 @@ JOIN r r1
 WHERE e.left_face != e.right_face
   AND NOT cycle
   AND NOT r1.adjacent = 0
-  AND er.topology IS DISTINCT FROM topoid
+  AND er.layer IS DISTINCT FROM topoid
 ), b AS (
 SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 )
@@ -100,19 +100,19 @@ WHERE name =  :topo_name ;
 
 __layer_id := {topo_schema}.__map_face_layer_id();
 
-RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.topology;
+RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.layer;
 
 -- Special case when adjacent to global face
 IF (__face.id = 0) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE topology = __face.topology
+  WHERE layer = __face.layer
     AND id = 0;
   RETURN __face;
 END IF;
 
 /* First, get the adjoining faces */
-__dissolved_faces := {topo_schema}.adjacent_faces(__face.id,__face.topology);
+__dissolved_faces := {topo_schema}.adjacent_faces(__face.id,__face.layer);
 RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
 
 -- Special case when adjoining global face
@@ -141,7 +141,7 @@ __dissolved_faces := array_remove(__dissolved_faces,0);
 IF (__is_global) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE topology = __face.topology
+  WHERE layer = __face.layer
     AND (
       id = ANY(__dissolved_faces) OR id = 0
     );
@@ -165,36 +165,36 @@ WHERE id IN (
   SELECT DISTINCT
     ({topo_schema}.containing_face(
         unnest(__dissolved_faces),
-        __face.topology)
+        __face.layer)
     ).id
   );
 
 DELETE
 FROM {topo_schema}.__dirty_face df
-WHERE topology = __face.topology
+WHERE layer = __face.layer
   AND id = ANY(__dissolved_faces);
 
 IF (__is_global) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE topology = __face.topology
+  WHERE layer = __face.layer
     AND id = 0;
   RETURN __face;
 END IF;
 
 INSERT INTO {topo_schema}.map_face
-  (unit_id, topo, topology, geometry)
+  (unit_id, topo, layer, geometry)
 SELECT
 {topo_schema}.unitForArea(
   __geometry,
-  __face.topology) unit_id,
+  __face.layer) unit_id,
 __topo,
-__face.topology,
+__face.layer,
 __geometry;
 
 DELETE
 FROM {topo_schema}.__dirty_face df
-WHERE topology = __face.topology
+WHERE layer = __face.layer
   AND id = ANY(__dissolved_faces);
 
 RETURN __face;

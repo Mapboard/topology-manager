@@ -73,7 +73,7 @@ BEGIN
   INTO __faces
   FROM faces1;
 
-  INSERT INTO {topo_schema}.__dirty_face (id, topology)
+  INSERT INTO {topo_schema}.__dirty_face (id, layer)
   SELECT
     unnest(__faces),
     __topology
@@ -159,14 +159,14 @@ WHERE line_id IN (OLD.id)
 
 /* Add new objects into linework tracker */
 INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, topology, line_id, type)
+  (edge_id, layer, line_id, type)
 VALUES (
   unnest(__edges),
   __dest_topology,
   NEW.id,
   NEW.type
 )
-ON CONFLICT (edge_id, topology) DO UPDATE SET
+ON CONFLICT (edge_id, layer) DO UPDATE SET
   line_id = NEW.id,
   type = NEW.type;
 
