@@ -34,6 +34,7 @@ def insert_line(db, geometry, type="bedrock"):
         {
             "type": "bedrock",
             "table": Identifier("linework"),
+            "layer": "bedrock",
             "geometry": geometry,
         },
     ).one()
@@ -59,8 +60,8 @@ class TestTopology:
     def test_insert_polygon(self, db):
         """Insert a polygon identifying unit within the triangle"""
         res = db.run_query(
-            """INSERT INTO {data_schema}.polygon (type, geometry)
-            VALUES ('upper-omkyk', 'SRID=32612;POLYGON((2 0.5, 3 0.5, 3 1, 2 0.5))')
+            """INSERT INTO {data_schema}.polygon (type, layer, geometry)
+            VALUES ('upper-omkyk', 'bedrock', 'SRID=32612;POLYGON((2 0.5, 3 0.5, 3 1, 2 0.5))')
             RETURNING id, type"""
         ).one()
         assert res.type == "upper-omkyk"

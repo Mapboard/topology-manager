@@ -1,6 +1,7 @@
-INSERT INTO {data_schema}.{table} (geometry, type )
+INSERT INTO {data_schema}.{table} (geometry, type, layer )
 VALUES (
   ST_Multi(ST_SetSRID((:geometry)::geometry, :srid)),
-  :type
+  :type,
+  :layer
 )
 RETURNING *

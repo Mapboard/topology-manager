@@ -10,7 +10,8 @@ CREATE SCHEMA IF NOT EXISTS {data_schema};
 CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
     id text PRIMARY KEY,
     name text,
-    description text
+    description text,
+    topological boolean DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS {data_schema}.linework_type (
@@ -37,6 +38,9 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon_type (
     symbol_color text
 );
 
+/**
+Linking tables for the next stage of this
+
 CREATE TABLE IF NOT EXISTS {data_schema}.map_layer_linework_type (
     layer text,
     type text,
@@ -52,17 +56,17 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer_polygon_type (
     FOREIGN KEY (type) REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
     PRIMARY KEY (layer, type)
 );
-
+*/
 
 /* Skeletal table structure needed to support linework for the map */
 CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   id            serial PRIMARY KEY,
   geometry      public.geometry(MultiLineString,:srid) NOT NULL,
-  type          text NOT NULL,
-  layer         text NOT NULL,
+  type          text NOT NULL REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
+  layer         text NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
-  name          text,
-  FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_linework_type(type, layer) ON UPDATE CASCADE
+  name          text
+  /* FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_linework_type(type, layer) ON UPDATE CASCADE */
 );
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
@@ -71,11 +75,11 @@ CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
 /* Skeletal table structure needed to support polygon for the map */
 CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   id            serial PRIMARY KEY,
-  geometry      public.geometry(MultiPolygon,:srid) NOT NULL,
-  type          text NOT NULL,
-  layer         text NOT NULL,
-  created       timestamp without time zone DEFAULT now(),
-  FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_polygon_type(type, layer) ON UPDATE CASCADE
+  geometry      public.geometry(MultiPolygon, :srid) NOT NULL,
+  type          text NOT NULL REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
+  layer         text NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
+  created       timestamp without time zone DEFAULT now() --,
+  --FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_polygon_type(type, layer) ON UPDATE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx

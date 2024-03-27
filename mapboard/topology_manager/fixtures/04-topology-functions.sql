@@ -76,10 +76,10 @@ BEGIN
   len := array_length(edge_id);
 
   IF len = 2 THEN
-    outnode := ST_ModEdgeHeal(  :topo_name ,edge_id[1], edge_id[2]);
+    outnode := ST_ModEdgeHeal(:topo_name ,edge_id[1], edge_id[2]);
     RETURN true;
   ELSIF len = 0 THEN
-    outnode := ST_RemIsoNode(  :topo_name , node_id);
+    outnode := ST_RemIsoNode(:topo_name , node_id);
     RETURN true;
   END IF;
   RETURN false;
@@ -120,7 +120,10 @@ SELECT
 FROM {data_schema}.polygon p
 JOIN {data_schema}.polygon_type t
   ON p.type = t.id
-WHERE t.topology = in_topology
+JOIN {data_schema}.map_layer l
+  ON p.layer = l.id
+WHERE l.id = in_topology
+  AND l.topological
   AND ST_Contains(in_face, p.geometry)
 )
 -- Assign face that has the greatest area of polygons
