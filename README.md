@@ -19,7 +19,7 @@ The most important part of this tool are its
 [procedural SQL](mapboard/topology_manager/procedures/). The Python module and
 CLI largely wrap these elements.
 
-## Usage
+## Interfaces
 
 ### Command-line interface
 
@@ -33,9 +33,16 @@ the underlying map data and runs a sequence of procedures to fill interstitial
 polygons. It supports multiple topologies (e.g. overlapping bedrock and
 surficial units) and line types.
 
+### Python module
+
+In version 4, we inagurated a new Python-based design that creates a
+`mapboard.topology_manager` module. This module is in an early phase, but it
+will eventually be released on PyPI. For now, it underpins the command-line
+interface and the watcher process.
+
 ## Workflow
 
-### Database schemas
+### Set up the database
 
 This project relies on two PostgreSQL schemas, named `map_data` and
 `map_topology` by default. The `map_data` schema holds the source data for the
