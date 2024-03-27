@@ -4,3 +4,8 @@ node_modules
 .env
 dist
 geologic-map-config.json
+
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.pnp.*

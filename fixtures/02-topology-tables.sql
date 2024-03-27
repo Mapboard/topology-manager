@@ -3,8 +3,8 @@ CREATE TABLE IF NOT EXISTS ${topo_schema~}.subtopology (
 );
 
 INSERT INTO ${topo_schema~}.subtopology (id)
-SELECT 'default'
-FROM topology.topology -- dummy table
+SELECT name
+FROM ${data_schema~}.map_layer
 WHERE NOT EXISTS (SELECT * FROM ${topo_schema~}.subtopology)
 ON CONFLICT DO NOTHING;
 

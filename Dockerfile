@@ -1,19 +1,23 @@
-FROM node:14
+FROM node:18
+
+# Install yarn berry
 
 RUN apt-get update \
   && apt-get install -y libpq-dev postgresql-client \
-  && npm install -g npm@7 lerna \
-  && npm cache clean -f \
-  && npm cache verify
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/
 
+COPY package.json .yarnrc.yml yarn.lock /app/
+COPY .yarn/releases /app/.yarn/releases
+
 COPY ./packages/mapboard-server /app/packages/mapboard-server
-COPY ./package.json ./lerna.json /app/
-RUN lerna bootstrap --hoist -- --unsafe-perm
+
+RUN yarn install --frozen-lockfile
 
 COPY ./ /app/
 
 EXPOSE 3006
 
-ENTRYPOINT [ "/app/docker-assets/entry-script" ]
+ENTRYPOINT [ "yarn", "exec", "/app/docker-assets/entry-script" ]

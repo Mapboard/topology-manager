@@ -1,21 +1,19 @@
 {
   "name": "postgis-geologic-map",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A PostGIS helper library to manage a geologic map",
   "author": "Daven Quinn",
   "license": "MIT",
-  "bin": {
-    "postgis-geologic-map": "bin/geologic-map"
-  },
+  "bin": "bin/geologic-map",
   "scripts": {
     "compile": "./bin/compile",
-    "start": "npm run setup && ./bin/geologic-map-serve-dev",
+    "start:old": "npm run setup && ./bin/geologic-map-serve-dev",
+    "start": "ts-node --transpile-only src/geologic-map watch",
     "build": "npm --prefix packages/mapboard-server run build",
     "dev:server": "npm --prefix packages/mapboard-server run dev",
     "dev:topo": "nodemon --ignore extensions/web/dist src/geologic-map serve",
     "dev": "npm install && npm-run-all --parallel dev:**",
-    "test": "ava --verbose",
-    "postinstall": "lerna bootstrap --hoist"
+    "test": "ava --verbose"
   },
   "browserslist": [
     "> 1%"
@@ -31,6 +29,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@macrostrat/hyper": "^1.3.0",
     "@mapbox/mbtiles": "^0.12.1",
     "@mapbox/postgis-vt-util": "^1.2.1",
     "@mapbox/sphericalmercator": "^1.1.0",
@@ -45,7 +44,6 @@
     "glob": "^7.1.2",
     "glob-promise": "^3.3.0",
     "inquirer": "^4.0.1",
-    "mapboard-server": "file:./packages/mapboard-server",
     "mapbox-gl": "^0.53.1",
     "mapbox-gl-utils": "^0.26.1",
     "morgan": "^1.10.0",
@@ -55,6 +53,7 @@
     "pg-copy-streams": "^5.1.1",
     "pg-promise": "^10.7.3",
     "pkg": "^4.4.0",
+    "prettier": "^2.4.1",
     "progress": "^2.0.0",
     "pug": "^2.0.0-rc.4",
     "response-time": "^2.3.2",
@@ -64,7 +63,8 @@
     "tsparser": "^1.0.2",
     "underscore": "^1.9.1",
     "yargs": "^16.2.0",
-    "zlib": "^1.0.5"
+    "zlib": "^1.0.5",
+    "ts-node": "^9.1.1"
   },
   "pkg": {
     "assets": [
@@ -84,7 +84,7 @@
     "lerna": "^3.22.1",
     "linklocal": "^2.8.2",
     "stylus": "^0.54.5",
-    "ts-node": "^9.1.1",
     "typescript": "^4.2.4"
-  }
+  },
+  "packageManager": "yarn@3.6.4"
 }

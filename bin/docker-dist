@@ -4,7 +4,14 @@ user=davenquinn
 image=ghcr.io/$user/geologic-map
 version=$(cat package.json | jq -r '.version') 
 
-docker build -t $image:$version -t $image:latest .
+branch=$(git rev-parse --abbrev-ref HEAD)
+tags="-t $image:$version -t $image:$branch"
+
+if [ $branch = "master" ]; then
+  tags="$tags -t $image:latest"
+fi
+
+docker build $tags .
 
 if [ $1 == "--no-push" ]; then
   exit 0
@@ -15,4 +22,8 @@ echo $GITHUB_ACCESS_TOKEN | docker login ghcr.io -u $user --password-stdin
 
 echo "Pushing images"
 docker push $image:$version
-docker push $image:latest
+docker push $image:$branch
+
+if [ $branch = "master" ]; then
+  docker push $image:latest
+fi
