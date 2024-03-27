@@ -1,131 +1,133 @@
-# Mapboard topology manager 
+# Mapboard topology manager
 
 This project a set of PostgreSQL/PostGIS schema definitions and procedures that
-enable the iterative solving of linework for a geologic map.
-The watcher process (written in Coffeescript and running on Node.js)
-waits for changes to the underlying map data and runs a sequence
-of procedures to fill interstitial polygons. It supports multiple topologies
-(e.g. overlapping bedrock and surficial units) and line types.
+enable the iterative solving of linework for a geologic map. These procedures
+are wrapped in a high-level Python module that allows the topology to be managed
+programmatically, using a command-line interface, or a "watcher" process.
 
-It is designed to work with the **Mapboard GIS** app, a beta streaming digitization
-app for the Apple iPad platform. More info on **Mapboard GIS** is coming soon.
+This project, originally called `postgis-geologic-map`, was renamed to reflect
+its close association with the [**Mapboard GIS**](https://mapboard-gis.app) iPad
+app. This application drives the topology management in the app's
+[tethered mapping mode](https://mapboard-gis.app/docs/tethered-mode) and is a
+core part of the in-development
+[**Mapboard Platform**](https://github.com/Mapboard/Mapboard-Platform) server
+application. Version 4 was rewritten in Python to support easier integration
+with other GIS applications, such as Macrostrat's map database.
 
-# Dependencies
+The most important part of this tool are its
+[database models](mapboard/topology_manager/fixtures/) and
+[procedural SQL](mapboard/topology_manager/procedures/). The Python module and
+CLI largely wrap these elements.
 
-The project requires NodeJS and PostgreSQL/PostGIS
-to be installed. This project has been used on PostgreSQL > 10 and PostGIS ~> 2.3.
-Currently, testing is mostly occurring on PostgreSQL 11.5 and PostGIS 2.5.3.
-Any recent Node version (v8, v10, and v12 tested) should work fine.
+## Usage
 
-Right now, this project relies on two PostgreSQL schemas: `map_digitizer` and
-`map_topology`. The `map_digitizer` schema holds the source data for the map:
-linework and polygons (used to assign map units to the eventual space-filling
-polygons), along with map units and line types. The `map_topology` schema
-contains solved topological relationships, including polygonal space-filling
-units. It can be rebuilt from scratch by simply calling `DROP SCHEMA map_topology CASCADE`, without destroying data.
-
-## Structure of the code
-
-The most important part of this tool are the [database artifacts](fixtures/)
-it generates and [procedures](procedures/) it runs. The NodeJS executable
-(housed in [the `src/` directory](src/) mostly wraps this functionality.
-
-## Refresh CLI
+### Command-line interface
 
 The `topo` command-line interface (CLI) is the primary way to interact with the
 topology manager tool.
 
-## Client requirements
+### Topology watcher
 
-Modifications to the `map_digitizer.linework` and `map_digitizer.polygon` tables
-will be picked up automatically. In practice, this means that any GIS platform
-can be used to propagate changes. QGIS has been tested extensively, and ArcGIS
-support should be available depending on the version and its support for native
-PostGIS feature layers.
+The watcher process, invoked using `topo update --watch` waits for changes to
+the underlying map data and runs a sequence of procedures to fill interstitial
+polygons. It supports multiple topologies (e.g. overlapping bedrock and
+surficial units) and line types.
 
-An [http server extension](https://github.com/davenquinn/map-digitizer-server)
-is bundled that allows communication with networked digitizing platforms, in
-particular the Mapboard GIS iPad application.
+## Workflow
+
+### Database schemas
+
+This project relies on two PostgreSQL schemas, named `map_data` and
+`map_topology` by default. The `map_data` schema holds the source data for the
+map: linework and polygons (used to assign map units to the eventual
+space-filling polygons), along with map units and line types. The `map_topology`
+schema contains solved topological relationships, including polygonal
+space-filling units.
+
+Currently, environment variables are used to configure the database connection,
+schema names, and SRID. See [`.env.example`](.env.example) for an example of the
+required variables. The schemas for mapping and topology data can be configured,
+but a fairly specific structure is assumed. The minimal schema can be created
+using the `topo create-tables` command.
+
+### Editing the map
+
+Add geometries to the `map_data.linework` and `map_data.polygon` topologies
+using the GIS platform of your choice. Units and line types are managed by
+foreign keys to the `map_data.linework_type` and `map_data.polygon_type` tables.
+
+After linework and polygons are added to the database, the topology can be
+updated using the command `topo update [--watch]`. The output of topology
+building can be found in the `map_topology.map_face` layer.
+
+### Watch mode
+
+The optional `--watch` flag enables the topology watcher daemon, to rebuild the
+topology concurrently with modifications (using `--watch` mode).
+
+In watch mode, modifications to the `map_data.linework` and `map_data.polygon`
+tables are picked up automatically. In practice, this means that **any GIS
+platform** that can connect to PostGIS can be used to propagate changes. QGIS
+has been tested extensively, and ArcGIS support should be available depending on
+the version and its support for native PostGIS feature layers.
+
+### Removing the topology
+
+The topology can be rebuilt from scratch by calling
+`DROP SCHEMA map_topology CASCADE`, without destroying mapping data.
 
 ## Installation
 
-For now, installation from source is required. Encapsulation
-of the watcher executable with [**zeit/pkg**](https://github.com/zeit/pkg)
-is in development.
+The project can be installed as a Python package on recent versions of Python
+(3.10+). It also requires a PostgreSQL database with PostGIS installed.
+Notionally, all versions greater than PostgreSQL 10 and PostGIS 2.3 should work,
+but the project is currently tested on PostgreSQL 14 and greater.
 
-### Preliminary steps
+### Local installation
 
-1. Clone this repository: `git clone https://github.com/davenquinn/postgis-geologic-map.git`
-2. Update Git submodules: `git submodule update --init`.
-3. `cd` to the repository directory (obviously)...
+1. Install Poetry with `pip install poetry`.
+2. Install Python dependencies with `poetry install`.
+3. Create a new PostgreSQL database to hold the mapping data (or you can specify
+   an existing one!).
+4. Create an `.env` file to configure the application using the
+   [`.env.example`](.env.example) file as a template. Make sure to change the
+   database connection info to the right values for your PostgreSQL connection.
+5. Run the application with `poetry run topo`. This will show a help page
+   listing available commands.
+6. Create tables: `topo create-tables`.
+<!-- 7. Optionally, create demo units and topologies:
+   `geologic-map create-demo-units`. -->
 
 ### Docker installation
+
+**Note:** Docker installation is broken in Version 4. It will be fixed soon.
 
 1. Make sure Docker and `docker-compose` are installed using the
    [instructions for your platform](https://docs.docker.com/install/).
 2. Modify the `docker-assets/docker-map-config.json` configuration file to suit
-   your needs (typically, this involves changing the `srid` and `tolerance` fields).
-   A better way to configure the application in Docker is forthcoming.
+   your needs (typically, this involves changing the `srid` and `tolerance`
+   fields). A better way to configure the application in Docker is forthcoming.
 3. Run `docker-compose up --build`. No need for a local PostgreSQL installation!
 4. Connect to the `geologic_map` database on local port `54321`.
-
-### Local installation
-
-1. Install node dependencies with `npm install`.
-2. Create a new PostgreSQL database to hold the mapping data (or you can specify an existing one!).
-3. Create a configuration JSON file using [`geologic-map-config.example.json`](geologic-map-config.example.json)
-   as a template. Make sure to change
-   the database connection info to the right values for your PostgreSQL connection,
-   using [`the semantics of`pg-promise`](https://github.com/vitaly-t/pg-promise/wiki/Connection-Syntax).
-   Optionally, export the full path to your config file to the `GEOLOGIC_MAP_CONFIG` environment variable.
-4. Run the application with `bin/geologic-map`. This will show a help page listing
-   the commands available. This will use the configuration file
-   defined by the `GEOLOGIC_MAP_CONFIG` environment variable, or passed in by the `-c`
-   flag at runtime. You can optionally add the `bin` directory to your path.
-5. Create tables: `geologic-map create-tables --all`.
-6. Optionally, create demo units and topologies: `geologic-map create-demo-units`.
 
 ### "Hybrid" installation
 
 Development with Docker tends to be slow unless heavily optimized, since the app
-and its relatively heavy Node.JS dependencies must be recompiled on each
-build. One nice alternative is to run the database server in Docker while running
-the rest of the app locally. A script to do this is referenced by the `make dev`
-command.
-
-## Running
-
-Add geometries to the `map_digitizer.linework` and `map_digitizer.polygon`
-topologies using the GIS platform of your choice. Units and line types are
-managed by foreign keys to the `map_digitizer.linework_type` and `map_digitizer.polygon_type`
-tables.
-
-After linework and polygons are added to the database, the
-topology can be updated using the command
-
-```
-geologic-map update [--watch]
-```
-
-The optional `--watch` flag enables the topology watcher daemon, to
-rebuild the topology concurrently with modifications (using `--watch` mode).
-The `geologic-map serve` command starts the updater in watch mode and also
-opens an http endpoint serving map data.
-`npm start` is aliased to `geologic-map serve`.
-
-The output of topology building can be found in the `map_topology.map_face` layer.
+and its relatively heavy Python dependencies must be recompiled on each build.
+One nice alternative is to run the database server in Docker while running the
+rest of the app locally. This is the approach taken by the CI GitHub workflow.
 
 ## Contributing
 
-Contributions in the form of raised issues or proposed changes are welcome.
-The core database code is a strong foundation, and the quality of the rest
-of the software around it needs much improvement.
+Contributions in the form of raised issues or proposed changes are welcome. The
+core database code is a strong foundation, and the quality of the rest of the
+software around it needs much improvement.
 
 ## TODO
 
 - [ ] Improve documentation and onboarding process.
 - [ ] Improve configurability and stability of Docker version
-- [ ] Move `map_topology.subtopology` table to `map_digitizer` schema
-      (it currently breaks rule of no dependencies between the schemas).
+- [ ] Move `map_topology.subtopology` table to `map_digitizer` schema (it
+      currently breaks rule of no dependencies between the schemas).
 - [ ] Stabilize and document vector-tile generation functionality.
 - [ ] TESTS!
