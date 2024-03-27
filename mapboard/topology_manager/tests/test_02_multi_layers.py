@@ -50,7 +50,7 @@ class TestMultiLayers:
     def test_remove_surficial(self, db):
         count = db.run_query("SELECT count(*) FROM test_topology.map_face").scalar()
         assert count == 2
-        with db.rollback():
+        with db.savepoint(rollback=True):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'surficial'")
             _update(db)
             res = db.run_query(
@@ -60,11 +60,12 @@ class TestMultiLayers:
             assert len(res) == 1
             assert res[0].topology == "bedrock"
 
-    @mark.xfail(reason="Some problem with savepoints")
     def test_remove_bedrock(self, db):
         count = db.run_query("SELECT count(*) FROM test_topology.map_face").scalar()
         assert count == 2
-        with db.rollback():
+
+        # This works with savepoints but not nested transactions
+        with db.savepoint(rollback=True):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
             _update(db)
             res = db.run_query(

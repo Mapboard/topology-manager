@@ -36,7 +36,7 @@ class Database(_Database):
         _db_ctx.set(self)
 
     @contextmanager
-    def rollback(self):
+    def transaction(self, *, rollback=False, connection=None):
         """Create a database session that is rolled back after each test
 
         This is based on the Sparrow's implementation:
@@ -45,34 +45,45 @@ class Database(_Database):
         connection = self.engine.connect()
         transaction = connection.begin()
         session = Session(bind=connection)
-
-        # start the session in a SAVEPOINT...
-        # start the session in a SAVEPOINT...
-        session.begin_nested()
-
-        # then each time that SAVEPOINT ends, reopen it
-        @event.listens_for(session, "after_transaction_end")
-        def restart_savepoint(session, transaction):
-            if transaction.nested and not transaction._parent.nested:
-                # ensure that state is expired the way
-                # session.commit() at the top level normally does
-                # (optional step)
-                session.expire_all()
-                session.begin_nested()
-
         prev_session = self.session
         self.session = session
+
+        should_rollback = rollback
 
         try:
             yield self
         except Exception as e:
+            should_rollback = True
             raise e
         finally:
+            if should_rollback:
+                transaction.rollback()
+            else:
+                transaction.commit()
             session.close()
-            transaction.rollback()
-            connection.close()
-
             self.session = prev_session
+
+    savepoint_counter = 0
+
+    @contextmanager
+    def savepoint(self, name=None, rollback=False):
+        """A PostgreSQL-specific savepoint context manager"""
+        if name is None:
+            name = f"sp_{self.savepoint_counter}"
+            self.savepoint_counter += 1
+
+        self.session.execute(text(f"SAVEPOINT {name}"))
+        should_rollback = rollback
+        try:
+            yield name
+        except Exception as e:
+            should_rollback = True
+            raise e
+        finally:
+            if should_rollback:
+                self.session.execute(text(f"ROLLBACK TO SAVEPOINT {name}"))
+            else:
+                self.session.execute(text(f"RELEASE SAVEPOINT {name}"))
 
 
 _db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
