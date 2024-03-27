@@ -1,4 +1,4 @@
-# PostGIS geologic map
+# Mapboard topology manager 
 
 This project a set of PostgreSQL/PostGIS schema definitions and procedures that
 enable the iterative solving of linework for a geologic map.
@@ -29,6 +29,11 @@ units. It can be rebuilt from scratch by simply calling `DROP SCHEMA map_topolog
 The most important part of this tool are the [database artifacts](fixtures/)
 it generates and [procedures](procedures/) it runs. The NodeJS executable
 (housed in [the `src/` directory](src/) mostly wraps this functionality.
+
+## Refresh CLI
+
+The `topo` command-line interface (CLI) is the primary way to interact with the
+topology manager tool.
 
 ## Client requirements
 

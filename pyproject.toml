@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "mapboard.topology-manager"
+version = "4.0.0"
+description = "A PostGIS-based iterative system for building geologic maps"
+authors = ["Daven Quinn <code@davenquinn.com>"]
+license = "Apache"
+readme = "README.md"
+packages = [{include = "mapboard"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+"macrostrat.database" = "^3.2.1"
+"macrostrat.utils" = "^1.2.1"
+typer = "^0.9.0"
+rich = "^13.7.1"
+python-dotenv = "^1.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.13.2"
+black = "^24.3.0"
+pytest = "^8.1.1"
+
+[tool.poetry.scripts]
+topo = "mapboard.topology_manager.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

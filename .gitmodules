@@ -1,3 +1,0 @@
-[submodule "extensions/server/map-digitizer-server"]
-	path = packages/mapboard-server
-	url = git://github.com/davenquinn/map-digitizer-server.git

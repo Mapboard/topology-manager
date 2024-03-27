@@ -1,8 +1,1 @@
-node_modules
-**/node_modules
-**/dist
-**/.cache
-**/.parcel-cache
-**/package-lock.json
-dist
 .git

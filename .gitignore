@@ -1,11 +1,5 @@
-.redo
-node_modules
 .cache
 .env
 dist
 geologic-map-config.json
-
-.yarn/cache
-.yarn/unplugged
-.yarn/install-state.gz
-.pnp.*
+.venv

@@ -19,3 +19,48 @@ jobs:
         run: lerna bootstrap
       - name: Run tests
         run: make test
+
+name: Continuous integration tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    name: Continuous integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v4
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v2
+      - name: Setup a local virtual environment (if no poetry.toml file)
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Install the project dependencies
+        run: poetry install
+      # Create a PostGIS database (in a Docker container) for tests
+      - name: Start the PostGIS Docker container
+        run: docker run --name postgis -e POSTGRES_PASSWORD=postgres -d -p 5432:5432 postgis/postgis:16-3.4-alpine
+      # Set environment variables
+      - name: Set environment variables
+        run: |
+          export TOPO_TESTING_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mapboard_topology_test
+      - name: Run the automated tests
+        run: make test
+      - name: Stop the PostGIS Docker container
+        run: |
+          docker stop postgis
+          docker rm postgis
