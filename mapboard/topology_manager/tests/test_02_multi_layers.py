@@ -1,71 +1,7 @@
-from geoalchemy2.shape import from_shape
-from psycopg2.sql import Identifier
 from pytest import mark
 
-# Encode shapely geometries as WKB for Postgres inserts
-from shapely.geometry import LineString, Point, Polygon
-
 from ..commands.update import _update
-
-
-def _insert_feature(db, table, type, layer, geometry, srid=32612):
-    db.run_query(
-        "INSERT INTO {table} (type, layer, geometry) VALUES (:type, :layer, :geom)",
-        {
-            "type": type,
-            "layer": layer,
-            "table": table,
-            "geom": str(
-                from_shape(
-                    geometry,
-                    srid=srid,
-                    extended=True,
-                )
-            ),
-        },
-    )
-
-
-def insert_line(db, coords, type, layer, srid=32612):
-    _insert_feature(
-        db,
-        Identifier("test_map_data", "linework"),
-        type,
-        layer,
-        LineString(coords),
-        srid=srid,
-    )
-
-
-def insert_polygon(db, coords, type, layer, srid=32612):
-    _insert_feature(
-        db,
-        Identifier("test_map_data", "polygon"),
-        type,
-        layer,
-        Polygon((coords)),
-        srid=srid,
-    )
-
-
-def square(size, center=(0, 0)):
-    x, y = center
-    half = size / 2
-    return [
-        (x - half, y - half),
-        (x + half, y - half),
-        (x + half, y + half),
-        (x - half, y + half),
-        (x - half, y - half),
-    ]
-
-
-def point(x, y):
-    return str(from_shape(Point(x, y), srid=32612, extended=True))
-
-
-def n_faces(db):
-    return db.run_query("SELECT count(*) FROM test_topology.map_face").scalar()
+from .helpers import insert_line, insert_polygon, n_faces, point, square
 
 
 class TestMultiLayers:
@@ -73,15 +9,17 @@ class TestMultiLayers:
         """Insert two overlapping squares that belong to different sub-topologies"""
 
         # Insert a square
-        insert_line(db, square(6, center=(3, 3)), "bedrock", "bedrock")
+        insert_line(db, square(6, center=(3, 3)), type="bedrock", layer="bedrock")
 
         # Insert a smaller square with the surficial type
-        insert_line(db, square(2, center=(3, 3)), "surficial", "surficial")
+        insert_line(db, square(2, center=(3, 3)), type="surficial", layer="surficial")
 
         # Add identifying units
-        insert_polygon(db, square(1, center=(3, 3)), "upper-omkyk", "bedrock")
+        insert_polygon(
+            db, square(1, center=(3, 3)), type="upper-omkyk", layer="bedrock"
+        )
 
-        insert_polygon(db, square(1, center=(3, 3)), "terrace", "surficial")
+        insert_polygon(db, square(1, center=(3, 3)), type="terrace", layer="surficial")
 
         # Solve the topology
         _update(db)
