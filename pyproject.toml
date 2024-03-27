@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{include = "mapboard"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 "macrostrat.database" = "^3.2.1"
 "macrostrat.utils" = "^1.2.1"
 typer = "^0.9.0"
