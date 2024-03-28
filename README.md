@@ -19,6 +19,10 @@ The most important part of this tool are its
 [procedural SQL](mapboard/topology_manager/procedures/). The Python module and
 CLI largely wrap these elements.
 
+This tool is similar to Luca Penasa's [Mappy](https://github.com/europlanet-gmap/mappy) QGIS plugin.
+However, it is limited to the PostGIS platform and focuses on iterative use and speed
+with large datasets.
+
 ## Interfaces
 
 ### Command-line interface
