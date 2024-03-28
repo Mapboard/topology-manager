@@ -3,12 +3,12 @@ from psycopg2.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
 
 
-def insert_feature(db, table, geometry, *, type=None, layer=None, srid=32612):
+def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
     db.run_query(
-        "INSERT INTO {table} (type, layer, geometry) VALUES (:type, :layer, :geom)",
+        "INSERT INTO {table} (type, map_layer, geometry) VALUES (:type, :map_layer, :geom)",
         {
             "type": type,
-            "layer": layer,
+            "map_layer": map_layer,
             "table": Identifier("test_map_data", table),
             "geom": str(
                 from_shape(
