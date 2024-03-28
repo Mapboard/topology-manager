@@ -8,10 +8,10 @@ and polylines are stored in another.
 CREATE SCHEMA IF NOT EXISTS {data_schema};
 
 CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
-    id text PRIMARY KEY,
-    name text,
+    id serial PRIMARY KEY,
+    name text NOT NULL,
     description text,
-    parent text CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
+    parent integer CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
     topological boolean DEFAULT false
 );
 
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   id            serial PRIMARY KEY,
   geometry      public.geometry(MultiLineString,:srid) NOT NULL,
   type          text NOT NULL REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
-  layer         text NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
+  map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
   name          text
   /* FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_linework_type(type, layer) ON UPDATE CASCADE */
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   id            serial PRIMARY KEY,
   geometry      public.geometry(MultiPolygon, :srid) NOT NULL,
   type          text NOT NULL REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
-  layer         text NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
+  map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
   name          text
   --FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_polygon_type(type, layer) ON UPDATE CASCADE

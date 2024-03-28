@@ -1,8 +1,8 @@
-INSERT INTO {data_schema}.map_layer (id, name, topological)
+INSERT INTO {data_schema}.map_layer (name, topological)
 VALUES
-  ('surficial', 'Surficial', true),
-  ('bedrock', 'Bedrock', true),
-  ('other', 'Other', false);
+  ('surficial', true),
+  ('bedrock', true),
+  ('other', false);
 
 DELETE FROM {data_schema}.linework_type WHERE id = 'default';
 DELETE FROM {data_schema}.polygon_type WHERE id = 'default';
