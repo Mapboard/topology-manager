@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
     id text PRIMARY KEY,
     name text,
     description text,
+    parent text CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
     topological boolean DEFAULT false
 );
 
@@ -78,7 +79,8 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   geometry      public.geometry(MultiPolygon, :srid) NOT NULL,
   type          text NOT NULL REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
   layer         text NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
-  created       timestamp without time zone DEFAULT now() --,
+  created       timestamp without time zone DEFAULT now(),
+  name          text
   --FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_polygon_type(type, layer) ON UPDATE CASCADE
 );
 
