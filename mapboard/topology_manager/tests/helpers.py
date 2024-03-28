@@ -55,3 +55,10 @@ def n_faces(db, identified=False):
     if identified:
         sql += " WHERE unit_id IS NOT NULL"
     return db.run_query(sql).scalar()
+
+
+def map_layer_id(db, name: str):
+    return db.run_query(
+        "SELECT id FROM {data_schema}.map_layer WHERE name = :name",
+        {"name": name},
+    ).scalar()

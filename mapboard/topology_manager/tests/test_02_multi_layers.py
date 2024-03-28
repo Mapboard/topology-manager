@@ -1,14 +1,7 @@
 from pytest import mark
 
 from ..commands.update import _update
-from .helpers import insert_line, insert_polygon, n_faces, point, square
-
-
-def map_layer_id(db, name: str):
-    return db.run_query(
-        "SELECT id FROM {data_schema}.map_layer WHERE name = :name",
-        {"name": name},
-    ).scalar()
+from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square
 
 
 class TestMultiLayers:
@@ -88,11 +81,11 @@ class TestMultiLayers:
         db.run_query("DELETE FROM {data_schema}.linework WHERE type = 'bedrock'")
         _update(db)
         res = db.run_query(
-            "SELECT layer, ST_Area(geometry) area FROM test_topology.map_face"
+            "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
         ).fetchall()
 
         assert len(res) == 1
-        assert res[0].layer == "surficial"
+        assert res[0].map_layer == map_layer_id(db, "surficial")
 
 
 def intersecting_faces(db, geom):

@@ -107,7 +107,7 @@ LANGUAGE 'plpgsql';
 /*
 Get the map face that defines a polygon for a specific topology
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(face geometry, map_layer integer)
+CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(face geometry, _map_layer integer)
 RETURNS text AS $$
 DECLARE result text;
 BEGIN
@@ -122,7 +122,7 @@ JOIN {data_schema}.polygon_type t
   ON p.type = t.id
 JOIN {data_schema}.map_layer l
   ON p.map_layer = l.id
-WHERE l.id = map_layer
+WHERE l.id = _map_layer
   AND l.topological
   AND ST_Contains(face, p.geometry)
 )

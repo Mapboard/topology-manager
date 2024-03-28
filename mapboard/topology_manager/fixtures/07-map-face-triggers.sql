@@ -106,7 +106,7 @@ RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.map_layer;
 IF (__face.id = 0) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE map_layer = __face.map_layer
+  WHERE df.map_layer = __face.map_layer
     AND id = 0;
   RETURN __face;
 END IF;
@@ -141,7 +141,7 @@ __dissolved_faces := array_remove(__dissolved_faces,0);
 IF (__is_global) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE map_layer = __face.map_layer
+  WHERE df.map_layer = __face.map_layer
     AND (
       id = ANY(__dissolved_faces) OR id = 0
     );
@@ -171,13 +171,13 @@ WHERE id IN (
 
 DELETE
 FROM {topo_schema}.__dirty_face df
-WHERE map_layer = __face.map_layer
+WHERE df.map_layer = __face.map_layer
   AND id = ANY(__dissolved_faces);
 
 IF (__is_global) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
-  WHERE map_layer = __face.map_layer
+  WHERE df.map_layer = __face.map_layer
     AND id = 0;
   RETURN __face;
 END IF;
@@ -195,7 +195,7 @@ SELECT
 
 DELETE
 FROM {topo_schema}.__dirty_face df
-WHERE map_layer = __face.map_layer
+WHERE df.map_layer = __face.map_layer
   AND id = ANY(__dissolved_faces);
 
 RETURN __face;
