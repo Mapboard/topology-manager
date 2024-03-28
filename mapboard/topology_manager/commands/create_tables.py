@@ -1,14 +1,8 @@
 from pathlib import Path
 
-from ..database import Database, get_database
+from ..database import Database
 
 fixtures_dir = Path(__file__).parent.parent / "fixtures"
-
-
-def create_tables():
-    """Create tables"""
-    db = get_database()
-    _create_tables(db)
 
 
 def _create_tables(db: Database):
@@ -16,4 +10,6 @@ def _create_tables(db: Database):
     _fixtures.sort()
 
     for fixture in _fixtures:
+        print(f"{fixture}")
         db.run_sql(fixture)
+        print("")

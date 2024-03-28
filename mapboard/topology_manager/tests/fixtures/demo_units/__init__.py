@@ -26,7 +26,9 @@ def import_csv(db, csv_path: Path, tablename, schema=None):
     else:
         tablename = Identifier(schema, tablename)
 
-    stmt = "COPY {tablename} (id, name, color, topology) FROM STDIN DELIMITER ',' CSV HEADER"
+    stmt = (
+        "COPY {tablename} (id, name, color, layer) FROM STDIN DELIMITER ',' CSV HEADER"
+    )
     stmt = SQL(stmt).format(tablename=tablename)
 
     with open(csv_path, "r") as f:

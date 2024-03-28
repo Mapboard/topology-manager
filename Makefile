@@ -10,6 +10,9 @@ build:
 test:
 	poetry run pytest -s
 
+test-dev:
+	poetry run pytest -s --no-drop -x --log-level=info
+
 dist:
 	bin/docker-dist
 

@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW {topo_schema}.face_data AS
 WITH fg AS (
 SELECT
 face_id,
-topology.ST_GetFaceGeometry(  :topo_name , face_id) geometry
+topology.ST_GetFaceGeometry(:topo_name , face_id) geometry
 FROM {topo_schema}.face
 WHERE face_id <> 0
 )
@@ -60,9 +60,12 @@ SELECT
   f.id,
   f.unit_id,
   f.geometry,
-  t.topology,
+  l.id map_layer,
   t.color,
   t.name
 FROM {topo_schema}.map_face f
 LEFT JOIN {data_schema}.polygon_type t
-  ON f.unit_id = t.id;
+  ON f.unit_id = t.id
+LEFT JOIN {data_schema}.map_layer l
+  ON f.map_layer = l.id
+WHERE l.topological;

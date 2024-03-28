@@ -17,7 +17,7 @@ ON {data_schema}.linework;
 
 CREATE TRIGGER map_topology_linework_notify_trigger
 BEFORE INSERT
-    OR UPDATE OF geometry, type
+    OR UPDATE OF geometry, type, map_layer
     OR DELETE
     ON {data_schema}.linework
 FOR EACH STATEMENT
