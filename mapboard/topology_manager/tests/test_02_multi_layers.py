@@ -52,7 +52,7 @@ class TestMultiLayers:
     @mark.xfail(reason="Ordering issues")
     def test_remove_surficial(self, db):
         assert n_faces(db) == 2
-        with db.savepoint(rollback=True):
+        with db.savepoint(rollback="always"):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'surficial'")
             _update(db)
             res = db.run_query(
@@ -66,7 +66,7 @@ class TestMultiLayers:
         assert n_faces(db) == 2
 
         # This works with savepoints but not nested transactions
-        with db.savepoint(rollback=True):
+        with db.savepoint(rollback="always"):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
             _update(db)
             res = db.run_query(

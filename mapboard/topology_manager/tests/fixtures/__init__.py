@@ -41,5 +41,5 @@ def db(base_db):
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
 
-    with base_db.transaction(rollback=True):
+    with base_db.transaction(rollback="always"):
         yield base_db
