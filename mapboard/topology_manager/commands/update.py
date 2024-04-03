@@ -22,13 +22,12 @@ def update(
 ):
     """Update the topology"""
 
-    if watch:
-        _start_watcher()
-        return
-
     db = get_database()
 
     _update(db, reset=reset, fill_holes=fill_holes, fix_failed=fix_failed)
+
+    if watch:
+        _start_watcher()
 
 
 def _update(

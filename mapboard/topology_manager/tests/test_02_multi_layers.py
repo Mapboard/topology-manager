@@ -1,95 +1,49 @@
-from geoalchemy2.shape import from_shape
 from pytest import mark
 
-# Encode shapely geometries as WKB for Postgres inserts
-from shapely.geometry import LineString, Point, Polygon
-
 from ..commands.update import _update
-
-
-def insert_line(db, coords, type, srid=32612):
-    db.run_query(
-        "INSERT INTO test_map_data.linework (type, geometry) VALUES (:type, :geom)",
-        {
-            "type": type,
-            "geom": str(
-                from_shape(
-                    LineString(coords),
-                    srid=srid,
-                    extended=True,
-                )
-            ),
-        },
-    )
-
-
-def insert_polygon(db, coords, type, srid=32612):
-    db.run_query(
-        "INSERT INTO test_map_data.polygon (type, geometry) VALUES (:type, :geom)",
-        {
-            "type": type,
-            "geom": str(
-                from_shape(
-                    Polygon((coords)),
-                    srid=srid,
-                    extended=True,
-                )
-            ),
-        },
-    )
-
-
-def square(size, center=(0, 0)):
-    x, y = center
-    half = size / 2
-    return [
-        (x - half, y - half),
-        (x + half, y - half),
-        (x + half, y + half),
-        (x - half, y + half),
-        (x - half, y - half),
-    ]
-
-
-def point(x, y):
-    return str(from_shape(Point(x, y), srid=32612, extended=True))
-
-
-def n_faces(db):
-    return db.run_query("SELECT count(*) FROM test_topology.map_face").scalar()
+from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square
 
 
 class TestMultiLayers:
     def test_multi_layers(self, db):
         """Insert two overlapping squares that belong to different sub-topologies"""
+        # Check if map layer is integer
+        bedrock_id = map_layer_id(db, "bedrock")
+        surficial_id = map_layer_id(db, "surficial")
 
         # Insert a square
-        insert_line(db, square(6, center=(3, 3)), "bedrock")
+        insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=bedrock_id)
 
         # Insert a smaller square with the surficial type
-        insert_line(db, square(2, center=(3, 3)), "surficial")
+        insert_line(
+            db, square(2, center=(3, 3)), type="surficial", map_layer=surficial_id
+        )
 
         # Add identifying units
-        insert_polygon(db, square(1, center=(3, 3)), "upper-omkyk")
+        insert_polygon(
+            db, square(1, center=(3, 3)), type="upper-omkyk", map_layer=bedrock_id
+        )
 
-        insert_polygon(db, square(1, center=(3, 3)), "terrace")
+        insert_polygon(
+            db, square(1, center=(3, 3)), type="terrace", map_layer=surficial_id
+        )
 
         # Solve the topology
         _update(db)
 
         # Check that we have two map faces at the center
-        res = db.run_query(
-            "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
-            dict(geom=point(3, 3)),
-        ).fetchall()
+        res = intersecting_faces(
+            db,
+            point(3, 3),
+        )
         assert len(res) == 2
         has_bedrock = False
         has_surficial = False
         for r in res:
-            if r.topology == "bedrock":
+            if r.map_layer == bedrock_id:
                 has_bedrock = True
                 assert r.area == 36.0
-            if r.topology == "surficial":
+            if r.map_layer == surficial_id:
                 has_surficial = True
                 assert r.area == 4.0
         assert has_bedrock
@@ -98,37 +52,44 @@ class TestMultiLayers:
     @mark.xfail(reason="Ordering issues")
     def test_remove_surficial(self, db):
         assert n_faces(db) == 2
-        with db.savepoint(rollback=True):
+        with db.savepoint(rollback="always"):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'surficial'")
             _update(db)
             res = db.run_query(
-                "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+                "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
             ).fetchall()
 
             assert len(res) == 1
-            assert res[0].topology == "bedrock"
+            assert res[0].layer == "bedrock"
 
     def test_remove_bedrock(self, db):
         assert n_faces(db) == 2
 
         # This works with savepoints but not nested transactions
-        with db.savepoint(rollback=True):
+        with db.savepoint(rollback="always"):
             db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
             _update(db)
             res = db.run_query(
-                "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+                "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
             ).fetchall()
 
             assert len(res) == 1
-            assert res[0].topology == "surficial"
+            assert res[0].map_layer == map_layer_id(db, "surficial")
 
     def test_remove_bedrock_no_nested_transaction(self, db):
         assert n_faces(db) == 2
-        db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
+        db.run_query("DELETE FROM {data_schema}.linework WHERE type = 'bedrock'")
         _update(db)
         res = db.run_query(
-            "SELECT topology, ST_Area(geometry) area FROM test_topology.map_face"
+            "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
         ).fetchall()
 
         assert len(res) == 1
-        assert res[0].topology == "surficial"
+        assert res[0].map_layer == map_layer_id(db, "surficial")
+
+
+def intersecting_faces(db, geom):
+    return db.run_query(
+        "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
+        dict(geom=geom),
+    ).fetchall()

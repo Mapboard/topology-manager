@@ -1,7 +1,15 @@
-CREATE TABLE tmp_linework_type
-AS SELECT * FROM {data_schema}.linework_type
-WITH NO DATA;
+CREATE TABLE tmp_linework_type (
+    id text PRIMARY KEY,
+    name text,
+    color text,
+    layer text
+);
 
-CREATE TABLE tmp_polygon_type
-AS SELECT * FROM {data_schema}.polygon_type
-WITH NO DATA;
+CREATE TABLE tmp_polygon_type (
+    id text PRIMARY KEY,
+    name text,
+    color text,
+    symbol text,
+    symbol_color text,
+    layer text
+);

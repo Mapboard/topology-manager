@@ -76,10 +76,10 @@ BEGIN
   len := array_length(edge_id);
 
   IF len = 2 THEN
-    outnode := ST_ModEdgeHeal(  :topo_name ,edge_id[1], edge_id[2]);
+    outnode := ST_ModEdgeHeal(:topo_name ,edge_id[1], edge_id[2]);
     RETURN true;
   ELSIF len = 0 THEN
-    outnode := ST_RemIsoNode(  :topo_name , node_id);
+    outnode := ST_RemIsoNode(:topo_name , node_id);
     RETURN true;
   END IF;
   RETURN false;
@@ -95,7 +95,7 @@ $$
 DECLARE
 fid integer;
 BEGIN
-  RETURN ST_RemEdgeModFace(  :topo_name , eid);
+  RETURN ST_RemEdgeModFace(:topo_name , eid);
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;
   RAISE NOTICE 'Error message: %', SQLERRM;
@@ -107,7 +107,7 @@ LANGUAGE 'plpgsql';
 /*
 Get the map face that defines a polygon for a specific topology
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(in_face geometry, in_topology text)
+CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(face geometry, _map_layer integer)
 RETURNS text AS $$
 DECLARE result text;
 BEGIN
@@ -120,8 +120,11 @@ SELECT
 FROM {data_schema}.polygon p
 JOIN {data_schema}.polygon_type t
   ON p.type = t.id
-WHERE t.topology = in_topology
-  AND ST_Contains(in_face, p.geometry)
+JOIN {data_schema}.map_layer l
+  ON p.map_layer = l.id
+WHERE l.id = _map_layer
+  AND l.topological
+  AND ST_Contains(face, p.geometry)
 )
 -- Assign face that has the greatest area of polygons
 -- assigned to it within the feature
@@ -137,7 +140,7 @@ RETURN result;
 END
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION {topo_schema}.unitForFace(face_id integer, in_topology text)
+CREATE OR REPLACE FUNCTION {topo_schema}.unitForFace(face_id integer, map_layer integer)
 RETURNS text AS $$
 SELECT
   unit_id
@@ -147,10 +150,10 @@ JOIN {topo_schema}.map_face f
 WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
-  AND topology = $2;
+  AND f.map_layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION {topo_schema}.containing_face(face_id integer, in_topology text)
+CREATE OR REPLACE FUNCTION {topo_schema}.containing_face(face_id integer, map_layer integer)
 RETURNS {topo_schema}.map_face AS $$
 SELECT f.*
 FROM {topo_schema}.relation r
@@ -159,5 +162,5 @@ JOIN {topo_schema}.map_face f
 WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
-  AND topology = $2;
+  AND f.map_layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;

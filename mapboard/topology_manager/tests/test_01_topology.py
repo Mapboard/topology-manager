@@ -3,6 +3,7 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from ..commands.update import _update
+from .helpers import n_faces
 
 proc = Path(__file__).parent / "fixtures" / "procedures"
 
@@ -34,6 +35,7 @@ def insert_line(db, geometry, type="bedrock"):
         {
             "type": "bedrock",
             "table": Identifier("linework"),
+            "map_layer": "bedrock",
             "geometry": geometry,
         },
     ).one()
@@ -58,22 +60,27 @@ class TestTopology:
 
     def test_insert_polygon(self, db):
         """Insert a polygon identifying unit within the triangle"""
+        bedrock_id = db.run_query(
+            "SELECT id FROM {data_schema}.map_layer WHERE name = 'bedrock'"
+        ).scalar()
+
         res = db.run_query(
-            """INSERT INTO {data_schema}.polygon (type, geometry)
-            VALUES ('upper-omkyk', 'SRID=32612;POLYGON((2 0.5, 3 0.5, 3 1, 2 0.5))')
-            RETURNING id, type"""
+            """INSERT INTO {data_schema}.polygon (type, map_layer, geometry)
+            VALUES ('upper-omkyk', :map_layer, 'SRID=32612;POLYGON((2 0.5, 3 0.5, 3 1, 2 0.5))')
+            RETURNING id, type""",
+            dict(map_layer=bedrock_id),
         ).one()
         assert res.type == "upper-omkyk"
 
     def test_solve_topology(self, db):
         """Solve topology and check that we have a map face"""
         _update(db)
-        res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
-        assert len(res) == 1
+        assert n_faces(db) == 1
 
     def test_change_line_type(self, db):
-        """Change a line type to a non-topological type"""
-
+        """Change a line type and check that the map face is NOT removed
+        NOTE: No longer works because topology is now controlled by map layers.
+        """
         # Get the ID of the last inserted line
         id = db.run_query(
             "SELECT id FROM {data_schema}.linework ORDER BY id DESC LIMIT 1"
@@ -86,8 +93,29 @@ class TestTopology:
         assert len(res) == 1
 
         _update(db)
-        res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
-        assert len(res) == 0
+        assert n_faces(db) == 1
+
+    def test_change_line_layer(self, db):
+        """Change a line type and check that the map face is NOT removed
+        NOTE: No longer works because topology is now controlled by map layers.
+        """
+        # Get the ID of the last inserted line
+        id = db.run_query(
+            "SELECT id FROM {data_schema}.linework ORDER BY id DESC LIMIT 1"
+        ).scalar()
+
+        ml = db.run_query(
+            "SELECT id FROM {data_schema}.map_layer WHERE name = 'other'"
+        ).scalar()
+
+        res = db.run_query(
+            "UPDATE {data_schema}.linework SET type = 'anticline-hinge', map_layer = :map_layer WHERE id = :line_id RETURNING id",
+            {"line_id": id, "map_layer": ml},
+        ).fetchall()
+        assert len(res) == 1
+
+        _update(db)
+        assert n_faces(db) == 0
 
 
 def test_isolation(db):

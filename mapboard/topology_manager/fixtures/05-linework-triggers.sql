@@ -5,16 +5,18 @@ to `map_topology.map_face`
 
 /* Util functions */
 
-CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(type_id text)
-RETURNS text AS $$
-SELECT topology
-FROM {data_schema}.linework_type
-WHERE id = type_id;
+/** Get the topology for a line */
+CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(_line {data_schema}.linework)
+RETURNS integer AS $$
+SELECT id
+FROM {data_schema}.map_layer l
+WHERE l.id = $1.map_layer
+  AND l.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(line {data_schema}.linework)
+CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(_line {data_schema}.linework)
 RETURNS uuid AS $$
-SELECT md5(ST_AsBinary(line.geometry))::uuid;
+SELECT md5(ST_AsBinary(_line.geometry))::uuid;
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
@@ -43,9 +45,9 @@ CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
 RETURNS void AS $$
 DECLARE
   __faces integer[];
-  __topology text;
+  __topology integer;
 BEGIN
-  __topology := {topo_schema}.line_topology(line.type);
+  __topology := {topo_schema}.line_topology(line);
 
   IF (line.topo IS null OR __topology IS null) THEN
     RETURN;
@@ -71,7 +73,7 @@ BEGIN
   INTO __faces
   FROM faces1;
 
-  INSERT INTO {topo_schema}.__dirty_face (id, topology)
+  INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
     __topology
@@ -85,7 +87,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.linework_changed()
 RETURNS trigger AS $$
 DECLARE
   __edges integer[];
-  __dest_topology text;
+  __dest_topology integer;
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
@@ -96,7 +98,7 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__dest_topology := {topo_schema}.line_topology(NEW.type);
+__dest_topology := {topo_schema}.line_topology(NEW);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
@@ -139,7 +141,7 @@ IF (
      if it doesn't we'll have to reset
   */
   (OLD.topo).id = (NEW.topo).id AND
-  {topo_schema}.line_topology(OLD.type) = __dest_topology
+  {topo_schema}.line_topology(OLD) = __dest_topology
 ) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;
@@ -157,14 +159,14 @@ WHERE line_id IN (OLD.id)
 
 /* Add new objects into linework tracker */
 INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, topology, line_id, type)
+  (edge_id, map_layer, line_id, type)
 VALUES (
   unnest(__edges),
   __dest_topology,
   NEW.id,
   NEW.type
 )
-ON CONFLICT (edge_id, topology) DO UPDATE SET
+ON CONFLICT (edge_id, map_layer) DO UPDATE SET
   line_id = NEW.id,
   type = NEW.type;
 
@@ -189,8 +191,7 @@ $$ LANGUAGE plpgsql;
 /*
 Function to update topogeometry of linework
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.update_linework_topo(
-  line {data_schema}.linework)
+CREATE OR REPLACE FUNCTION {topo_schema}.update_linework_topo(line {data_schema}.linework)
 RETURNS text AS
 $$
 BEGIN
@@ -204,9 +205,11 @@ BEGIN
     UPDATE {data_schema}.linework l
     SET
       topo = topology.toTopoGeom(
-        line.geometry,   :topo_name ,
+        line.geometry,
+        :topo_name,
         {topo_schema}.__linework_layer_id(),
-        {topo_schema}.__topo_precision()),
+        {topo_schema}.__topo_precision()
+      ),
       geometry_hash = {topo_schema}.hash_geometry(l),
       topology_error = null
     WHERE l.id = line.id;
