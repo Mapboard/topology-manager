@@ -20,7 +20,7 @@ The most important elements of this tool are its
 CLI largely wrap these elements.
 
 This tool is similar to Luca Penasa's [Mappy](https://github.com/europlanet-gmap/mappy) QGIS plugin.
-However, it is limited to the PostGIS platform and focuses on iterative use and speed
+However, it relies heavily on the PostGIS spatial database system and focuses on iterative use and speed
 with large datasets.
 
 ## Interfaces
@@ -39,8 +39,8 @@ surficial units) and line types.
 
 ### Python module
 
-In version 4, we inagurated a new Python-based design that creates a
-`mapboard.topology_manager` module. This module is in an early phase, but it
+In version 4, we inagurated a new Python-based design, with a
+`mapboard.topology_manager` module for library use. This module is in an early phase, but it
 will eventually be released on PyPI. For now, it underpins the command-line
 interface and the watcher process.
 
@@ -138,7 +138,7 @@ software around it needs much improvement.
 
 - [ ] Improve documentation and onboarding process.
 - [ ] Improve configurability and stability of Docker version
-- [ ] Move `map_topology.subtopology` table to `map_digitizer` schema (it
-      currently breaks rule of no dependencies between the schemas).
-- [ ] Stabilize and document vector-tile generation functionality.
-- [ ] TESTS!
+- [x] ~~Move `map_topology.subtopology` table to `map_digitizer` schema (it
+      currently breaks rule of no dependencies between the schemas).~~ This is now outmoded by the `mapboard.map_layer` construct.
+- [x] ~~Stabilize and document vector-tile generation functionality.~~ Vector tile creation has been moved out of this library.
+- [x] TESTS!
