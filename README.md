@@ -12,9 +12,9 @@ app. This application drives the topology management in the app's
 core part of the in-development
 [**Mapboard Platform**](https://github.com/Mapboard/Mapboard-Platform) server
 application. Version 4 was rewritten in Python to support easier integration
-with other GIS applications, such as Macrostrat's map database.
+with other GIS applications, such as [Macrostrat's map platform](https://github.com/UW-Macrostrat/macrostrat).
 
-The most important part of this tool are its
+The most important elements of this tool are its
 [database models](mapboard/topology_manager/fixtures/) and
 [procedural SQL](mapboard/topology_manager/procedures/). The Python module and
 CLI largely wrap these elements.
