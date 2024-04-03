@@ -1,7 +1,6 @@
 # Mapboard topology manager
 
-This project a set of PostgreSQL/PostGIS schema definitions and procedures that
-enable the iterative solving of linework for a geologic map. These procedures
+This project a set of PostgreSQL/PostGIS schema definitions and procedures to iteratively solve the linework for a geologic map. These procedures
 are wrapped in a high-level Python module that allows the topology to be managed
 programmatically, using a command-line interface, or a "watcher" process.
 
