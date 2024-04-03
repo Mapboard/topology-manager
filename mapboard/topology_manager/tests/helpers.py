@@ -62,3 +62,10 @@ def map_layer_id(db, name: str):
         "SELECT id FROM {data_schema}.map_layer WHERE name = :name",
         {"name": name},
     ).scalar()
+
+
+def intersecting_faces(db, geom):
+    return db.run_query(
+        "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
+        dict(geom=geom),
+    ).fetchall()

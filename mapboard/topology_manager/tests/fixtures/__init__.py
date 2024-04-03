@@ -41,5 +41,6 @@ def db(base_db):
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
 
+    base_db.automap(schemas=["test_map_data"])
     with base_db.transaction(rollback="always"):
         yield base_db

@@ -1,7 +1,15 @@
 from pytest import mark
 
 from ..commands.update import _update
-from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square
+from .helpers import (
+    insert_line,
+    insert_polygon,
+    intersecting_faces,
+    map_layer_id,
+    n_faces,
+    point,
+    square,
+)
 
 
 class TestMultiLayers:
@@ -86,10 +94,3 @@ class TestMultiLayers:
 
         assert len(res) == 1
         assert res[0].map_layer == map_layer_id(db, "surficial")
-
-
-def intersecting_faces(db, geom):
-    return db.run_query(
-        "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
-        dict(geom=geom),
-    ).fetchall()
