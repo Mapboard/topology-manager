@@ -1,7 +1,7 @@
 from pytest import mark
 from shapely.geometry import LineString
 
-from ..commands.update import _update
+from ..commands.update import _update, _update_contacts
 from .helpers import (
     insert_line,
     insert_polygon,
@@ -154,7 +154,7 @@ class TestNestedLayers:
             map_layer=map_layer_id(db, "bedrock"),
         )
 
-        _update(db)
+        _update_contacts(db)
 
         # Two nodes
         n_nodes = db.run_query("SELECT count(*) FROM {topo_schema}.node").scalar()
@@ -179,8 +179,31 @@ class TestNestedLayers:
             == 2
         )
 
-    @mark.xfail(reason="Not yet implemented")
     def test_correct_face_count(self, db):
+
+        # Check that we have three potential faces in the __dirty_face table
+        res = dirty_faces(db)
+        assert len(res) == 2
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 2
+
+        _update(db)
+
+        res = adjacent_faces(db, "Tectonic Block")
+        assert len(res) == 2
+        for r0 in res:
+            assert r0.face_id != 0
+            assert 0 not in r0.adjacent
+            assert len(r0.adjacent) == 2
+
+        # Ensure that faces aren't marked as adjacent to the global face
+
+        res = adjacent_faces(db, "bedrock")
+        v1 = [r.face_id for r in res]
+        assert len(res) == 2
+        for r0 in res:
+            assert r0.face_id != 0
+            assert r0.face_id in v1
+            assert r0.adjacent is None
 
         # Get all faces
         res = db.run_query(
@@ -188,12 +211,27 @@ class TestNestedLayers:
         ).fetchall()
         assert len(res) == 3
 
+        assert len(dirty_faces(db)) == 0
+
         # Check that we have two map faces in one location
         res = intersecting_faces(
             db,
             point(2, 3),
         )
         assert len(res) == 2
+
+
+def dirty_faces(db):
+    return db.run_query(
+        "SELECT * FROM {topo_schema}.__dirty_face",
+    ).fetchall()
+
+
+def adjacent_faces(db, map_layer):
+    return db.run_query(
+        "SELECT face_id, {topo_schema}.adjacent_faces(face_id, :map_layer) adjacent FROM {topo_schema}.face WHERE face_id != 0",
+        dict(map_layer=map_layer_id(db, map_layer)),
+    ).fetchall()
 
 
 @mark.parametrize("topological", [False, True])
@@ -234,11 +272,18 @@ def test_layer_with_child(
     res = db.run_query(
         "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face"
     ).fetchall()
-    assert len(res) == 1
+    if topological:
+        expected_faces = 2
+        assert res[0].area == res[1].area
+    else:
+        expected_faces = 1
+        assert res[0].map_layer == map_layer_id(db, "Layer with child")
+
+    assert len(res) == expected_faces
 
     # Check that we have no map faces at the center
     res = intersecting_faces(
         db,
         point(2, 3),
     )
-    assert len(res) == 1
+    assert len(res) == expected_faces

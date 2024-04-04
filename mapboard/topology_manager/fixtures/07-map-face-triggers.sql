@@ -48,10 +48,10 @@ SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, face_id))
 FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = edge.edge_id
- AND NOT er.is_child
 WHERE (edge.left_face = face_id OR edge.right_face = face_id)
   AND edge.left_face != edge.right_face
   AND er.map_layer IS DISTINCT FROM _map_layer
+  AND NOT EXISTS (SELECT edge_id FROM {topo_schema}.__edge_relation WHERE edge_id = edge.edge_id AND is_child)
 UNION
 SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
   r1.faces || {topo_schema}.opposite_face(edge, r1.adjacent) faces,
@@ -60,13 +60,13 @@ SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
 FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = edge.edge_id
- AND NOT er.is_child
 JOIN r r1
   ON (r1.adjacent = edge.left_face OR r1.adjacent = edge.right_face)
 WHERE edge.left_face != edge.right_face
   AND NOT cycle
   AND NOT r1.adjacent = 0
   AND er.map_layer IS DISTINCT FROM _map_layer
+  AND NOT EXISTS (SELECT edge_id FROM {topo_schema}.__edge_relation WHERE edge_id = edge.edge_id AND is_child)
 ), b AS (
 SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 )
@@ -115,12 +115,12 @@ IF (__face.id = 0) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
   WHERE df.map_layer = __face.map_layer
-    AND id = 0;
+    AND df.id = 0;
   RETURN __face;
 END IF;
 
 /* First, get the adjoining faces */
-__dissolved_faces := {topo_schema}.adjacent_faces(__face.id,__face.map_layer);
+__dissolved_faces := {topo_schema}.adjacent_faces(__face.id, __face.map_layer);
 RAISE NOTICE 'Dissolved faces: %', __dissolved_faces;
 
 -- Special case when adjoining global face
@@ -158,7 +158,7 @@ END IF;
 
 --- Create a new topogeometry covering the whole area
 WITH a AS (
-  SELECT ARRAY[unnest(__dissolved_faces),3] vals
+  SELECT ARRAY[unnest(__dissolved_faces), 3] vals
 )
 SELECT array_agg(a.vals)
 INTO __topo_elements
@@ -166,7 +166,7 @@ FROM a;
 
 __topo := topology.CreateTopoGeom(:topo_name , 3, __topo_layer_id, __topo_elements);
 
-__geometry := ST_SetSRID(__topo::geometry,__srid);
+__geometry := ST_SetSRID(__topo::geometry, __srid);
 
 DELETE FROM {topo_schema}.map_face mf
 WHERE id IN (
