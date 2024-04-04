@@ -1,7 +1,7 @@
 from pytest import mark
 from shapely.geometry import LineString
 
-from ..commands.update import _update
+from ..commands.update import _update, _update_contacts
 from .helpers import (
     insert_line,
     insert_polygon,
@@ -107,34 +107,183 @@ class TestNestedLayers:
             assert res[1][0] == map_layer_id(db, "Tectonic Block")
             assert res[2][0] == map_layer_id(db, "Map Region")
 
-    def test_multi_layers_faces(self, db):
+    def test_insert_child_layers(self, db):
+        # Insert a square in the bedrock layer
+        # Truncate linework table
+        db.run_query("TRUNCATE {data_schema}.linework CASCADE")
 
-        tectonic_block_id = map_layer_id(db, "Tectonic Block")
-        bedrock_id = map_layer_id(db, "bedrock")
-
-        print(tectonic_block_id, bedrock_id)
-
-        # Insert a square in the parent layer
         insert_line(
-            db, square(6, center=(3, 3)), type="bedrock", map_layer=tectonic_block_id
+            db,
+            square(6, center=(3, 3)),
+            type="bedrock",
+            map_layer=map_layer_id(db, "Tectonic Block"),
         )
 
-        # Insert a bisecting line in the child layer
-        insert_line(
-            db, LineString(((3, 0), (3, 6))), type="bedrock", map_layer=bedrock_id
-        )
         # Solve the topology
         _update(db)
+
+        n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
+        assert n_edges == 1
+
+        # Check that the proper record has been added to the __edge_relation table
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.__edge_relation",
+        ).fetchall()
+        assert len(res) == 2
+        # The tectonic block layer should have:
+        # - Two edges for the outer part of the square
+        assert (
+            len([r for r in res if r.map_layer == map_layer_id(db, "Tectonic Block")])
+            == 1
+        )
+
+    def test_insert_child_layers_with_bisecting_line(self, db):
+        """
+        Insert a bisecting line in the child layer, starting
+        at the geometry wrap point of the enclosing square
+        for the absolute minimum number of nodes (2) and edges (3)
+         ____.
+        |   /|
+        | /  |
+        .____|
+        """
+        insert_line(
+            db,
+            LineString(((0, 0), (6, 6))),
+            type="bedrock",
+            map_layer=map_layer_id(db, "bedrock"),
+        )
+
+        _update_contacts(db)
+
+        # Two nodes
+        n_nodes = db.run_query("SELECT count(*) FROM {topo_schema}.node").scalar()
+        assert n_nodes == 2
+
+        # We should now have three edges
+        n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
+        assert n_edges == 3
+
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.__edge_relation",
+        ).fetchall()
+        # The bedrock layer should have:
+        # - Two edges inherited from the parent layer
+        # - One edge from the bisecting line
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 3
+
+        # The tectonic block layer should have:
+        # - Two edges for the outer part of the square
+        assert (
+            len([r for r in res if r.map_layer == map_layer_id(db, "Tectonic Block")])
+            == 2
+        )
+
+    def test_correct_face_count(self, db):
+
+        # Check that we have three potential faces in the __dirty_face table
+        res = dirty_faces(db)
+        assert len(res) == 2
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 2
+
+        _update(db)
+
+        res = adjacent_faces(db, "Tectonic Block")
+        assert len(res) == 2
+        for r0 in res:
+            assert r0.face_id != 0
+            assert 0 not in r0.adjacent
+            assert len(r0.adjacent) == 2
+
+        # Ensure that faces aren't marked as adjacent to the global face
+
+        res = adjacent_faces(db, "bedrock")
+        v1 = [r.face_id for r in res]
+        assert len(res) == 2
+        for r0 in res:
+            assert r0.face_id != 0
+            assert r0.face_id in v1
+            assert r0.adjacent is None
 
         # Get all faces
         res = db.run_query(
             "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face"
         ).fetchall()
-        assert len(res) == 1
+        assert len(res) == 3
 
-        # Check that we have no map faces at the center
+        assert len(dirty_faces(db)) == 0
+
+        # Check that we have two map faces in one location
         res = intersecting_faces(
             db,
             point(2, 3),
         )
-        assert len(res) == 1
+        assert len(res) == 2
+
+
+def dirty_faces(db):
+    return db.run_query(
+        "SELECT * FROM {topo_schema}.__dirty_face",
+    ).fetchall()
+
+
+def adjacent_faces(db, map_layer):
+    return db.run_query(
+        "SELECT face_id, {topo_schema}.adjacent_faces(face_id, :map_layer) adjacent FROM {topo_schema}.face WHERE face_id != 0",
+        dict(map_layer=map_layer_id(db, map_layer)),
+    ).fetchall()
+
+
+@mark.parametrize("topological", [False, True])
+def test_layer_with_child(
+    db,
+    topological,
+):
+    """Test that faces are created for a layer with a child layer."""
+    MapLayer = db.model.test_map_data_map_layer
+
+    lyr = MapLayer(name="Layer with child", topological=True, parent=None)
+    db.session.add(lyr)
+    db.session.commit()
+
+    lyr1 = MapLayer(name="Child layer", topological=topological, parent=lyr.id)
+
+    db.session.add(lyr1)
+    db.session.commit()
+
+    # Insert a square in the parent layer
+    insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=lyr.id)
+
+    # Insert a bisecting line in the child layer
+    # insert_line(
+    #     db, LineString(((3, 0), (3, 6))), type="bedrock", map_layer=bedrock_id
+    # )
+    # Solve the topology
+    _update(db)
+
+    # Check that the proper record has been added to the __edge_relation table
+    res = db.run_query(
+        "SELECT * FROM {topo_schema}.__edge_relation WHERE map_layer = :parent",
+        dict(parent=map_layer_id(db, "Layer with child")),
+    ).fetchall()
+    assert len(res) == 1
+
+    # Get all faces
+    res = db.run_query(
+        "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face"
+    ).fetchall()
+    if topological:
+        expected_faces = 2
+        assert res[0].area == res[1].area
+    else:
+        expected_faces = 1
+        assert res[0].map_layer == map_layer_id(db, "Layer with child")
+
+    assert len(res) == expected_faces
+
+    # Check that we have no map faces at the center
+    res = intersecting_faces(
+        db,
+        point(2, 3),
+    )
+    assert len(res) == expected_faces
