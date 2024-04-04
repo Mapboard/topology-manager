@@ -42,15 +42,6 @@ class TestNestedLayers:
         ).scalar()
         assert _id == lyr.id
 
-    def test_find_parent(self, db):
-        res = db.run_query(
-            "SELECT * FROM {topo_schema}.parent_map_layers(:id)",
-            dict(id=map_layer_id(db, "bedrock")),
-        ).fetchall()
-        assert len(res) == 2
-        assert res[0][0] == map_layer_id(db, "bedrock")
-        assert res[1][0] == map_layer_id(db, "Tectonic Block")
-
     def test_create_non_topological_layer(self, db):
         # Create a new "Tectonic Block" map layer
         MapLayer = db.model.test_map_data_map_layer
@@ -100,6 +91,22 @@ class TestNestedLayers:
             assert len(res) == 3
             assert res[2][0] == map_layer_id(db, "bedrock")
 
+    @mark.parametrize("topological", [True, False])
+    def test_find_parent(self, db, topological):
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.parent_map_layers(:id, :topological)",
+            dict(id=map_layer_id(db, "bedrock"), topological=topological),
+        ).fetchall()
+        if topological:
+            assert len(res) == 2
+            assert res[0][0] == map_layer_id(db, "bedrock")
+            assert res[1][0] == map_layer_id(db, "Tectonic Block")
+        else:
+            assert len(res) == 3
+            assert res[0][0] == map_layer_id(db, "bedrock")
+            assert res[1][0] == map_layer_id(db, "Tectonic Block")
+            assert res[2][0] == map_layer_id(db, "Map Region")
+
     def test_multi_layers_faces(self, db):
 
         tectonic_block_id = map_layer_id(db, "Tectonic Block")
@@ -118,6 +125,12 @@ class TestNestedLayers:
         )
         # Solve the topology
         _update(db)
+
+        # Get all faces
+        res = db.run_query(
+            "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face"
+        ).fetchall()
+        assert len(res) == 1
 
         # Check that we have no map faces at the center
         res = intersecting_faces(
