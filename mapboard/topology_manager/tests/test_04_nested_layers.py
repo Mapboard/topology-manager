@@ -42,6 +42,41 @@ class TestNestedLayers:
         ).scalar()
         assert _id == lyr.id
 
+    def test_find_parent(self, db):
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.parent_map_layers(:id)",
+            dict(id=map_layer_id(db, "bedrock")),
+        ).fetchall()
+        assert len(res) == 2
+        assert res[0][0] == map_layer_id(db, "bedrock")
+        assert res[1][0] == map_layer_id(db, "Tectonic Block")
+
+    def test_create_non_topological_layer(self, db):
+        # Create a new "Tectonic Block" map layer
+        MapLayer = db.model.test_map_data_map_layer
+        lyr = MapLayer(name="Map Region", topological=False, parent=None)
+        db.session.add(lyr)
+        db.session.commit()
+
+        tectonic_block = (
+            db.session.query(MapLayer).filter_by(name="Tectonic Block").one()
+        )
+        tectonic_block.parent = lyr.id
+        db.session.add(tectonic_block)
+        db.session.commit()
+
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.parent_map_layers(:id)",
+            dict(id=map_layer_id(db, "bedrock")),
+        ).fetchall()
+        assert len(res) == 2
+
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.parent_map_layers(:id, false)",
+            dict(id=map_layer_id(db, "bedrock")),
+        ).fetchall()
+        assert len(res) == 3
+
     def test_multi_layers_faces(self, db):
 
         tectonic_block_id = map_layer_id(db, "Tectonic Block")

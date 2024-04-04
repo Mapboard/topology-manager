@@ -164,3 +164,27 @@ WHERE element_id = $1
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
   AND f.map_layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION {topo_schema}.parent_map_layers(
+  _map_layer integer,
+  _topological boolean DEFAULT true
+)
+RETURNS setof integer AS $$
+WITH RECURSIVE r AS (
+SELECT
+  id,
+  parent
+FROM {data_schema}.map_layer
+WHERE id = _map_layer
+  AND CASE WHEN _topological THEN topological ELSE true END
+UNION
+SELECT
+  ml.id,
+  ml.parent
+FROM {data_schema}.map_layer ml
+JOIN r
+  ON ml.id = r.parent
+  AND CASE WHEN _topological THEN ml.topological ELSE true END
+)
+SELECT id FROM r;
+$$ LANGUAGE SQL IMMUTABLE;
