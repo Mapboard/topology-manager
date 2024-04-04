@@ -107,6 +107,94 @@ class TestNestedLayers:
             assert res[1][0] == map_layer_id(db, "Tectonic Block")
             assert res[2][0] == map_layer_id(db, "Map Region")
 
+    def test_insert_child_layers(self, db):
+        # Insert a square in the bedrock layer
+        # Truncate linework table
+        db.run_query("TRUNCATE {data_schema}.linework CASCADE")
+
+        insert_line(
+            db,
+            square(6, center=(3, 3)),
+            type="bedrock",
+            map_layer=map_layer_id(db, "Tectonic Block"),
+        )
+
+        # Solve the topology
+        _update(db)
+
+        n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
+        assert n_edges == 1
+
+        # Check that the proper record has been added to the __edge_relation table
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.__edge_relation",
+        ).fetchall()
+        assert len(res) == 2
+        # The tectonic block layer should have:
+        # - Two edges for the outer part of the square
+        assert (
+            len([r for r in res if r.map_layer == map_layer_id(db, "Tectonic Block")])
+            == 1
+        )
+
+    def test_insert_child_layers_with_bisecting_line(self, db):
+        """
+        Insert a bisecting line in the child layer, starting
+        at the geometry wrap point of the enclosing square
+        for the absolute minimum number of nodes (2) and edges (3)
+         ____.
+        |   /|
+        | /  |
+        .____|
+        """
+        insert_line(
+            db,
+            LineString(((0, 0), (6, 6))),
+            type="bedrock",
+            map_layer=map_layer_id(db, "bedrock"),
+        )
+
+        _update(db)
+
+        # Two nodes
+        n_nodes = db.run_query("SELECT count(*) FROM {topo_schema}.node").scalar()
+        assert n_nodes == 2
+
+        # We should now have three edges
+        n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
+        assert n_edges == 3
+
+        res = db.run_query(
+            "SELECT * FROM {topo_schema}.__edge_relation",
+        ).fetchall()
+        # The bedrock layer should have:
+        # - Two edges inherited from the parent layer
+        # - One edge from the bisecting line
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 3
+
+        # The tectonic block layer should have:
+        # - Two edges for the outer part of the square
+        assert (
+            len([r for r in res if r.map_layer == map_layer_id(db, "Tectonic Block")])
+            == 2
+        )
+
+    @mark.xfail(reason="Not yet implemented")
+    def test_correct_face_count(self, db):
+
+        # Get all faces
+        res = db.run_query(
+            "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face"
+        ).fetchall()
+        assert len(res) == 3
+
+        # Check that we have two map faces in one location
+        res = intersecting_faces(
+            db,
+            point(2, 3),
+        )
+        assert len(res) == 2
+
 
 @mark.parametrize("topological", [False, True])
 def test_layer_with_child(
