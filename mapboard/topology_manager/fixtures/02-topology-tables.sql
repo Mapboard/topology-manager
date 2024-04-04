@@ -67,10 +67,6 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
   edge_id integer REFERENCES {topo_schema}.edge_data ON DELETE CASCADE,
   map_layer integer REFERENCES {data_schema}.map_layer ON DELETE CASCADE,
   line_id integer REFERENCES {data_schema}.linework ON DELETE CASCADE,
-  "type" text
-      REFERENCES {data_schema}.linework_type
-      ON UPDATE CASCADE
-      ON DELETE SET NULL,
   PRIMARY KEY(edge_id, map_layer)
 );
 

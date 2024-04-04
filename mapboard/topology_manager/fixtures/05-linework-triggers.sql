@@ -159,16 +159,10 @@ WHERE line_id IN (OLD.id)
 
 /* Add new objects into linework tracker */
 INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, map_layer, line_id, type)
-VALUES (
-  unnest(__edges),
-  __dest_topology,
-  NEW.id,
-  NEW.type
-)
+  (edge_id, map_layer, line_id)
+SELECT unnest(__edges), __dest_topology, NEW.id
 ON CONFLICT (edge_id, map_layer) DO UPDATE SET
-  line_id = NEW.id,
-  type = NEW.type;
+  line_id = NEW.id;
 
 /* This is probably where we should update map faces for referential
    integrity

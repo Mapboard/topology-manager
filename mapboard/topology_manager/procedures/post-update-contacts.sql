@@ -4,8 +4,6 @@ what contact it is associated with.
 
 The trigger *should* keep integrity but we can just be safe
 */
-
-INSERT INTO {topo_schema}.__edge_relation (edge_id, map_layer, line_id, type)
 WITH line_data AS (
   SELECT
     l.id,
@@ -17,11 +15,11 @@ WITH line_data AS (
     ON l.type = t.id
   WHERE l.topo IS NOT null
 )
+INSERT INTO {topo_schema}.__edge_relation (edge_id, map_layer, line_id)
 SELECT
   (topology.GetTopoGeomElements(topo))[1] edge_id,
   l.map_layer,
-  l.id,
-  l.type
+  l.id
 FROM line_data l
 WHERE map_layer IS NOT null
 ON CONFLICT (edge_id, map_layer) DO NOTHING;
