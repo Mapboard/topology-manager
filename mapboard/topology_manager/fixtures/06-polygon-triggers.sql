@@ -1,5 +1,5 @@
 /** Get the topology for a polygon */
-CREATE OR REPLACE FUNCTION {topo_schema}.polygon_topology(_poly {data_schema}.polygon)
+CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_poly {data_schema}.polygon)
 RETURNS integer AS $$
 SELECT id
 FROM {data_schema}.map_layer l
@@ -22,13 +22,13 @@ BEGIN
 
 IF (TG_OP = 'DELETE') THEN
   affected_area := OLD.geometry;
-  __topology := {topo_schema}.polygon_topology(OLD);
+  __topology := {topo_schema}.get_topological_map_layer(OLD);
 ELSIF (TG_OP = 'INSERT') THEN
   affected_area := NEW.geometry;
-  __topology := {topo_schema}.polygon_topology(NEW);
+  __topology := {topo_schema}.get_topological_map_layer(NEW);
 ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
   affected_area := ST_Union(OLD.geometry, NEW.geometry);
-  __topology := {topo_schema}.polygon_topology(NEW);
+  __topology := {topo_schema}.get_topological_map_layer(NEW);
 END IF;
 
 -- TODO: there might be an issue with topology here...

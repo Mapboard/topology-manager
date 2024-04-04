@@ -10,7 +10,7 @@ WITH line_data AS (
   SELECT
     l.id,
     l.topo,
-    {topo_schema}.line_topology(l) map_layer,
+    {topo_schema}.get_topological_map_layer(l) map_layer,
     l.type
   FROM {data_schema}.linework l
   JOIN {data_schema}.linework_type t

@@ -25,12 +25,13 @@ class TestNestedLayers:
         bedrock = db.session.query(MapLayer).filter_by(name="bedrock").one()
 
         # Create a new "Tectonic Block" map layer
-        lyr = MapLayer(name="Tectonic Block")
+        lyr = MapLayer(name="Tectonic Block", topological=True, parent=None)
         db.session.add(lyr)
         db.session.commit()
 
         # Mark bedrock as a child of the tectonic block layer
         bedrock.parent = lyr.id
+        bedrock.topological = True
         db.session.add(bedrock)
         db.session.commit()
 
@@ -65,4 +66,4 @@ class TestNestedLayers:
             db,
             point(2, 3),
         )
-        assert len(res) == 2
+        assert len(res) == 1
