@@ -2,6 +2,7 @@ from pytest import mark
 
 from ..commands.update import _update
 from .helpers import (
+    add_linework_type_to_layer,
     insert_line,
     insert_polygon,
     intersecting_faces,
@@ -29,6 +30,8 @@ def test_new_layer(db):
     lyr = MapLayer(name="Test1", topological=True, parent=None)
     db.session.add(lyr)
     db.session.commit()
+
+    add_linework_type_to_layer(db, lyr.id, "bedrock")
 
     assert n_faces(db) == 0
 

@@ -3,6 +3,7 @@ from shapely.geometry import LineString
 
 from ..commands.update import _update, _update_contacts
 from .helpers import (
+    add_linework_type_to_layer,
     insert_line,
     insert_polygon,
     intersecting_faces,
@@ -112,6 +113,9 @@ class TestNestedLayers:
         # Truncate linework table
         db.run_query("TRUNCATE {data_schema}.linework CASCADE")
 
+        lyr_id = map_layer_id(db, "Tectonic Block")
+        add_linework_type_to_layer(db, lyr_id, "bedrock")
+
         insert_line(
             db,
             square(6, center=(3, 3)),
@@ -132,10 +136,7 @@ class TestNestedLayers:
         assert len(res) == 2
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
-        assert (
-            len([r for r in res if r.map_layer == map_layer_id(db, "Tectonic Block")])
-            == 1
-        )
+        assert len([r for r in res if r.map_layer == lyr_id]) == 1
 
     def test_insert_child_layers_with_bisecting_line(self, db):
         """
@@ -251,7 +252,8 @@ def test_layer_with_child(
     db.session.add(lyr1)
     db.session.commit()
 
-    # Insert a square in the parent layer
+    add_linework_type_to_layer(db, lyr.id, "bedrock")
+
     insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=lyr.id)
 
     # Insert a bisecting line in the child layer

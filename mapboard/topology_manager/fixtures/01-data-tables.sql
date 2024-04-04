@@ -41,23 +41,18 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon_type (
 
 /**
 Linking tables for the next stage of this
-
+*/
 CREATE TABLE IF NOT EXISTS {data_schema}.map_layer_linework_type (
-    layer text,
-    type text,
-    FOREIGN KEY (layer) REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
-    FOREIGN KEY (type) REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
-    PRIMARY KEY (layer, type)
+    map_layer integer REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
+    type text REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
+    PRIMARY KEY (map_layer, type)
 );
 
 CREATE TABLE IF NOT EXISTS {data_schema}.map_layer_polygon_type (
-    layer text,
-    type text,
-    FOREIGN KEY (layer) REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
-    FOREIGN KEY (type) REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
-    PRIMARY KEY (layer, type)
+    map_layer integer REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
+    type text REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
+    PRIMARY KEY (map_layer, type)
 );
-*/
 
 /* Skeletal table structure needed to support linework for the map */
 CREATE TABLE IF NOT EXISTS {data_schema}.linework (
@@ -66,8 +61,8 @@ CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   type          text NOT NULL REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
-  name          text
-  /* FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_linework_type(type, layer) ON UPDATE CASCADE */
+  name          text,
+  FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_linework_type(type, map_layer) ON UPDATE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
@@ -80,8 +75,8 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   type          text NOT NULL REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
-  name          text
-  --FOREIGN KEY (type, layer) REFERENCES {data_schema}.map_layer_polygon_type(type, layer) ON UPDATE CASCADE
+  name          text,
+  FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_polygon_type(type, map_layer) ON UPDATE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
