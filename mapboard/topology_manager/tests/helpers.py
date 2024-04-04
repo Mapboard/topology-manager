@@ -76,3 +76,10 @@ def add_linework_type_to_layer(db, layer_id, linework_type):
         "INSERT INTO {data_schema}.map_layer_linework_type (map_layer, type) VALUES (:map_layer, :type)",
         dict(map_layer=layer_id, type=linework_type),
     )
+
+
+def add_polygon_type_to_layer(db, layer_id, polygon_type):
+    db.run_query(
+        "INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, type) VALUES (:map_layer, :type)",
+        dict(map_layer=layer_id, type=polygon_type),
+    )

@@ -4,11 +4,11 @@ from shapely.geometry import LineString
 from ..commands.update import _update, _update_contacts
 from .helpers import (
     add_linework_type_to_layer,
+    add_polygon_type_to_layer,
     insert_line,
     insert_polygon,
     intersecting_faces,
     map_layer_id,
-    n_faces,
     point,
     square,
 )
@@ -220,6 +220,55 @@ class TestNestedLayers:
             point(2, 3),
         )
         assert len(res) == 2
+
+    def test_add_face_identity(self, db):
+        # Create a new polygon type
+        PolygonType = db.model.test_map_data_polygon_type
+        poly = PolygonType(name="Tectonic Block 1", id="tectonic-block-1")
+        db.session.add(poly)
+        db.session.commit()
+        lyr_id = map_layer_id(db, "Tectonic Block")
+        add_polygon_type_to_layer(db, lyr_id, "tectonic-block-1")
+
+        # Insert a polygon in the tectonic block layer
+        insert_polygon(
+            db,
+            square(1, center=(4.5, 2)),
+            type="tectonic-block-1",
+            map_layer=lyr_id,
+        )
+
+        child_id = map_layer_id(db, "bedrock")
+        # Insert a polygon in the bedrock layer
+        insert_polygon(
+            db,
+            square(1, center=(4.5, 2)),
+            type="lower-omkyk",
+            map_layer=child_id,
+        )
+
+        # Solve the topology
+        _update(db)
+
+        # Check that we have two identified map faces
+
+        res = db.run_query(
+            "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face WHERE unit_id = :unit_id",
+            dict(unit_id="tectonic-block-1"),
+        ).fetchall()
+
+        assert len(res) == 1
+        assert res[0].map_layer == lyr_id
+        assert res[0].area == 36.0
+
+        res = db.run_query(
+            "SELECT map_layer, ST_Area(geometry) area FROM {topo_schema}.map_face WHERE unit_id = :unit_id",
+            dict(unit_id="lower-omkyk"),
+        ).fetchall()
+
+        assert len(res) == 1
+        assert res[0].map_layer == child_id
+        assert res[0].area == 18.0
 
 
 def dirty_faces(db):
