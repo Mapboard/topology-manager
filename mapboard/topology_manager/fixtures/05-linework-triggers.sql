@@ -45,11 +45,8 @@ CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
 RETURNS void AS $$
 DECLARE
   __faces integer[];
-  __topology integer;
 BEGIN
-  __topology := {topo_schema}.get_topological_map_layer(line);
-
-  IF (line.topo IS null OR __topology IS null) THEN
+  IF (line.topo IS null) THEN
     RETURN;
   END IF;
 
@@ -73,10 +70,15 @@ BEGIN
   INTO __faces
   FROM faces1;
 
+  WITH ml AS (
+    SELECT {topo_schema}.child_map_layers(line.map_layer) id
+  )
   INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
-    __topology
+    ml.id
+  FROM ml
+  WHERE ml.id IS NOT NULL
   ON CONFLICT DO NOTHING;
 
   RAISE NOTICE 'Marking faces %', __faces;
