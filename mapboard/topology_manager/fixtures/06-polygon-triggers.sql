@@ -31,7 +31,10 @@ ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
   __topology := {topo_schema}.get_topological_map_layer(NEW);
 END IF;
 
--- TODO: there might be an issue with topology here...
+/** TODO: there might be an issue here because we
+seem to be filtering faces to update only based
+on the affected area, not also the map_layer being
+updated. */
 UPDATE {topo_schema}.map_face mf
 SET unit_id = {topo_schema}.unitForArea(geometry, mf.map_layer)
 WHERE ST_Intersects(affected_area, geometry);

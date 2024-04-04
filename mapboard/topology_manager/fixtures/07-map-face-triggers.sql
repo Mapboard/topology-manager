@@ -20,47 +20,48 @@ but this can be disabled for speed.
 Drastically simplified this view creation
 */
 
-CREATE OR REPLACE FUNCTION {topo_schema}.other_face(
-  e {topo_schema}.edge_data,
-  fid integer
+CREATE OR REPLACE FUNCTION {topo_schema}.opposite_face(
+  edge {topo_schema}.edge_data,
+  face_id integer
 )
 RETURNS integer
 AS $$
 SELECT CASE
-  WHEN e.left_face = fid THEN e.right_face
-  WHEN e.right_face = fid THEN e.left_face
+  WHEN edge.left_face = face_id THEN edge.right_face
+  WHEN edge.right_face = face_id THEN edge.left_face
   ELSE null
 END
 $$ LANGUAGE SQL IMMUTABLE;
 
+/** Get faces that can be dissolved into a given map layer */
 CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
-  fid integer,
+  face_id integer,
   _map_layer integer
 )
 RETURNS integer[]
 AS $$
-WITH RECURSIVE r(faces,adjacent,cycle) AS (
-SELECT DISTINCT ON ({topo_schema}.other_face(e,fid))
-  ARRAY[left_face,right_face] faces,
-  {topo_schema}.other_face(e,fid) adjacent,
+WITH RECURSIVE r(faces, adjacent, cycle) AS (
+SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, face_id))
+  ARRAY[left_face, right_face] faces,
+  {topo_schema}.opposite_face(edge, face_id) adjacent,
   false
-FROM {topo_schema}.edge_data e
+FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = e.edge_id
-WHERE (e.left_face = fid OR e.right_face = fid)
-  AND e.left_face != e.right_face
+  ON er.edge_id = edge.edge_id
+WHERE (edge.left_face = face_id OR edge.right_face = face_id)
+  AND edge.left_face != edge.right_face
   AND er.map_layer IS DISTINCT FROM _map_layer
 UNION
-SELECT DISTINCT ON ({topo_schema}.other_face(e,r1.adjacent))
-  r1.faces || {topo_schema}.other_face(e,r1.adjacent) faces,
-  {topo_schema}.other_face(e,r1.adjacent) adjacent,
-  ({topo_schema}.other_face(e,r1.adjacent) = ANY(r1.faces)) AS cycle
-FROM {topo_schema}.edge_data e
+SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
+  r1.faces || {topo_schema}.opposite_face(edge, r1.adjacent) faces,
+  {topo_schema}.opposite_face(edge, r1.adjacent) adjacent,
+  ({topo_schema}.opposite_face(edge, r1.adjacent) = ANY(r1.faces)) AS cycle
+FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = e.edge_id
+  ON er.edge_id = edge.edge_id
 JOIN r r1
-  ON (r1.adjacent = e.left_face OR r1.adjacent = e.right_face)
-WHERE e.left_face != e.right_face
+  ON (r1.adjacent = edge.left_face OR r1.adjacent = edge.right_face)
+WHERE edge.left_face != edge.right_face
   AND NOT cycle
   AND NOT r1.adjacent = 0
   AND er.map_layer IS DISTINCT FROM _map_layer
@@ -70,6 +71,9 @@ SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 SELECT array_agg(face) faces FROM b;
 $$ LANGUAGE SQL IMMUTABLE;
 
+/** This function controls the creation of map faces for
+all map layers when an edge is updated.
+*/
 CREATE OR REPLACE FUNCTION {topo_schema}.update_map_face()
 RETURNS {topo_schema}.__dirty_face AS $$
 DECLARE
@@ -81,7 +85,7 @@ DECLARE
   __dissolved_faces integer[];
   __is_global boolean;
   __deleted_face integer;
-  __layer_id integer;
+  __topo_layer_id integer;
   __n_updated integer;
   __srid integer;
 BEGIN
@@ -91,18 +95,20 @@ SELECT * INTO __face FROM {topo_schema}.__dirty_face LIMIT 1;
 SELECT srid
 INTO __srid
 FROM topology.topology
-WHERE name= :topo_name ;
+WHERE name= :topo_name;
 
 SELECT precision
 INTO __precision
 FROM topology.topology
-WHERE name = :topo_name ;
+WHERE name = :topo_name;
 
-__layer_id := {topo_schema}.__map_face_layer_id();
+/* Topogeometry ID for the map_face.topo column */
+__topo_layer_id := {topo_schema}.__map_face_layer_id();
 
 RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.map_layer;
 
--- Special case when adjacent to global face
+/* Special case when adjacent to global face...we just
+   remove the global face from the "dirty" table */
 IF (__face.id = 0) THEN
   DELETE
   FROM {topo_schema}.__dirty_face df
@@ -156,7 +162,7 @@ SELECT array_agg(a.vals)
 INTO __topo_elements
 FROM a;
 
-__topo := topology.CreateTopoGeom(:topo_name , 3, __layer_id, __topo_elements);
+__topo := topology.CreateTopoGeom(:topo_name , 3, __topo_layer_id, __topo_elements);
 
 __geometry := ST_SetSRID(__topo::geometry,__srid);
 
