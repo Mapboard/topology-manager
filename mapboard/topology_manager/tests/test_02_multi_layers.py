@@ -24,6 +24,25 @@ def test_topo_face_no_identifier(db):
     assert n_faces(db) == 1
 
 
+def test_new_layer(db):
+    MapLayer = db.model.test_map_data_map_layer
+    lyr = MapLayer(name="Test1", topological=True, parent=None)
+    db.session.add(lyr)
+    db.session.commit()
+
+    assert n_faces(db) == 0
+
+    """Test that a new layer can be added"""
+    insert_line(
+        db,
+        square(1, center=(1, 1)),
+        type="bedrock",
+        map_layer=lyr.id,
+    )
+    _update(db)
+    assert n_faces(db) == 1
+
+
 class TestMultiLayers:
     def test_multi_layers(self, db):
         """Insert two overlapping squares that belong to different sub-topologies"""

@@ -158,9 +158,13 @@ WHERE line_id IN (OLD.id)
   AND NOT(edge_id = ANY(__edges));
 
 /* Add new objects into linework tracker */
+WITH ml AS (
+  SELECT {topo_schema}.child_map_layers(__dest_topology) id
+)
 INSERT INTO {topo_schema}.__edge_relation
   (edge_id, map_layer, line_id)
-SELECT unnest(__edges), __dest_topology, NEW.id
+SELECT unnest(__edges), ml.id, NEW.id
+FROM ml
 ON CONFLICT (edge_id, map_layer) DO UPDATE SET
   line_id = NEW.id;
 

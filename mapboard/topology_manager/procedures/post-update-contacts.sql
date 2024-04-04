@@ -8,12 +8,13 @@ WITH line_data AS (
   SELECT
     l.id,
     l.topo,
-    {topo_schema}.get_topological_map_layer(l) map_layer,
+    {topo_schema}.child_map_layers(l.map_layer) map_layer,
     l.type
   FROM {data_schema}.linework l
   JOIN {data_schema}.linework_type t
     ON l.type = t.id
   WHERE l.topo IS NOT null
+    AND l.map_layer IS NOT null
 )
 INSERT INTO {topo_schema}.__edge_relation (edge_id, map_layer, line_id)
 SELECT
