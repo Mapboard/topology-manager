@@ -188,3 +188,27 @@ JOIN r
 )
 SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION {topo_schema}.child_map_layers(
+  _map_layer integer,
+  _topological boolean DEFAULT true
+)
+RETURNS setof integer AS $$
+WITH RECURSIVE r AS (
+SELECT
+  id,
+  parent
+FROM {data_schema}.map_layer
+WHERE id = _map_layer
+  AND CASE WHEN _topological THEN topological ELSE true END
+UNION
+SELECT
+  ml.id,
+  ml.parent
+FROM {data_schema}.map_layer ml
+JOIN r
+  ON ml.parent = r.id
+  AND CASE WHEN _topological THEN ml.topological ELSE true END
+)
+SELECT id FROM r;
+$$ LANGUAGE SQL IMMUTABLE;
