@@ -162,8 +162,8 @@ WITH ml AS (
   SELECT {topo_schema}.child_map_layers(__dest_topology) id
 )
 INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, map_layer, line_id)
-SELECT unnest(__edges), ml.id, NEW.id
+  (edge_id, map_layer, is_child, line_id)
+SELECT unnest(__edges), ml.id, __dest_topology != ml.id, NEW.id
 FROM ml
 ON CONFLICT (edge_id, map_layer) DO UPDATE SET
   line_id = NEW.id;
