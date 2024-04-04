@@ -12,6 +12,18 @@ from .helpers import (
 )
 
 
+def test_topo_face_no_identifier(db):
+    """Test that a face with no identifier is created"""
+    insert_line(
+        db,
+        square(1, center=(1, 1)),
+        type="bedrock",
+        map_layer=map_layer_id(db, "bedrock"),
+    )
+    _update(db)
+    assert n_faces(db) == 1
+
+
 class TestMultiLayers:
     def test_multi_layers(self, db):
         """Insert two overlapping squares that belong to different sub-topologies"""
