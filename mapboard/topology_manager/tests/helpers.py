@@ -69,3 +69,10 @@ def intersecting_faces(db, geom):
         "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
         dict(geom=geom),
     ).fetchall()
+
+
+def add_linework_type_to_layer(db, layer_id, linework_type):
+    db.run_query(
+        "INSERT INTO {data_schema}.map_layer_linework_type (map_layer, type) VALUES (:map_layer, :type)",
+        dict(map_layer=layer_id, type=linework_type),
+    )

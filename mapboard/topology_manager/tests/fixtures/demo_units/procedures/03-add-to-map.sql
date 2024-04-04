@@ -27,19 +27,19 @@ color = EXCLUDED.color;
 
 /**
 -- Linking tables for the next stage of this.
-
-INSERT INTO {data_schema}.map_layer_linework_type (layer, type)
-SELECT DISTINCT ON (layer, id)
-  layer, id
-FROM tmp_linework_type
-ON CONFLICT DO NOTHING;
-
-INSERT INTO {data_schema}.map_layer_polygon_type (layer, type)
-SELECT DISTINCT ON (layer, id)
-  layer, id
-FROM tmp_polygon_type
-ON CONFLICT DO NOTHING;
 */
+INSERT INTO {data_schema}.map_layer_linework_type (map_layer, type)
+SELECT ml.id, lt.id
+FROM {data_schema}.map_layer ml
+CROSS JOIN tmp_linework_type lt
+ON CONFLICT DO NOTHING;
+
+INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, type)
+SELECT ml.id, pt.id
+FROM {data_schema}.map_layer ml
+CROSS JOIN tmp_polygon_type pt
+ON CONFLICT DO NOTHING;
+
 
 DELETE FROM {data_schema}.linework_type
 WHERE id NOT IN (SELECT id FROM tmp_linework_type);
