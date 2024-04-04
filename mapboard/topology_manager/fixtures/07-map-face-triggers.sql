@@ -48,6 +48,7 @@ SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, face_id))
 FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = edge.edge_id
+ AND NOT er.is_child
 WHERE (edge.left_face = face_id OR edge.right_face = face_id)
   AND edge.left_face != edge.right_face
   AND er.map_layer IS DISTINCT FROM _map_layer
@@ -59,6 +60,7 @@ SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
 FROM {topo_schema}.edge_data edge
 LEFT JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = edge.edge_id
+ AND NOT er.is_child
 JOIN r r1
   ON (r1.adjacent = edge.left_face OR r1.adjacent = edge.right_face)
 WHERE edge.left_face != edge.right_face
