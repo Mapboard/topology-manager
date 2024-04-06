@@ -81,3 +81,34 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
   ON {data_schema}.polygon USING gist (geometry);
+
+/** A view to summarize the tree of map layers */
+CREATE OR REPLACE VIEW {data_schema}.map_layer_tree AS
+WITH RECURSIVE r AS (
+SELECT
+	id base,
+  id id_parent,
+  id id_child,
+  parent
+FROM {data_schema}.map_layer
+WHERE topological
+UNION
+SELECT
+	r.base,
+	ml.id,
+  ml1.id,
+  ml.parent
+FROM r
+JOIN {data_schema}.map_layer ml
+  ON ml.id = r.parent
+JOIN {data_schema}.map_layer ml1
+  ON ml1.parent = r.id_child
+-- WHERE ml1.topological
+--   AND ml.topological
+)
+SELECT
+	base map_layer,
+	array_agg(id_parent) with_parents,
+	array_agg(id_child) with_children
+FROM r
+GROUP BY base;
