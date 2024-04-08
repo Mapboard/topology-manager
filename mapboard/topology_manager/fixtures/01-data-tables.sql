@@ -84,31 +84,54 @@ CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
 
 /** A view to summarize the tree of map layers */
 CREATE OR REPLACE VIEW {data_schema}.map_layer_tree AS
-WITH RECURSIVE r AS (
+WITH RECURSIVE parents AS (
 SELECT
 	id base,
-  id id_parent,
-  id id_child,
+  id,
   parent
-FROM {data_schema}.map_layer
-WHERE topological
+FROM map_digitizer.map_layer
 UNION
 SELECT
-	r.base,
+	base,
 	ml.id,
-  ml1.id,
   ml.parent
-FROM r
-JOIN {data_schema}.map_layer ml
-  ON ml.id = r.parent
-JOIN {data_schema}.map_layer ml1
-  ON ml1.parent = r.id_child
--- WHERE ml1.topological
---   AND ml.topological
+FROM parents
+JOIN map_digitizer.map_layer ml
+  ON ml.id = parents.parent
+),
+children AS (
+SELECT
+	id base,
+  id,
+  parent
+FROM map_digitizer.map_layer
+UNION
+SELECT
+	base,
+	ml.id,
+  ml.parent
+FROM children
+JOIN map_digitizer.map_layer ml
+  ON ml.parent = children.id
+),
+p1 AS (
+SELECT
+	p.base map_layer,
+	array_agg(id) with_parents
+FROM parents p
+GROUP BY p.base
+),
+c1 AS (
+SELECT
+	c.base map_layer,
+	array_agg(id) with_children
+FROM children c
+GROUP BY c.base
 )
 SELECT
-	base map_layer,
-	array_agg(id_parent) with_parents,
-	array_agg(id_child) with_children
-FROM r
-GROUP BY base;
+	p1.map_layer,
+	p1.with_parents,
+	c1.with_children
+FROM p1
+JOIN c1
+  ON p1.map_layer = c1.map_layer
