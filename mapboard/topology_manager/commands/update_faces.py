@@ -29,6 +29,8 @@ def _update_faces(db, reset: bool = False, fill_holes: bool = False):
 
     if nfaces == 0:
         console.print("No faces to update")
+    else:
+        console.print(f"Updating {nfaces} faces...")
 
     with Progress() as progress:
         bar = progress.add_task("Updating faces", total=nfaces)

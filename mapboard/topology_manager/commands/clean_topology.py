@@ -1,3 +1,5 @@
+import re
+
 from ..database import get_database, sql
 from ..utilities import console
 
@@ -10,15 +12,46 @@ def clean_topology():
 def _delete_edges(db):
     db.proc("procedures/clean-topology-01")
 
+    dirty_topogeoms = []
+
     console.print("Deleting edges", style="header")
     res = db.run_query(sql("procedures/get-edges-to-delete"))
     for row in res:
         edge_id = row.edge_id
         console.print(f"Deleting edge {edge_id}", style="error")
-        db.run_sql(
-            sql("procedures/clean-topology-rem-edge"),
-            {"edge_id": edge_id},
-        )
+        try:
+            db.run_query(
+                sql("procedures/clean-topology-rem-edge"),
+                {"edge_id": edge_id},
+            )
+        except Exception as err:
+            msg = str(err)
+            if orig := getattr(err, "orig", None):
+                msg = str(orig)
+            regex = r"TopoGeom (\d+) in layer (\d+) \(([\w\.]+)\) cannot be represented dropping edge (\d+)"
+            match = re.match(regex, msg)
+            if match:
+                topo_geom, layer, table, edge = match.groups()
+                dirty_topogeoms.append([topo_geom, layer])
+
+    console.print(
+        f"Found {len(dirty_topogeoms)} dirty TopoGeoms",
+        style="error",
+    )
+    for topo_geom, layer in dirty_topogeoms:
+        try:
+            db.run_query(
+                """UPDATE {data_schema}.linework
+                SET topo = null, geometry_hash = null,
+                    topology_error = null
+                WHERE (topo).id = :topo_geom
+                  AND (topo).layer_id = :layer
+                """,
+                {"topo_geom": topo_geom, "layer": layer},
+            )
+        except Exception as err:
+            console.print(str(err), style="error")
+
     db.proc("procedures/clean-topology-02")
 
 
