@@ -89,14 +89,14 @@ SELECT
 	id base,
   id,
   parent
-FROM map_digitizer.map_layer
+FROM {data_schema}.map_layer
 UNION
 SELECT
 	base,
 	ml.id,
   ml.parent
 FROM parents
-JOIN map_digitizer.map_layer ml
+JOIN {data_schema}.map_layer ml
   ON ml.id = parents.parent
 ),
 children AS (
@@ -104,14 +104,14 @@ SELECT
 	id base,
   id,
   parent
-FROM map_digitizer.map_layer
+FROM {data_schema}.map_layer
 UNION
 SELECT
 	base,
 	ml.id,
   ml.parent
 FROM children
-JOIN map_digitizer.map_layer ml
+JOIN {data_schema}.map_layer ml
   ON ml.parent = children.id
 ),
 p1 AS (
