@@ -143,10 +143,10 @@ class TestNestedLayers:
         Insert a bisecting line in the child layer, starting
         at the geometry wrap point of the enclosing square
         for the absolute minimum number of nodes (2) and edges (3)
-         ____.
-        |   /|
-        | /  |
-        .____|
+         ___.
+        |  /|
+        | / |
+        ./__|
         """
         insert_line(
             db,
@@ -338,3 +338,111 @@ def test_layer_with_child(
         point(2, 3),
     )
     assert len(res) == expected_faces
+
+
+class TestNestedLayersDisconnected:
+    def test_insert_multi_layers(self, db):
+        """Insert two overlapping models that belong to nested layers"""
+        # Check if map layer is integer
+
+        # Wow, this is clunky. Maybe should update the Database module to
+        # create a new model storage class.
+        MapLayer = db.model.test_map_data_map_layer
+
+        bedrock = db.session.query(MapLayer).filter_by(name="bedrock").one()
+
+        # Create a new "Tectonic Block" map layer
+        lyr = MapLayer(name="Tectonic Block", topological=True, parent=None)
+        db.session.add(lyr)
+        db.session.commit()
+
+        # Mark bedrock as a child of the tectonic block layer
+        bedrock.parent = lyr.id
+        bedrock.topological = True
+        db.session.add(bedrock)
+        db.session.commit()
+
+        # Create a 'surficial' layer disconnected from the other layers
+        surficial = MapLayer(name="Surficial", topological=True, parent=None)
+        db.session.add(surficial)
+        db.session.commit()
+
+        # Check
+        _id = db.run_query(
+            "SELECT parent FROM {data_schema}.map_layer WHERE id = :id",
+            dict(id=bedrock.id),
+        ).scalar()
+        assert _id == lyr.id
+
+        # Check that the surficial layer has no parent
+        _id = db.run_query(
+            "SELECT parent FROM {data_schema}.map_layer WHERE id = :id",
+            dict(id=surficial.id),
+        ).scalar()
+        assert _id is None
+
+    def test_layer_tree(self, db):
+        res = db.run_query(
+            "SELECT * FROM {data_schema}.map_layer_tree WHERE map_layer = :id",
+            dict(id=map_layer_id(db, "bedrock")),
+        ).one()
+        assert len(res.with_parents) == 2
+        assert res.with_parents[0] == map_layer_id(db, "bedrock")
+        assert res.with_parents[1] == map_layer_id(db, "Tectonic Block")
+
+        res = db.run_query(
+            "SELECT * FROM {data_schema}.map_layer_tree WHERE map_layer = :id",
+            dict(id=map_layer_id(db, "Surficial")),
+        ).one()
+        assert len(res.with_parents) == 1
+        assert res.with_parents[0] == map_layer_id(db, "Surficial")
+
+    def test_disconnected_child_layer(self, db):
+        """Create a feature in a layer disconnected from the main topology"""
+
+        bedrock_id = map_layer_id(db, "bedrock")
+
+        # Create several squares in the bedrock layer
+        insert_line(
+            db,
+            square(6, center=(3, 3)),
+            type="bedrock",
+            map_layer=bedrock_id,
+        )
+
+        insert_line(
+            db,
+            square(6, center=(6, 6)),
+            type="bedrock",
+            map_layer=bedrock_id,
+        )
+
+        # Solve the topology
+        _update(db)
+
+        # There should be three faces in the topology now
+        res = db.run_query(
+            "SELECT count(*) FROM {topo_schema}.map_face",
+        ).scalar()
+        assert res == 3
+
+        # Create a single feature in the surficial layer
+        # We can use the same linework type, at least for now
+        surficial_id = map_layer_id(db, "Surficial")
+        add_linework_type_to_layer(db, surficial_id, "bedrock")
+
+        insert_line(
+            db,
+            square(2, center=(0, 0)),
+            type="bedrock",
+            map_layer=surficial_id,
+        )
+
+        # Solve the topology
+        _update(db)
+
+        # There should be four faces in the topology now
+        res = db.run_query(
+            "SELECT count(*) FROM {topo_schema}.map_face",
+        ).scalar()
+        assert res == 4
