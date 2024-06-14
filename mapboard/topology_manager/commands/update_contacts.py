@@ -16,7 +16,6 @@ def update_contacts(fix_failed: bool = False):
 
 
 def _update_contacts(db: Database, fix_failed: bool = False):
-
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
