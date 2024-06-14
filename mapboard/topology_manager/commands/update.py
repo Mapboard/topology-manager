@@ -18,6 +18,7 @@ def update(
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     watch: bool = Option(False, help="Watch for changes"),
+    bulk: bool = Option(False, help="Use bulk updates"),
     fix_failed: bool = Option(False, help="Fix failed contacts"),
 ):
     """Update the topology"""
@@ -25,6 +26,9 @@ def update(
     db = get_database()
 
     _update(db, reset=reset, fill_holes=fill_holes, fix_failed=fix_failed)
+
+    if watch and bulk:
+        raise ValueError("Bulk updates are not compatible with watching")
 
     if watch:
         _start_watcher()
@@ -35,10 +39,11 @@ def _update(
     reset: bool = False,
     fill_holes: bool = False,
     fix_failed: bool = False,
+    bulk: bool = False,
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")
-    _update_contacts(db, fix_failed=fix_failed)
+    _update_contacts(db, fix_failed=fix_failed, bulk=bulk)
     console.print("Updating faces", style="header")
     _update_faces(db, reset=reset, fill_holes=fill_holes)
     console.print("Cleaning topology", style="header")

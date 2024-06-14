@@ -15,7 +15,7 @@ def update_contacts(fix_failed: bool = False):
     _update_contacts(db, fix_failed)
 
 
-def _update_contacts(db: Database, fix_failed: bool = False):
+def _update_contacts(db: Database, fix_failed: bool = False, bulk: bool = False):
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
@@ -23,6 +23,9 @@ def _update_contacts(db: Database, fix_failed: bool = False):
 
     if nlines == 0:
         console.print("No contacts to update")
+
+    if bulk:
+        db.run_sql("SET session_replication_role = replica;")
 
     res = db.run_query(get_contacts).all()
     remaining = len(res)
@@ -41,3 +44,7 @@ def _update_contacts(db: Database, fix_failed: bool = False):
             remaining -= nrows
 
     db.run_query(post_update)
+
+    if bulk:
+        db.run_sql("SET session_replication_role = DEFAULT;")
+        # Mark all faces as dirty
