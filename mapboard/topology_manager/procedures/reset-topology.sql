@@ -20,4 +20,3 @@ ALTER SEQUENCE {topo_schema}.topogeo_s_1 RESTART WITH 1;
 SELECT setval(pg_get_serial_sequence('{topo_schema}.map_face', 'id'), coalesce(max(id),0)+1, false)
   FROM {topo_schema}.map_face;
 SET session_replication_role = DEFAULT;
-VACUUM ANALYZE;

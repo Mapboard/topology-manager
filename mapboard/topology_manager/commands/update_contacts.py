@@ -1,4 +1,5 @@
 from rich.progress import Progress
+from macrostrat.database import run_query
 
 from ..database import Database, get_database, sql
 from ..utilities import console
@@ -15,7 +16,9 @@ def update_contacts(fix_failed: bool = False):
     _update_contacts(db, fix_failed)
 
 
-def _update_contacts(db: Database, fix_failed: bool = False, bulk: bool = False):
+def _update_contacts(
+    db: Database, fix_failed: bool = False, bulk: bool = False, chunk_size: int = 100
+):
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
@@ -32,10 +35,20 @@ def _update_contacts(db: Database, fix_failed: bool = False, bulk: bool = False)
     if remaining == 0:
         return
 
+    conn = db.engine.connect()
+    conn.execution_options(isolation_level="AUTOCOMMIT")
+
     with Progress() as progress:
         bar = progress.add_task("Updating lines", total=nlines)
         while remaining > 0:
-            rows = db.run_query(sql("procedures/update-contact"), {"n": 10}).all()
+            # We don't want to use the current version of run_query because it doesn't support
+            # running outside of a transaction block
+            params = db._setup_params({"n": chunk_size}, {})
+            rows = run_query(
+                conn,
+                sql("procedures/update-contact"),
+                params,
+            ).all()
             nrows = len(rows)
             for row in rows:
                 if row.err is not None:

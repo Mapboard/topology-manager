@@ -2,7 +2,6 @@ import asyncio
 from contextvars import ContextVar
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from sqlalchemy import text
 from typer import Option
 
 from ..database import Database, get_database

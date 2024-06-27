@@ -1,5 +1,6 @@
 from rich.prompt import Confirm
 from typer import Option, Typer
+from macrostrat.database import run_sql
 
 from .commands import add_all_commands
 from .database import get_database, set_database, sql
@@ -38,12 +39,16 @@ def _operation_command(name):
         return
     db = get_database()
     db.proc(f"procedures/{name}-topology")
+    conn = db.engine.connect()
+    # Should build in a way to set autocommit in the database.
+    conn.execution_options(isolation_level="AUTOCOMMIT")
+    run_sql(conn, "VACUUM ANALYZE")
 
 
 for op in ["delete", "reset"]:
-
     def command():
         _operation_command(op)
+
 
     app.add_command(command, name=op, short_help=f"{op.capitalize()} the topology")
 
