@@ -12,6 +12,31 @@ from sqlalchemy.sql.expression import TextClause, text
 
 load_dotenv()
 
+__dir__ = Path(__file__).parent
+
+
+def _get_instance_params(**kwargs):
+    data_schema = kwargs.get("data_schema", environ.get("MAPBOARD_DATA_SCHEMA"))
+    topo_schema = kwargs.get("topo_schema", environ.get("MAPBOARD_TOPO_SCHEMA"))
+    srid = kwargs.get("srid", int(environ.get("MAPBOARD_SRID", "4326")))
+    if data_schema is None or topo_schema is None:
+        raise RuntimeError("Database schema not set")
+
+    tolerance = kwargs.get(
+        "tolerance", float(environ.get("MAPBOARD_TOPO_TOLERANCE", 0.00001))
+    )
+
+    return {
+        "data_schema": Identifier(data_schema),
+        "topo_schema": Identifier(topo_schema),
+        "index_prefix": SQL(f"{data_schema}_"),
+        "topo_prefix": SQL(f"{topo_schema}_"),
+        "topo_name": topo_schema,
+        "data_schema_name": data_schema,
+        "srid": srid,
+        "tolerance": tolerance,
+    }
+
 
 class Database(_Database):
 
@@ -20,33 +45,29 @@ class Database(_Database):
         self.set_params()
 
     def set_params(self, **kwargs):
-
-        data_schema = kwargs.get("data_schema", environ.get("MAPBOARD_DATA_SCHEMA"))
-        topo_schema = kwargs.get("topo_schema", environ.get("MAPBOARD_TOPO_SCHEMA"))
-        srid = kwargs.get("srid", int(environ.get("MAPBOARD_SRID", "4326")))
-        if data_schema is None or topo_schema is None:
-            raise RuntimeError("Database schema not set")
-
-        tolerance = kwargs.get(
-            "tolerance", float(environ.get("MAPBOARD_TOPO_TOLERANCE", 0.00001))
-        )
-
-        self.instance_params = {
-            "data_schema": Identifier(data_schema),
-            "topo_schema": Identifier(topo_schema),
-            "index_prefix": SQL(f"{data_schema}_"),
-            "topo_prefix": SQL(f"{topo_schema}_"),
-            "topo_name": topo_schema,
-            "data_schema_name": data_schema,
-            "srid": srid,
-            "tolerance": tolerance,
-        }
+        self.instance_params = _get_instance_params(**kwargs)
 
     def proc(self, name, params=None, **kwargs):
         return super().run_sql(sql(name), params, **kwargs)
 
     def set_active(self):
         _db_ctx.set(self)
+
+
+def create_tables(db: Database, **kwargs):
+    db.instance_params = _get_instance_params(**kwargs)
+    db.run_fixtures(__dir__ / "fixtures")
+
+
+def drop_tables(db: _Database, **kwargs):
+    db.instance_params = _get_instance_params(**kwargs)
+    db.run_sql(__dir__ / "procedures" / "delete-topology.sql")
+    db.run_sql(
+        """
+        DROP SCHEMA IF EXISTS {topo_schema} CASCADE;
+        DROP SCHEMA IF EXISTS {data_schema} CASCADE;
+        """
+    )
 
 
 _db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
