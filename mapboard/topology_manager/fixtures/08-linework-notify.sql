@@ -5,8 +5,26 @@ to incrementally build views on each update.
 */
 CREATE OR REPLACE FUNCTION {topo_schema}.linework_notify()
 RETURNS TRIGGER AS $$
+DECLARE
+  row_id integer;
 BEGIN
-  PERFORM pg_notify('events',(TG_OP || 'on linework'));
+  -- Get the row ID
+  IF (TG_OP = 'DELETE') THEN
+    row_id := OLD.id;
+  ELSE
+    row_id := NEW.id;
+  END IF;
+
+
+  PERFORM pg_notify(
+    'events',
+    json_build_object(
+      'schema', TG_TABLE_SCHEMA,
+      'table', TG_TABLE_NAME,
+      'operation', TG_OP,
+      'row_id', row_id
+    )::text
+  );
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;

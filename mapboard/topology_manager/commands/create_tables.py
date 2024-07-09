@@ -6,6 +6,7 @@ fixtures_dir = Path(__file__).parent.parent / "fixtures"
 
 
 def _create_tables(db: Database):
+    print(db.instance_params)
     _fixtures = list(fixtures_dir.glob("*.sql"))
     _fixtures.sort()
 

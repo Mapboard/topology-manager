@@ -15,6 +15,7 @@ SELECT
 FROM node_edge ne
 JOIN {topo_schema}.__edge_relation ec
   ON ne.edge_id = ec.edge_id
+ AND NOT ec.is_child
 JOIN {topo_schema}.relation r
   ON ne.edge_id = r.element_id
  AND r.element_type = 2

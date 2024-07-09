@@ -36,7 +36,9 @@ BEGIN
   __envelope := ST_Envelope(__geometry);
 
   __payload := json_build_object(
-    'table', 'map_face',
+    'schema', TG_TABLE_SCHEMA,
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
     'envelope', ST_AsGeoJSON(__envelope)::jsonb,
     'n_deleted', __deleted,
     'n_created', __added,

@@ -51,7 +51,11 @@ WITH v1 AS (
 SELECT DISTINCT ON (ef.face_id) *
 FROM {topo_schema}.edge_face ef
 JOIN {topo_schema}.face_type ft ON ef.face_id = ft.face_id
-WHERE ef.edge_id NOT IN (SELECT edge_id FROM {topo_schema}.__edge_relation)
+WHERE ef.edge_id NOT IN (
+    SELECT edge_id
+    FROM {topo_schema}.__edge_relation er
+    WHERE NOT er.is_child
+  )
   AND ef.face_id != 0
 )
 DELETE FROM {topo_schema}.map_face f

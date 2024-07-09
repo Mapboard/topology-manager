@@ -1,7 +1,49 @@
 from pytest import mark
 
 from ..commands.update import _update
-from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square
+from .helpers import (
+    add_linework_type_to_layer,
+    insert_line,
+    insert_polygon,
+    intersecting_faces,
+    map_layer_id,
+    n_faces,
+    point,
+    square,
+)
+
+
+def test_topo_face_no_identifier(db):
+    """Test that a face with no identifier is created"""
+    insert_line(
+        db,
+        square(1, center=(1, 1)),
+        type="bedrock",
+        map_layer=map_layer_id(db, "bedrock"),
+    )
+    _update(db)
+    assert n_faces(db) == 1
+
+
+def test_new_layer(db):
+    MapLayer = db.model.test_map_data_map_layer
+    lyr = MapLayer(name="Test1", topological=True, parent=None)
+    db.session.add(lyr)
+    db.session.commit()
+
+    add_linework_type_to_layer(db, lyr.id, "bedrock")
+
+    assert n_faces(db) == 0
+
+    """Test that a new layer can be added"""
+    insert_line(
+        db,
+        square(1, center=(1, 1)),
+        type="bedrock",
+        map_layer=lyr.id,
+    )
+    _update(db)
+    assert n_faces(db) == 1
 
 
 class TestMultiLayers:
@@ -86,10 +128,3 @@ class TestMultiLayers:
 
         assert len(res) == 1
         assert res[0].map_layer == map_layer_id(db, "surficial")
-
-
-def intersecting_faces(db, geom):
-    return db.run_query(
-        "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
-        dict(geom=geom),
-    ).fetchall()

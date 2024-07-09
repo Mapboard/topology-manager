@@ -6,7 +6,7 @@ to `map_topology.map_face`
 /* Util functions */
 
 /** Get the topology for a line */
-CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(_line {data_schema}.linework)
+CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
 RETURNS integer AS $$
 SELECT id
 FROM {data_schema}.map_layer l
@@ -45,11 +45,8 @@ CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
 RETURNS void AS $$
 DECLARE
   __faces integer[];
-  __topology integer;
 BEGIN
-  __topology := {topo_schema}.line_topology(line);
-
-  IF (line.topo IS null OR __topology IS null) THEN
+  IF (line.topo IS null) THEN
     RETURN;
   END IF;
 
@@ -73,10 +70,15 @@ BEGIN
   INTO __faces
   FROM faces1;
 
+  WITH ml AS (
+    SELECT {topo_schema}.child_map_layers(line.map_layer) id
+  )
   INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
-    __topology
+    ml.id
+  FROM ml
+  WHERE ml.id IS NOT NULL
   ON CONFLICT DO NOTHING;
 
   RAISE NOTICE 'Marking faces %', __faces;
@@ -98,7 +100,7 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__dest_topology := {topo_schema}.line_topology(NEW);
+__dest_topology := {topo_schema}.get_topological_map_layer(NEW);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
@@ -141,12 +143,12 @@ IF (
      if it doesn't we'll have to reset
   */
   (OLD.topo).id = (NEW.topo).id AND
-  {topo_schema}.line_topology(OLD) = __dest_topology
+  {topo_schema}.get_topological_map_layer(OLD) = __dest_topology
 ) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;
 END IF;
-/* We are new working with only changed topogeometries */
+/* We are now working with only cases where the topogeometry was changed */
 
 SELECT array_agg(elem)
 INTO __edges
@@ -158,17 +160,15 @@ WHERE line_id IN (OLD.id)
   AND NOT(edge_id = ANY(__edges));
 
 /* Add new objects into linework tracker */
-INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, map_layer, line_id, type)
-VALUES (
-  unnest(__edges),
-  __dest_topology,
-  NEW.id,
-  NEW.type
+WITH ml AS (
+  SELECT {topo_schema}.child_map_layers(__dest_topology) id
 )
+INSERT INTO {topo_schema}.__edge_relation
+  (edge_id, map_layer, is_child, line_id)
+SELECT unnest(__edges), ml.id, __dest_topology != ml.id, NEW.id
+FROM ml
 ON CONFLICT (edge_id, map_layer) DO UPDATE SET
-  line_id = NEW.id,
-  type = NEW.type;
+  line_id = NEW.id;
 
 /* This is probably where we should update map faces for referential
    integrity

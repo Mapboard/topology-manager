@@ -1,6 +1,6 @@
+import os
 from contextlib import contextmanager
 from contextvars import ContextVar
-from os import environ
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,14 +16,17 @@ __dir__ = Path(__file__).parent
 
 
 def _get_instance_params(**kwargs):
-    data_schema = kwargs.get("data_schema", environ.get("MAPBOARD_DATA_SCHEMA"))
-    topo_schema = kwargs.get("topo_schema", environ.get("MAPBOARD_TOPO_SCHEMA"))
-    srid = kwargs.get("srid", int(environ.get("MAPBOARD_SRID", "4326")))
+    env = kwargs.pop("env", None)
+    if env is None:
+        env = os.environ
+    data_schema = kwargs.get("data_schema", env.get("MAPBOARD_DATA_SCHEMA"))
+    topo_schema = kwargs.get("topo_schema", env.get("MAPBOARD_TOPO_SCHEMA"))
+    srid = kwargs.get("srid", int(env.get("MAPBOARD_SRID", "4326")))
     if data_schema is None or topo_schema is None:
         raise RuntimeError("Database schema not set")
 
     tolerance = kwargs.get(
-        "tolerance", float(environ.get("MAPBOARD_TOPO_TOLERANCE", 0.00001))
+        "tolerance", float(env.get("MAPBOARD_TOPO_TOLERANCE", 0.00001))
     )
 
     return {
