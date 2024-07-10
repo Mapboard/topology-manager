@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_linework_type(type, map_layer) ON UPDATE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
+CREATE INDEX IF NOT EXISTS "{index_prefix}_linework_geometry_idx"
   ON {data_schema}.linework USING gist (geometry);
 
 /* Skeletal table structure needed to support polygon for the map */
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_polygon_type(type, map_layer) ON UPDATE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
+CREATE INDEX IF NOT EXISTS "{index_prefix}_polygon_geometry_idx"
   ON {data_schema}.polygon USING gist (geometry);
 
 /** A view to summarize the tree of map layers */
