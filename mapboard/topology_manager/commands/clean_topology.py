@@ -8,7 +8,7 @@ def clean_topology():
 
 
 def _delete_edges(db):
-    db.proc("procedures/clean-topology-01")
+    db.run_sql(sql("procedures/clean-topology-01"))
 
     console.print("Deleting edges", style="header")
     res = db.run_query(sql("procedures/get-edges-to-delete"))
@@ -19,7 +19,7 @@ def _delete_edges(db):
             sql("procedures/clean-topology-rem-edge"),
             {"edge_id": edge_id},
         )
-    db.proc("procedures/clean-topology-02")
+    db.run_sql(sql("procedures/clean-topology-02"))
 
 
 verbose = True

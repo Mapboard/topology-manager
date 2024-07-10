@@ -37,7 +37,7 @@ def _operation_command(name):
     if not res:
         return
     db = get_database()
-    db.proc(f"procedures/{name}-topology")
+    db.run_sql(sql(f"procedures/{name}-topology"))
 
 
 for op in ["delete", "reset"]:

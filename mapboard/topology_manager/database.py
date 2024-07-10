@@ -50,9 +50,6 @@ class Database(_Database):
     def set_params(self, **kwargs):
         self.instance_params = _get_instance_params(**kwargs)
 
-    def proc(self, name, params=None, **kwargs):
-        return super().run_sql(sql(name), params, **kwargs)
-
     def set_active(self):
         _db_ctx.set(self)
 
