@@ -8,6 +8,8 @@ from ...database import Database
 from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
+if not testing_db:
+    raise RuntimeError("TOPO_TESTING_DATABASE_URL is not set")
 
 
 @fixture(scope="session")
