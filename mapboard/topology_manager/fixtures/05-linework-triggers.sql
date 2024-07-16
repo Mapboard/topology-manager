@@ -85,12 +85,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+/** Function to enable or disable triggers across the board */
+CREATE OR REPLACE FUNCTION {topo_schema}.triggers_enabled()
+RETURNS boolean AS $$
+  SELECT true;
+$$ LANGUAGE sql;
+
 CREATE OR REPLACE FUNCTION {topo_schema}.linework_changed()
 RETURNS trigger AS $$
 DECLARE
   __edges integer[];
   __dest_topology integer;
 BEGIN
+
+IF (NOT {topo_schema}.triggers_enabled()) THEN
+  IF (TG_OP = 'DELETE') THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
+END IF;
 
 IF (TG_OP = 'DELETE') THEN
   PERFORM {topo_schema}.mark_surrounding_faces(OLD);
