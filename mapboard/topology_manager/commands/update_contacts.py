@@ -16,7 +16,6 @@ def update_contacts(fix_failed: bool = False):
 
 
 def _update_contacts(db: Database, fix_failed: bool = False):
-
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
@@ -33,7 +32,9 @@ def _update_contacts(db: Database, fix_failed: bool = False):
     with Progress() as progress:
         bar = progress.add_task("Updating lines", total=nlines)
         while remaining > 0:
-            rows = db.run_query(sql("procedures/update-contact"), {"n": 10}).all()
+            rows = db.run_query(sql("procedures/update-contact"), {"n": 100}).all()
+            print("Remaining", rows)
+
             nrows = len(rows)
             for row in rows:
                 if row.err is not None:
