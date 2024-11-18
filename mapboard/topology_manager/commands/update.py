@@ -10,6 +10,7 @@ from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import _update_faces
+from macrostrat.utils.timer import Timer
 
 verbose = True
 
@@ -39,10 +40,15 @@ def _update(
     """Update the topology"""
     console.print("Updating contacts", style="header")
     _update_contacts(db, fix_failed=fix_failed)
+    Timer.add_step("update-contacts")
+
     console.print("Updating faces", style="header")
     _update_faces(db, reset=reset, fill_holes=fill_holes)
+    Timer.add_step("update-faces")
+
     console.print("Cleaning topology", style="header")
     _clean_topology(db)
+    Timer.add_step("clean-topology")
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)
