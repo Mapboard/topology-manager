@@ -8,6 +8,11 @@ def clean_topology():
 
 
 def _delete_edges(db):
+    """
+    This function deletes edges in the topology. It is a legacy
+    function and not used anymore, but we keep it around in case we need
+    to bring it back into use.
+    """
     db.proc("procedures/clean-topology-01")
 
     console.print("Deleting edges", style="header")

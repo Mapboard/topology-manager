@@ -1,5 +1,6 @@
 from rich.progress import Progress
 from typer import Option
+from time import perf_counter
 
 from ..database import get_database, sql
 from ..utilities import console
@@ -17,6 +18,7 @@ def update_faces(
 
 
 def _update_faces(db, reset: bool = False, fill_holes: bool = False):
+    t0 = perf_counter()
     if reset:
         db.run_sql(sql("procedures/reset-map_face"))
 
@@ -30,6 +32,12 @@ def _update_faces(db, reset: bool = False, fill_holes: bool = False):
     if nfaces == 0:
         console.print("No faces to update")
 
+    t1 = perf_counter()
+
+    console.print(f"Prepared to update {nfaces} faces in {t1 - t0:.2f} seconds")
+
+    t0 = perf_counter()
+
     with Progress() as progress:
         bar = progress.add_task("Updating faces", total=nfaces)
         while nfaces > 0:
@@ -40,3 +48,6 @@ def _update_faces(db, reset: bool = False, fill_holes: bool = False):
             next_count = db.run_query(count_).scalar()
             progress.update(bar, completed=nfaces - next_count)
             nfaces = next_count
+
+    t1 = perf_counter()
+    console.print(f"Updated {nfaces} faces in {t1 - t0:.2f} seconds")
