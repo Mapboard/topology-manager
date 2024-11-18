@@ -1,6 +1,9 @@
-from time import perf_counter
 from macrostrat.database import Database
+from macrostrat.utils import get_logger
+from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
+
+log = get_logger(__name__)
 
 
 class DirtyFace(BaseModel):
@@ -13,7 +16,10 @@ def update_map_face_python(db: Database):
     if res is None:
         return
     face = DirtyFace(id=res.id, map_layer=res.map_layer)
-    _update_face(db, face)
+    timer = Timer()
+    with timer.context():
+        _update_face(db, face)
+    log.info(timer.server_timings())
 
 
 def _update_face(db: Database, face: DirtyFace):
@@ -34,6 +40,8 @@ def _update_face(db: Database, face: DirtyFace):
         """SELECT {topo_schema}.adjacent_faces(:face_id, :map_layer)""",
         {"face_id": face.id, "map_layer": face.map_layer},
     ).scalar()
+
+    Timer.add_step("adjacent_faces")
 
     # Special case when adjoining the global face
     if dissolved_faces is None:
@@ -57,6 +65,8 @@ def _update_face(db: Database, face: DirtyFace):
     )""",
         dict(dissolved_faces=dissolved_faces, map_layer=face.map_layer),
     )
+
+    Timer.add_step("delete_existing")
 
     # Create a topogeometry
     topo_element_array = [[face_id, 3] for face_id in dissolved_faces]
@@ -83,8 +93,12 @@ def _update_face(db: Database, face: DirtyFace):
         ),
     )
 
+    Timer.add_step("insert_new")
+
     # Remove faces again
     unmark_dirty_faces(db, face.map_layer, dissolved_faces)
+
+    Timer.add_step("clean")
 
 
 def unmark_dirty_faces(db, map_layer, faces):
