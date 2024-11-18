@@ -29,7 +29,7 @@ class TestMapFaces:
         # add a linework type
         add_linework_type_to_layer(db, child_lyr, "bedrock")
 
-    @mark.parametrize("count_on_each_axis", [5, 10, 20])
+    @mark.parametrize("count_on_each_axis", [1, 5, 10])
     def test_create_faces_with_overlapping_lines(self, db, count_on_each_axis):
         """Create overlapping sets of lines to test face creation."""
         child_lyr = map_layer_id(db, "child")

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
@@ -10,92 +12,118 @@ log = get_logger(__name__)
 class DirtyFace(BaseModel):
     id: int
     map_layer: int
-    adjacent_faces: list[int]
+    adjacent_faces: set[int]
 
 
 def update_map_face_python(db: Database):
-    timer = Timer()
-    with timer.context():
-        res = db.run_query(
-            """
-            SELECT id,
-                map_layer,
-                {topo_schema}.adjacent_faces(id, map_layer)
-            FROM {topo_schema}.__dirty_face
-            LIMIT 1
-            """
-        ).one_or_none()
-        if res is None:
-            return
+    rows = db.run_query(
+        """
+        SELECT id,
+            map_layer,
+            coalesce(
+                {topo_schema}.adjacent_faces(id, map_layer),
+                ARRAY[id]
+            ) AS adjacent_faces
+        FROM {topo_schema}.__dirty_face
+        LIMIT 10
+        """
+    )
+    faces = [
+        DirtyFace(
+            id=res.id,
+            map_layer=res.map_layer,
+            adjacent_faces=set(res.adjacent_faces),
+        )
+        for res in rows
+    ]
+    _update_faces(db, dissolve_adjacent_faces(faces))
 
-        adjacent = res.adjacent_faces
-        if adjacent is None:
-            adjacent = [res.id]
 
-        face = DirtyFace(id=res.id, map_layer=res.map_layer, adjacent_faces=adjacent)
+def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
+    """Dissolve adjacent faces"""
+    grouped_faces = []
+    for face in faces:
+        for group in grouped_faces:
+            # If the face shares an adjacent face with any face in the group, add it to the group
+            if (
+                group.adjacent_faces & face.adjacent_faces
+                and group.map_layer == face.map_layer
+            ):
+                group.adjacent_faces.update(face.adjacent_faces)
+                break
+        else:
+            grouped_faces.append(face)
+    return grouped_faces
 
-        _update_face(db, face)
-    log.info(timer.server_timings())
 
-
-def _update_face(db: Database, face: DirtyFace):
+def _update_faces(db: Database, faces: list[DirtyFace]):
     """Update a single face"""
 
     layer_id = get_topolayer_id(db, "map_face", "topo")
 
-    # Get adjoining faces
-    dissolved_faces = face.adjacent_faces
+    faces_processed = defaultdict(set)
+    map_faces_to_delete = []
+    topogeoms = defaultdict(list)
 
-    Timer.add_step("adjacent_faces")
+    for face in faces:
+        timer = Timer()
+        with timer.context():
+            # Get adjoining faces
+            dissolved_faces = list(face.adjacent_faces)
 
-    is_global = 0 in dissolved_faces
-    if is_global:
-        unmark_dirty_faces(db, face.map_layer, dissolved_faces)
-        return face.id
+            Timer.add_step("adjacent_faces")
 
-    map_faces = list(containing_map_faces(db, dissolved_faces, face.map_layer))
-    log.info(f"Found {len(map_faces)} containing faces")
-    if len(map_faces) > 0:
-        # Delete map faces
-        db.run_query(
-            """
-        DELETE FROM {topo_schema}.map_face mf
-        WHERE id = ANY(:map_faces)
-        """,
-            dict(map_faces=map_faces),
-        )
+            is_global = 0 in dissolved_faces
+            if is_global:
+                unmark_dirty_faces(db, face.map_layer, dissolved_faces)
+                continue
 
-    Timer.add_step("delete_existing")
+            map_faces = list(containing_map_faces(db, dissolved_faces, face.map_layer))
 
-    # Create a topogeometry
-    topo_element_array = [[face_id, 3] for face_id in dissolved_faces]
+            log.info(f"Found {len(map_faces)} containing faces")
+            if len(map_faces) > 0:
+                # Delete map faces
+                db.run_query(
+                    """
+                DELETE FROM {topo_schema}.map_face mf
+                WHERE id = ANY(:map_faces)
+                """,
+                    dict(map_faces=map_faces),
+                )
 
-    # Insert the topogeometry
-    db.run_query(
-        """
-    WITH p1 AS (
-      SELECT topology.createtopogeom(:topo_name, 3, :layer_id, :topo_element_array) AS topo
-    ), p2 AS (
-        SELECT
-            topo,
-            st_setsrid(topo::geometry, :srid) AS geom
-        FROM p1
-    )
-    INSERT INTO {topo_schema}.map_face (unit_id, topo, map_layer, geometry)
-    SELECT {topo_schema}.unitForArea(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
-    FROM p2
-    """,
-        dict(
-            map_layer=face.map_layer,
-            topo_element_array=topo_element_array,
-            layer_id=layer_id,
-        ),
-    )
+            Timer.add_step("delete_existing")
 
-    Timer.add_step("insert_new")
+            # Create a topogeometry
+            topo_element_array = [[face_id, 3] for face_id in dissolved_faces]
+            # topogeoms[face.map_layer].append(topo_element_array)
 
-    # Remove faces again
-    unmark_dirty_faces(db, face.map_layer, dissolved_faces)
+            # Insert the topogeometry
+            db.run_query(
+                """
+            WITH p1 AS (
+              SELECT topology.createtopogeom(:topo_name, 3, :layer_id, :topo_element_array) AS topo
+            ), p2 AS (
+                SELECT
+                    topo,
+                    st_setsrid(topo::geometry, :srid) AS geom
+                FROM p1
+            )
+            INSERT INTO {topo_schema}.map_face (unit_id, topo, map_layer, geometry)
+            SELECT {topo_schema}.unitForArea(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
+            FROM p2
+            """,
+                dict(
+                    map_layer=face.map_layer,
+                    topo_element_array=topo_element_array,
+                    layer_id=layer_id,
+                ),
+            )
+
+            Timer.add_step("insert_new")
+
+            unmark_dirty_faces(db, face.map_layer, list(face.adjacent_faces))
+
+        log.info(timer.server_timings())
 
     Timer.add_step("clean")
 
