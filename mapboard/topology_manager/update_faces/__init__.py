@@ -65,43 +65,46 @@ def _update_faces(db: Database, faces: list[DirtyFace]):
     map_faces_to_delete = []
     topogeoms = defaultdict(list)
 
+    # Weed out faces that include the global face
+    next_faces = []
     for face in faces:
-        timer = Timer()
-        with timer.context():
-            # Get adjoining faces
-            dissolved_faces = list(face.adjacent_faces)
+        face_list = list(face.adjacent_faces)
+        if 0 in face.adjacent_faces:
+            unmark_dirty_faces(db, face.map_layer, face_list)
+        else:
+            next_faces.append(face)
+        map_faces = list(containing_map_faces(db, face_list, face.map_layer))
+        map_faces_to_delete.extend(map_faces)
 
-            Timer.add_step("adjacent_faces")
+    for map_layer, face_ids in faces_processed.items():
+        unmark_dirty_faces(db, map_layer, list(face_ids))
 
-            is_global = 0 in dissolved_faces
-            if is_global:
-                unmark_dirty_faces(db, face.map_layer, dissolved_faces)
-                continue
+    log.info(f"Found {len(map_faces)} containing faces")
+    if len(map_faces_to_delete) > 0:
+        # Delete map faces
+        db.run_query(
+            """
+        DELETE FROM {topo_schema}.map_face mf
+        WHERE id = ANY(:map_faces)
+        """,
+            dict(map_faces=map_faces_to_delete),
+        )
 
-            map_faces = list(containing_map_faces(db, dissolved_faces, face.map_layer))
+    for face in next_faces:
+        # Create a topogeometry
+        topo_element_array = [[face_id, 3] for face_id in list(face.adjacent_faces)]
+        topogeoms[face.map_layer].append(topo_element_array)
 
-            log.info(f"Found {len(map_faces)} containing faces")
-            if len(map_faces) > 0:
-                # Delete map faces
-                db.run_query(
-                    """
-                DELETE FROM {topo_schema}.map_face mf
-                WHERE id = ANY(:map_faces)
-                """,
-                    dict(map_faces=map_faces),
-                )
-
-            Timer.add_step("delete_existing")
-
-            # Create a topogeometry
-            topo_element_array = [[face_id, 3] for face_id in dissolved_faces]
-            # topogeoms[face.map_layer].append(topo_element_array)
-
-            # Insert the topogeometry
+    for map_layer, topogeom_arrays in topogeoms.items():
+        # Insert the topogeometry
+        for arr in topogeom_arrays:
             db.run_query(
                 """
-            WITH p1 AS (
-              SELECT topology.createtopogeom(:topo_name, 3, :layer_id, :topo_element_array) AS topo
+            WITH p0 AS (
+              SELECT :topo_element_array AS topo_elements
+            ), p1 AS (
+              SELECT topology.createtopogeom(:topo_name, 3, :layer_id, p0.topo_elements) AS topo
+                FROM p0
             ), p2 AS (
                 SELECT
                     topo,
@@ -113,17 +116,14 @@ def _update_faces(db: Database, faces: list[DirtyFace]):
             FROM p2
             """,
                 dict(
-                    map_layer=face.map_layer,
-                    topo_element_array=topo_element_array,
+                    map_layer=map_layer,
+                    topo_element_array=arr,
                     layer_id=layer_id,
                 ),
             )
 
-            Timer.add_step("insert_new")
-
-            unmark_dirty_faces(db, face.map_layer, list(face.adjacent_faces))
-
-        log.info(timer.server_timings())
+        face_ids = [face_id for face_id, _ in sum(topogeom_arrays, [])]
+        unmark_dirty_faces(db, map_layer, face_ids)
 
     Timer.add_step("clean")
 
