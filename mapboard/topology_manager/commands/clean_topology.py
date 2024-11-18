@@ -29,11 +29,8 @@ def _clean_topology(db):
     """Clean topology"""
     # _delete_edges(db)
     with db.session.begin_nested():
-        res = db.run_sql(
-            "SELECT RemoveUnusedPrimitives(:topo_name)", ensure_single_query=True
-        )
-        val = next(res).scalar()
-        console.print(f"Removed {val} unused primitives")
+        res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
+        console.print(f"Removed {res} unused primitives")
 
     with db.session.begin_nested():
         console.print("Healing edges", style="header")
