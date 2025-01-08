@@ -126,7 +126,6 @@ def test_isolation(db):
     res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
     assert len(res) == 0
 
-
 # def test_remove_all_data(db):
 #     db.run_sql(
 #         "TRUNCATE {data_schema}.linework CASCADE; TRUNCATE {data_schema}.polygon CASCADE"
