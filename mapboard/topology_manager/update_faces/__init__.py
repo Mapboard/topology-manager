@@ -1,0 +1,171 @@
+from collections import defaultdict
+
+from macrostrat.database import Database
+from macrostrat.utils import get_logger
+from macrostrat.utils.timer import Timer
+from pydantic import BaseModel
+from functools import lru_cache
+
+log = get_logger(__name__)
+
+
+class DirtyFace(BaseModel):
+    id: int
+    map_layer: int
+    adjacent_faces: set[int]
+
+
+def update_map_face_python(db: Database):
+    rows = db.run_query(
+        """
+        SELECT id,
+            map_layer,
+            coalesce(
+                {topo_schema}.adjacent_faces(id, map_layer),
+                ARRAY[id]
+            ) AS adjacent_faces
+        FROM {topo_schema}.__dirty_face
+        LIMIT 10
+        """
+    )
+    faces = [
+        DirtyFace(
+            id=res.id,
+            map_layer=res.map_layer,
+            adjacent_faces=set(res.adjacent_faces),
+        )
+        for res in rows
+    ]
+    _update_faces(db, dissolve_adjacent_faces(faces))
+
+
+def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
+    """Dissolve adjacent faces"""
+    grouped_faces = []
+    for face in faces:
+        for group in grouped_faces:
+            # If the face shares an adjacent face with any face in the group, add it to the group
+            if (
+                group.adjacent_faces & face.adjacent_faces
+                and group.map_layer == face.map_layer
+            ):
+                group.adjacent_faces.update(face.adjacent_faces)
+                break
+        else:
+            grouped_faces.append(face)
+    return grouped_faces
+
+
+def _update_faces(db: Database, faces: list[DirtyFace]):
+    """Update a single face"""
+
+    layer_id = get_topolayer_id(db, "map_face", "topo")
+
+    faces_processed = defaultdict(set)
+    map_faces_to_delete = []
+    topogeoms = defaultdict(list)
+
+    # Weed out faces that include the global face
+    next_faces = []
+    for face in faces:
+        face_list = list(face.adjacent_faces)
+        if 0 in face.adjacent_faces:
+            unmark_dirty_faces(db, face.map_layer, face_list)
+        else:
+            next_faces.append(face)
+        map_faces = list(containing_map_faces(db, face_list, face.map_layer))
+        map_faces_to_delete.extend(map_faces)
+
+    for map_layer, face_ids in faces_processed.items():
+        unmark_dirty_faces(db, map_layer, list(face_ids))
+
+    log.info(f"Found {len(map_faces)} containing faces")
+    if len(map_faces_to_delete) > 0:
+        # Delete map faces
+        db.run_query(
+            """
+        DELETE FROM {topo_schema}.map_face mf
+        WHERE id = ANY(:map_faces)
+        """,
+            dict(map_faces=map_faces_to_delete),
+        )
+
+    for face in next_faces:
+        # Create a topogeometry
+        topo_element_array = [[face_id, 3] for face_id in list(face.adjacent_faces)]
+        topogeoms[face.map_layer].append(topo_element_array)
+
+    for map_layer, topogeom_arrays in topogeoms.items():
+        # Insert the topogeometry
+        for arr in topogeom_arrays:
+            db.run_query(
+                """
+            WITH p0 AS (
+              SELECT :topo_element_array AS topo_elements
+            ), p1 AS (
+              SELECT topology.createtopogeom(:topo_name, 3, :layer_id, p0.topo_elements) AS topo
+                FROM p0
+            ), p2 AS (
+                SELECT
+                    topo,
+                    st_setsrid(topo::geometry, :srid) AS geom
+                FROM p1
+            )
+            INSERT INTO {topo_schema}.map_face (unit_id, topo, map_layer, geometry)
+            SELECT {topo_schema}.unitForArea(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
+            FROM p2
+            """,
+                dict(
+                    map_layer=map_layer,
+                    topo_element_array=arr,
+                    layer_id=layer_id,
+                ),
+            )
+
+        face_ids = [face_id for face_id, _ in sum(topogeom_arrays, [])]
+        unmark_dirty_faces(db, map_layer, face_ids)
+
+    Timer.add_step("clean")
+
+
+def unmark_dirty_faces(db, map_layer, faces):
+    db.run_sql(
+        """DELETE FROM {topo_schema}.__dirty_face df
+        WHERE df.map_layer = :map_layer
+        AND (id = ANY(:dissolved_faces) OR id = 0)
+        """,
+        dict(map_layer=map_layer, dissolved_faces=faces),
+    )
+
+
+@lru_cache(maxsize=None)
+def get_topolayer_id(db: Database, table_name: str, feature_column: str):
+    return db.run_query(
+        """
+    SELECT layer_id
+      FROM topology.layer
+     WHERE schema_name=:topo_name
+       AND table_name=:table_name
+       AND feature_column=:feature_column;
+    """,
+        dict(
+            table_name=table_name,
+            feature_column=feature_column,
+        ),
+    ).scalar()
+
+
+def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list[int]:
+    return db.run_query(
+        """
+            SELECT f.id
+            FROM {topo_schema}.relation r
+            JOIN {topo_schema}.map_face f
+              ON (f.topo).id = r.topogeo_id
+             AND r.layer_id = (f.topo).layer_id
+            WHERE element_id = ANY(:faces)
+              AND element_type = 3
+              AND f.map_layer = :map_layer
+            """,
+        dict(faces=faces, map_layer=map_layer),
+    ).scalars()

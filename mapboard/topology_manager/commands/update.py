@@ -2,6 +2,7 @@ import asyncio
 from contextvars import ContextVar
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from sqlalchemy import text
 from typer import Option
 
 from ..database import Database, get_database
@@ -9,6 +10,7 @@ from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import _update_faces
+from macrostrat.utils.timer import Timer
 
 verbose = True
 
@@ -43,10 +45,15 @@ def _update(
     """Update the topology"""
     console.print("Updating contacts", style="header")
     _update_contacts(db, fix_failed=fix_failed, bulk=bulk)
+    Timer.add_step("update-contacts")
+
     console.print("Updating faces", style="header")
     _update_faces(db, reset=reset, fill_holes=fill_holes)
+    Timer.add_step("update-faces")
+
     console.print("Cleaning topology", style="header")
     _clean_topology(db)
+    Timer.add_step("clean-topology")
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)

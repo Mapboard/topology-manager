@@ -8,7 +8,12 @@ def clean_topology():
 
 
 def _delete_edges(db):
-    db.run_sql(sql("procedures/clean-topology-01"))
+    """
+    This function deletes edges in the topology. It is a legacy
+    function and not used anymore, but we keep it around in case we need
+    to bring it back into use.
+    """
+    db.proc("procedures/clean-topology-01")
 
     console.print("Deleting edges", style="header")
     res = db.run_query(sql("procedures/get-edges-to-delete"))
@@ -19,7 +24,7 @@ def _delete_edges(db):
             sql("procedures/clean-topology-rem-edge"),
             {"edge_id": edge_id},
         )
-    db.run_sql(sql("procedures/clean-topology-02"))
+    db.proc("procedures/clean-topology-02")
 
 
 verbose = True
@@ -27,9 +32,12 @@ verbose = True
 
 def _clean_topology(db):
     """Clean topology"""
-    _delete_edges(db)
+    # _delete_edges(db)
+    with db.session.begin_nested():
+        res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
+        console.print(f"Removed {res} unused primitives")
 
-    with db.session.begin():
+    with db.session.begin_nested():
         console.print("Healing edges", style="header")
         res = db.run_query(sql("procedures/get-edges-to-heal"))
         counter = 0
