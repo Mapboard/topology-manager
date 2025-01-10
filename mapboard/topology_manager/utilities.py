@@ -13,3 +13,17 @@ console = Console(
     theme=theme,
     log_time_format="[%X]",
 )
+
+
+def enable_triggers(db, enabled: bool):
+    """Enable triggers for the database"""
+    console.log("Enabling triggers")
+    db.run_sql(
+        """
+        CREATE OR REPLACE FUNCTION {topo_schema}.triggers_enabled()
+        RETURNS boolean AS $$
+          SELECT :enabled;
+        $$ LANGUAGE sql
+        """,
+        dict(enabled=enabled),
+    )
