@@ -1,5 +1,6 @@
 from ..database import get_database, sql
 from ..utilities import console
+from psycopg2.sql import Identifier
 
 
 def clean_topology():
@@ -13,6 +14,7 @@ def _delete_edges(db):
     function and not used anymore, but we keep it around in case we need
     to bring it back into use.
     """
+
     db.proc("procedures/clean-topology-01")
 
     console.print("Deleting edges", style="header")
@@ -30,11 +32,39 @@ def _delete_edges(db):
 verbose = True
 
 
+def remove_empty_topogeometries(db, schema, table, column):
+    table_name = f"{schema}.{table}"
+    params = dict(
+        table=Identifier(schema, table),
+        table_name=table_name,
+        column=Identifier(column),
+        column_name=column,
+    )
+
+    with db.session.begin_nested():
+        res = db.run_query(
+            sql("procedures/remove-empty-topogeometries"), params
+        ).scalar()
+        db.session.commit()
+        console.print(
+            f"Removed {res} empty topogeometries for [cyan]{table_name}[/cyan][gray].{column}[/gray]"
+        )
+
+
 def _clean_topology(db):
     """Clean topology"""
     # _delete_edges(db)
+
+    data_schema = db.instance_params["data_schema_name"]
+    topo_schema = db.instance_params["topo_name"]
+
+    remove_empty_topogeometries(db, data_schema, "linework", "topo")
+    remove_empty_topogeometries(db, topo_schema, "map_face", "topo")
+
     with db.session.begin_nested():
+
         res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
+        db.session.commit()
         console.print(f"Removed {res} unused primitives")
 
     with db.session.begin_nested():
