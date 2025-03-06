@@ -51,7 +51,11 @@ LEFT JOIN {topo_schema}.__edge_relation er
 WHERE (edge.left_face = face_id OR edge.right_face = face_id)
   AND edge.left_face != edge.right_face
   AND er.map_layer IS DISTINCT FROM _map_layer
-  AND NOT EXISTS (SELECT edge_id FROM {topo_schema}.__edge_relation WHERE edge_id = edge.edge_id AND is_child)
+  AND NOT EXISTS (
+    SELECT edge_id FROM {topo_schema}.__edge_relation er
+    WHERE edge_id = edge.edge_id
+      AND er.map_layer IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
+  )
 UNION
 SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
   r1.faces || {topo_schema}.opposite_face(edge, r1.adjacent) faces,
@@ -66,7 +70,11 @@ WHERE edge.left_face != edge.right_face
   AND NOT cycle
   AND NOT r1.adjacent = 0
   AND er.map_layer IS DISTINCT FROM _map_layer
-  AND NOT EXISTS (SELECT edge_id FROM {topo_schema}.__edge_relation WHERE edge_id = edge.edge_id AND is_child)
+  AND NOT EXISTS (
+    SELECT edge_id FROM {topo_schema}.__edge_relation er
+    WHERE edge_id = edge.edge_id
+      AND er.map_layer IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
+  )
 ), b AS (
 SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
 )
