@@ -5,11 +5,11 @@ description = "A PostGIS-based iterative system for building geologic maps"
 authors = ["Daven Quinn <code@davenquinn.com>"]
 license = "Apache"
 readme = "README.md"
-packages = [{include = "mapboard"}]
+packages = [{ include = "mapboard" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-"macrostrat.database" = "^3.3.0"
+"macrostrat.database" = "^3.5.0"
 "macrostrat.utils" = "^1.2.1"
 typer = "^0.9.0"
 rich = "^13.7.1"
@@ -22,7 +22,6 @@ isort = "^5.13.2"
 black = "^24.3.0"
 pytest = "^8.1.1"
 shapely = "^2.0.3"
-geoalchemy2 = "^0.14.6"
 
 [tool.poetry.scripts]
 topo = "mapboard.topology_manager.cli:app"

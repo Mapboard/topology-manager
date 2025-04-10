@@ -39,16 +39,18 @@ def _update(
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")
-    _update_contacts(db, fix_failed=fix_failed)
-    Timer.add_step("update-contacts")
+    timer = Timer()
+    with timer.context():
+        _update_contacts(db, fix_failed=fix_failed)
+        print_step(timer, "Update contacts")
 
-    console.print("Updating faces", style="header")
-    _update_faces(db, reset=reset, fill_holes=fill_holes)
-    Timer.add_step("update-faces")
+        console.print("Updating faces", style="header")
+        _update_faces(db, reset=reset, fill_holes=fill_holes)
+        print_step(timer, "Update faces")
 
-    console.print("Cleaning topology", style="header")
-    _clean_topology(db)
-    Timer.add_step("clean-topology")
+        console.print("Cleaning topology", style="header")
+        _clean_topology(db)
+        print_step(timer, "Clean topology")
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)
@@ -92,3 +94,19 @@ def _start_watcher():
     loop = asyncio.get_event_loop()
     loop.add_reader(conn, handle_notify)
     loop.run_forever()
+
+
+def print_step(timer, step_name=None):
+    step = timer.timings[-1]
+    if step_name:
+        step = timer._add_step(step_name)
+
+    step_time = f"{step.delta:.2f} seconds"
+    if step.delta > 60:
+        step_time = f"{step.delta / 60:.2f} minutes"
+    if step.delta < 0.5:
+        step_time = f"{step.delta * 1000:.2f} ms"
+    if step.delta < 0.0005:
+        step_time = f"{step.delta * 1000 * 1000:.0f} µs"
+
+    console.print(f"Step [bold underline]{step.name}[/] took [cyan bold]{step_time}")
