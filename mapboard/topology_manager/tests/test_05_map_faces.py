@@ -63,6 +63,25 @@ class TestMapFaces:
             assert n_faces(db) == count_on_each_axis ** 2
         log.info(timer.server_timings())
 
+    def test_erase_and_consolidate_faces(self, db):
+        """Test the erasure and consolidation of faces."""
+        _child_layer = map_layer_id(db, "child")
+
+        db.run_sql(
+            """
+            UPDATE {data_schema}.linework
+            SET geometry = ST_Difference(geometry, ST_MakeEnvelope(0.1, 0.1, 1.98, 1.98, :srid))
+            WHERE TYPE = 'bedrock'
+              AND map_layer = :child_lyr
+            """,
+            dict(child_lyr=_child_layer),
+        )
+
+        _update(db)
+
+        # We should have merged 4 faces into 1
+        assert n_faces(db) == 97
+
 
 def create_map_layer(db: Database, name: str, parent: int = None):
     lyr = db.run_query(
