@@ -50,6 +50,13 @@ def point(x, y):
     return str(from_shape(Point(x, y), srid=32612, extended=True))
 
 
+def n_face_primitives(db, include_global=False):
+    sql = "SELECT count(*) FROM test_topology.face"
+    if not include_global:
+        sql += " WHERE face_id != 0"
+    return db.run_query(sql).scalar()
+
+
 def n_faces(db, identified=False):
     sql = "SELECT count(*) FROM test_topology.map_face"
     if identified:
@@ -66,20 +73,20 @@ def map_layer_id(db, name: str):
 
 def intersecting_faces(db, geom):
     return db.run_query(
-        "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face WHERE ST_Intersects(geometry, :geom)",
+        "SELECT map_layer, st_area(geometry) area FROM test_topology.map_face WHERE st_intersects(geometry, :geom)",
         dict(geom=geom),
     ).fetchall()
 
 
 def add_linework_type_to_layer(db, layer_id, linework_type):
     db.run_query(
-        "INSERT INTO {data_schema}.map_layer_linework_type (map_layer, type) VALUES (:map_layer, :type)",
-        dict(map_layer=layer_id, type=linework_type),
+        """INSERT INTO {data_schema}.map_layer_linework_type (map_layer, "type") VALUES (:map_layer, :layer_type)""",
+        dict(map_layer=layer_id, layer_type=linework_type),
     )
 
 
 def add_polygon_type_to_layer(db, layer_id, polygon_type):
     db.run_query(
-        "INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, type) VALUES (:map_layer, :type)",
-        dict(map_layer=layer_id, type=polygon_type),
+        """INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, "type") VALUES (:map_layer, :layer_type)""",
+        dict(map_layer=layer_id, layer_type=polygon_type),
     )

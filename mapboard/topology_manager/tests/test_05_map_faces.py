@@ -4,7 +4,7 @@ from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces
+from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives
 from ..commands.update import _update
 from pytest import mark
 
@@ -61,7 +61,31 @@ class TestMapFaces:
 
             # Check that we have 100 map faces
             assert n_faces(db) == count_on_each_axis ** 2
+            assert n_face_primitives(db) == count_on_each_axis ** 2
+
         log.info(timer.server_timings())
+
+    def test_add_parent_layer(self, db):
+        # Add a parent layer with encompassing faces
+        parent_lyr = map_layer_id(db, "parent")
+        add_linework_type_to_layer(db, parent_lyr, "bedrock")
+
+        # Insert a line outside of the child layer
+        coords = [
+            (-1, -1),
+            (11, -1),
+            (11, 11),
+            (-1, 11),
+            (-1, -1),
+        ]
+        insert_line(db, coords, type="bedrock", map_layer=parent_lyr)
+
+        # Solve the topology
+        _update(db)
+
+        # Check that we have 102 map faces and one fewer primitive
+        assert n_faces(db) == 102
+        assert n_face_primitives(db) == 101
 
     def test_erase_and_consolidate_faces(self, db):
         """Test the erasure and consolidation of faces."""
@@ -80,7 +104,10 @@ class TestMapFaces:
         _update(db)
 
         # We should have merged 4 faces into 1
-        assert n_faces(db) == 97
+        # - one face in parent layer
+        # - 100-4+1=97 faces in child layer
+        assert n_faces(db) == 99
+        assert n_face_primitives(db) == 98
 
 
 def create_map_layer(db: Database, name: str, parent: int = None):
