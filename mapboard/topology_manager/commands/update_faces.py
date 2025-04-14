@@ -56,7 +56,8 @@ def _update_faces(
 
     db.run_sql(sql("procedures/prepare-update-face"))
 
-    nfaces = db.run_query(count_).scalar()
+    dirty_faces = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face").all()
+    nfaces = len(dirty_faces)
 
     if nfaces == 0:
         console.print("No faces to update")
@@ -64,23 +65,15 @@ def _update_faces(
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
 
-    console.print(f"Prepared to update {nfaces} faces in {t1 - t0:.2f} seconds")
+    log.info(f"Prepared to update {nfaces} faces in {t1 - t0:.2f} seconds")
 
     t0 = perf_counter()
 
-    # with Progress() as progress:
-    #    bar = progress.add_task("Updating faces", total=nfaces)
     niter = 0
-    while nfaces > 0:
-        if engine == Engine.PLPGSQL:
-            update_map_face_plpgsql(db)
-        else:
-            update_map_face_python(db)
-        next_count = db.run_query(count_).scalar()
-        # progress.update(bar, completed=nfaces - next_count)
-        nfaces = next_count
+    while len(dirty_faces) > 0:
+        face = dirty_faces.pop(0)
+        update_map_face_python(db, face)
         niter += 1
-        log.info(f"Updated {nfaces} faces")
 
     log.info(f"Updated {niter} times")
 

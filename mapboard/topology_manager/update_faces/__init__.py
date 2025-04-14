@@ -1,10 +1,13 @@
 from collections import defaultdict
+from time import perf_counter
 
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
 from functools import lru_cache
+
+from ..database import sql
 
 log = get_logger(__name__)
 
@@ -15,28 +18,44 @@ class DirtyFace(BaseModel):
     adjacent_faces: set[int]
 
 
-def update_map_face_python(db: Database):
-    rows = db.run_query(
-        """
-        SELECT id,
-            map_layer,
-            coalesce(
-                {topo_schema}.adjacent_faces(id, map_layer),
-                ARRAY[id]
-            ) AS adjacent_faces
-        FROM {topo_schema}.__dirty_face
-        LIMIT 10
-        """
-    )
-    faces = [
-        DirtyFace(
-            id=res.id,
-            map_layer=res.map_layer,
-            adjacent_faces=set(res.adjacent_faces),
-        )
-        for res in rows
-    ]
-    _update_faces(db, dissolve_adjacent_faces(faces))
+def update_map_face_python(db: Database, face):
+    face_id = face.id
+    map_layer = face.map_layer
+
+    log.info(f"Updating face {face_id} in layer {map_layer}")
+    t0 = perf_counter()
+
+    res = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).scalar()
+
+    if res is None:
+        res = [face_id]
+
+    print(res)
+
+    # rows = db.run_query(
+    #     """
+    #     SELECT id,
+    #         map_layer,
+    #         coalesce(
+    #             {topo_schema}.adjacent_faces(id, map_layer),
+    #             ARRAY[id]
+    #         ) AS adjacent_faces
+    #     FROM {topo_schema}.__dirty_face
+    #     LIMIT 10
+    #     """
+    # )
+    # faces = [
+    #     DirtyFace(
+    #         id=res.id,
+    #         map_layer=res.map_layer,
+    #         adjacent_faces=set(res.adjacent_faces),
+    #     )
+    #     for res in rows
+    # ]
+    # _update_faces(db, dissolve_adjacent_faces(faces))
+
+    t1 = perf_counter()
+    log.info(f"Updated face {face_id} in {t1 - t0:.2f} seconds")
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
