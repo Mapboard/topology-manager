@@ -40,7 +40,7 @@ def _update_faces(
     *,
     reset: bool = False,
     fill_holes: bool = False,
-    engine: Engine = Engine.PLPGSQL,
+    engine: Engine = Engine.PYTHON,
 ):
     # Load the engine from the environment if it's defined there.
     # This is mostly used in order to make sure that the tests run with the same engine
@@ -68,20 +68,21 @@ def _update_faces(
 
     t0 = perf_counter()
 
-    with Progress() as progress:
-        bar = progress.add_task("Updating faces", total=nfaces)
-        niter = 0
-        while nfaces > 0:
-            if engine == Engine.PLPGSQL:
-                update_map_face_plpgsql(db)
-            else:
-                update_map_face_python(db)
-            next_count = db.run_query(count_).scalar()
-            progress.update(bar, completed=nfaces - next_count)
-            nfaces = next_count
-            niter += 1
+    # with Progress() as progress:
+    #    bar = progress.add_task("Updating faces", total=nfaces)
+    niter = 0
+    while nfaces > 0:
+        if engine == Engine.PLPGSQL:
+            update_map_face_plpgsql(db)
+        else:
+            update_map_face_python(db)
+        next_count = db.run_query(count_).scalar()
+        # progress.update(bar, completed=nfaces - next_count)
+        nfaces = next_count
+        niter += 1
+        log.info(f"Updated {nfaces} faces")
 
-        log.info(f"Updated {niter} times")
+    log.info(f"Updated {niter} times")
 
     t1 = perf_counter()
     log.info(f"Updated {nfaces} faces in {t1 - t0:.2f} seconds")
