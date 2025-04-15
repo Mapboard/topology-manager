@@ -1,48 +1,69 @@
-WITH RECURSIVE r(faces, adjacent, cycle) AS (
-  SELECT
-    ARRAY[edge.left_face, edge.right_face] AS faces,
-    {topo_schema}.opposite_face(edge, :face_id) AS adjacent,
-    false AS cycle
-  FROM {topo_schema}.edge_data edge
+WITH RECURSIVE
+  edges AS (SELECT
+              edge_id,
+              left_face,
+              right_face
+            FROM
+              {topo_schema}.edge_data
+            WHERE
+              left_face != right_face
+  ),
+  joinable_edges AS (
+    SELECT
+      edges.edge_id,
+      left_face,
+      right_face,
+      er.map_layer,
+      er.line_id,
+      er.is_child
+    FROM edges
     LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = edge.edge_id
-  WHERE (edge.left_face = :face_id OR edge.right_face = :face_id)
-                                 AND edge.left_face != edge.right_face
-                                 AND er.map_layer != :map_layer
-    AND NOT EXISTS (
-    SELECT 1
-    FROM {topo_schema}.__edge_relation er_sub
-    WHERE er_sub.edge_id = edge.edge_id
-    AND er_sub.map_layer IN (
-    SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
+    ON er.edge_id = edges.edge_id
+    WHERE er.map_layer NOT IN (
+      SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
     )
-    )
-  UNION ALL
-  SELECT
-    r1.faces || {topo_schema}.opposite_face(edge, r1.adjacent) AS faces,
-    {topo_schema}.opposite_face(edge, r1.adjacent) AS adjacent,
-    {topo_schema}.opposite_face(edge, r1.adjacent) = ANY(r1.faces) AS cycle
-  FROM {topo_schema}.edge_data edge
-    LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = edge.edge_id
-    JOIN r r1
-    ON (r1.adjacent = edge.left_face OR r1.adjacent = edge.right_face)
-  WHERE edge.left_face != edge.right_face
-  AND NOT r1.cycle
-  AND r1.adjacent != 0
-  AND er.map_layer != :map_layer
-    AND NOT EXISTS (
-    SELECT 1
-    FROM {topo_schema}.__edge_relation er_sub
-    WHERE er_sub.edge_id = edge.edge_id
-    AND er_sub.map_layer IN (
-    SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
-    )
+  ),
+  face_relations AS (
+    SELECT left_face, right_face FROM joinable_edges
+    UNION ALL
+    SELECT right_face, left_face FROM joinable_edges
+  ),
+  face_adjacency AS (
+    SELECT left_face this_face, right_face opp_face
+    FROM face_relations
+    WHERE left_face != 0 AND right_face != 0
+    GROUP BY left_face, right_face
+  ),
+  r(faces, edge_faces, depth) AS (
+    /** This recursive query works outwards as a 'wave',
+    * starting from the given face_id and moving outwards
+      accumulating adjacent faces in a given map layer
+      until there are no more to find.
+
+      This works on face primitives but a similar approach
+      could accumulate based on child topogeometries, for layers
+      with child topological layers...
+     */
+    SELECT
+      ARRAY[]::integer[] AS faces,
+      ARRAY[:face_id] edge_faces,
+      1 AS depth
+    UNION ALL
+    SELECT
+      r.faces || r.edge_faces faces,
+      array(
+        SELECT opp_face
+        FROM face_adjacency fa
+        WHERE fa.this_face = ANY(r.edge_faces)
+        AND NOT fa.opp_face = ANY(r.faces)
+        AND NOT fa.opp_face = ANY(r.edge_faces)
+      ) AS edge_faces,
+      r.depth + 1
+    FROM r
+    WHERE array_length(r.edge_faces, 1) > 0
+    GROUP BY r.faces, r.edge_faces, r.depth
   )
-), b AS (
-  SELECT DISTINCT unnest(r.faces) AS face
-  FROM r
-  WHERE NOT r.cycle
-)
-SELECT array_agg(b.face) AS faces
-FROM b;
+SELECT faces, depth
+FROM r
+ORDER BY depth DESC
+LIMIT 1;
