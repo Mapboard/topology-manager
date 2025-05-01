@@ -31,7 +31,6 @@ WITH RECURSIVE
   face_adjacency AS (
     SELECT left_face this_face, right_face opp_face
     FROM face_relations
-    WHERE left_face != 0 AND right_face != 0
     GROUP BY left_face, right_face
   ),
   r(faces, edge_faces, depth) AS (

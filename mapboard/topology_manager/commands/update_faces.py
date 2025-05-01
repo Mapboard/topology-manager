@@ -56,29 +56,25 @@ def _update_faces(
 
     db.run_sql(sql("procedures/prepare-update-face"))
 
-    dirty_faces = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face").all()
-    nfaces = len(dirty_faces)
-
-    if nfaces == 0:
-        console.print("No faces to update")
-
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
 
-    log.info(f"Prepared to update {nfaces} faces in {t1 - t0:.2f} seconds")
+    log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
     t0 = perf_counter()
-
     niter = 0
-    while len(dirty_faces) > 0:
-        face = dirty_faces.pop(0)
+    init_n_faces = db.run_query(count_).scalar()
+    n_faces = init_n_faces
+    while n_faces > 0:
+        log.info("%s dirty faces remaining", n_faces)
+        # Extract one face
+        face = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face LIMIT 1").one()
         update_map_face_python(db, face)
+        n_faces = db.run_query(count_).scalar()
         niter += 1
 
-    log.info(f"Updated {niter} times")
-
     t1 = perf_counter()
-    log.info(f"Updated {nfaces} faces in {t1 - t0:.2f} seconds")
+    log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
 
 
 def update_map_face_plpgsql(db: Database):
@@ -86,3 +82,11 @@ def update_map_face_plpgsql(db: Database):
         db.run_query("SELECT {topo_schema}.update_map_face()").one()
     except Exception as e:
         console.print(f"Error updating faces: {e}", style="error")
+
+
+def get_n_dirty_faces(db: Database) -> int:
+    """Get the number of dirty faces"""
+    result = db.run_query(count_).scalar()
+    if result is None:
+        return 0
+    return result
