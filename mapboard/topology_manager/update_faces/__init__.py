@@ -28,7 +28,7 @@ def update_map_face_python(db: Database):
                 ARRAY[id]
             ) AS adjacent_faces
         FROM {topo_schema}.__dirty_face
-        LIMIT 10
+        LIMIT 5
         """
     )
     faces = [
