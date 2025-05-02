@@ -1,11 +1,12 @@
 from geoalchemy2.shape import from_shape
 from psycopg2.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
+from macrostrat.database import Database
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
-    db.run_query(
-        "INSERT INTO {table} (type, map_layer, geometry) VALUES (:type, :map_layer, :geom)",
+    return db.run_query(
+        "INSERT INTO {table} (type, map_layer, geometry) VALUES (:type, :map_layer, :geom) RETURNING id",
         {
             "type": type,
             "map_layer": map_layer,
@@ -18,7 +19,7 @@ def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612
                 )
             ),
         },
-    )
+    ).scalar()
 
 
 def square(size, center=(0, 0)):
@@ -34,11 +35,11 @@ def square(size, center=(0, 0)):
 
 
 def insert_line(db, coords, **kwargs):
-    insert_feature(db, "linework", LineString(coords), **kwargs)
+    return insert_feature(db, "linework", LineString(coords), **kwargs)
 
 
 def insert_polygon(db, coords, **kwargs):
-    insert_feature(
+    return insert_feature(
         db,
         "polygon",
         Polygon((coords)),
@@ -57,10 +58,22 @@ def n_face_primitives(db, include_global=False):
     return db.run_query(sql).scalar()
 
 
-def n_faces(db, identified=False):
+def n_faces(db, *, identified=False, map_layer=None):
     sql = "SELECT count(*) FROM test_topology.map_face"
+    where = []
+    params = {}
     if identified:
-        sql += " WHERE unit_id IS NOT NULL"
+        where.append("unit_id IS NOT NULL")
+    if map_layer is not None:
+        where.append("map_layer = :map_layer")
+        params["map_layer"] = map_layer
+    if len(where) > 0:
+        sql += " WHERE " + " AND ".join(where)
+    return db.run_query(sql, params).scalar()
+
+
+def n_edges(db):
+    sql = "SELECT count(*) FROM test_topology.edge"
     return db.run_query(sql).scalar()
 
 
@@ -90,3 +103,15 @@ def add_polygon_type_to_layer(db, layer_id, polygon_type):
         """INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, "type") VALUES (:map_layer, :layer_type)""",
         dict(map_layer=layer_id, layer_type=polygon_type),
     )
+
+
+def create_map_layer(db: Database, name: str, parent: int = None):
+    lyr = db.run_query(
+        """
+        INSERT INTO {data_schema}.map_layer (NAME, topological, parent)
+        VALUES (:name, :topological, :parent)
+        RETURNING id
+        """,
+        {"name": name, "topological": True, "parent": parent},
+    ).scalar()
+    return lyr

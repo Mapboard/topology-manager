@@ -34,13 +34,20 @@ def base_db(empty_db):
 
 
 @fixture(scope="class")
-def db(base_db):
+def db(base_db, pytestconfig):
     """Create a database session that is rolled back after each test
 
     This is based on the Sparrow's implementation:
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
 
+    # Create a new database session for each test
     base_db.automap(schemas=["test_map_data"])
-    with base_db.transaction(rollback="always"):
+
+    commit = pytestconfig.getoption("--commit")
+    if commit:
+        # Enable auto-commit mode
         yield base_db
+    else:
+        with base_db.transaction(rollback="always"):
+            yield base_db

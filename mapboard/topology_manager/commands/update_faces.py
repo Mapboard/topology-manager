@@ -46,10 +46,14 @@ def _update_faces(
     # This is mostly used in order to make sure that the tests run with the same engine
     # as the CLI commands. Eventually we should test with both engines at once.
     engine = os.environ.get("TOPO_ENGINE", engine)
+    # Hard-code the Python engine for now
+    engine = Engine.PYTHON
+
+    log.info("Updating faces with engine %s", engine)
 
     t0 = perf_counter()
     if reset:
-        db.run_sql(sql("procedures/reset-map_face"))
+        db.run_sql(sql("procedures/reset-map-face"))
 
     if fill_holes:
         db.run_sql(sql("procedures/set-holes-as-dirty"))
