@@ -1,6 +1,9 @@
 from ..database import get_database, sql
 from ..utilities import console
 from psycopg2.sql import Identifier
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 
 def clean_topology():
@@ -65,7 +68,7 @@ def _clean_topology(db):
 
         res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
         db.session.commit()
-        console.print(f"Removed {res} unused primitives")
+        log.info(f"Removed {res} unused primitives")
 
     with db.session.begin_nested():
         console.print("Healing edges", style="header")
@@ -77,11 +80,11 @@ def _clean_topology(db):
             )
             try:
                 db.run_query(
-                    sql("procedures/clean-topology-heal-edges"),
+                    "SELECT ST_ModEdgeHeal(:topo_name , :edge1, :edge2)",
                     {"edge1": row.edge1, "edge2": row.edge2},
                 ).one()
                 counter += 1
             except Exception as err:
                 console.print(str(err), style="error")
 
-        console.print(f"Healed {counter} edges")
+        log.info(f"Healed {counter} edges")
