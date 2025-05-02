@@ -31,14 +31,21 @@ def update_map_face_python(db: Database):
         LIMIT 5
         """
     )
-    faces = [
-        DirtyFace(
-            id=res.id,
-            map_layer=res.map_layer,
-            adjacent_faces=set(res.adjacent_faces),
+
+    faces = []
+    for res in rows:
+        face_id = res.id
+        map_layer = res.map_layer
+
+        # r1 = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
+
+        faces.append(
+            DirtyFace(
+                id=res.id,
+                map_layer=res.map_layer,
+                adjacent_faces=set(res.adjacent_faces),
+            )
         )
-        for res in rows
-    ]
     _update_faces(db, dissolve_adjacent_faces(faces))
 
 
