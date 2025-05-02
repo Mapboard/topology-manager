@@ -1,10 +1,13 @@
 from collections import defaultdict
+from time import perf_counter
 
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
 from functools import lru_cache
+
+from ..database import sql
 
 log = get_logger(__name__)
 
@@ -130,9 +133,14 @@ def _update_faces(db: Database, faces: list[DirtyFace]):
 
 def unmark_dirty_faces(db, map_layer, faces):
     db.run_sql(
-        """DELETE FROM {topo_schema}.__dirty_face df
-        WHERE df.map_layer = :map_layer
-        AND (id = ANY(:dissolved_faces) OR id = 0)
+        """DELETE
+           FROM {topo_schema}.__dirty_face df
+           WHERE
+               df.map_layer = :map_layer
+             AND (
+               id = ANY (
+               :dissolved_faces)
+              OR id = 0)
         """,
         dict(map_layer=map_layer, dissolved_faces=faces),
     )
@@ -142,12 +150,15 @@ def unmark_dirty_faces(db, map_layer, faces):
 def get_topolayer_id(db: Database, table_name: str, feature_column: str):
     return db.run_query(
         """
-    SELECT layer_id
-      FROM topology.layer
-     WHERE schema_name=:topo_name
-       AND table_name=:table_name
-       AND feature_column=:feature_column;
-    """,
+        SELECT
+            layer_id
+        FROM
+            topology.layer
+        WHERE
+              schema_name = :topo_name
+          AND table_name = :table_name
+          AND feature_column = :feature_column;
+        """,
         dict(
             table_name=table_name,
             feature_column=feature_column,
@@ -158,14 +169,18 @@ def get_topolayer_id(db: Database, table_name: str, feature_column: str):
 def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list[int]:
     return db.run_query(
         """
-            SELECT f.id
-            FROM {topo_schema}.relation r
+        SELECT
+            f.id
+        FROM
+            {topo_schema}.relation r
             JOIN {topo_schema}.map_face f
-              ON (f.topo).id = r.topogeo_id
-             AND r.layer_id = (f.topo).layer_id
-            WHERE element_id = ANY(:faces)
-              AND element_type = 3
-              AND f.map_layer = :map_layer
-            """,
+        ON (f.topo).id = r.topogeo_id
+            AND r.layer_id = (f.topo).layer_id
+        WHERE
+            element_id = ANY (
+            :faces)
+          AND element_type = 3
+          AND f.map_layer = :map_layer
+        """,
         dict(faces=faces, map_layer=map_layer),
     ).scalars()
