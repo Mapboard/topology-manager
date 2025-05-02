@@ -8,14 +8,27 @@ from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 from enum import Enum
+from typing import Optional
 
 from ..database import get_database, sql
 from ..utilities import console
 from ..update_faces import update_map_face_python
 
+from graphlib import TopologicalSorter
+
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
 log = get_logger(__name__)
+
+
+def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:
+    """Get the number of dirty faces in a layer"""
+    sql = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
+    params = {}
+    if map_layer is not None:
+        sql = sql + " WHERE map_layer = :layer"
+        params["layer"] = map_layer
+    return db.run_query(sql, params).scalar()
 
 
 class Engine(str, Enum):
@@ -65,20 +78,68 @@ def _update_faces(
 
     log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
-    t0 = perf_counter()
-    niter = 0
-    init_n_faces = db.run_query(count_).scalar()
-    n_faces = init_n_faces
-    while n_faces > 0:
-        log.info("%s dirty faces remaining", n_faces)
-        # Extract one face
-        face = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face LIMIT 1").one()
-        update_map_face_python(db, face)
-        n_faces = db.run_query(count_).scalar()
-        niter += 1
+    layers = get_map_layers_needing_update(db)
 
-    t1 = perf_counter()
-    log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
+    log.info("Found %d layers to update", len(layers))
+
+    for layer in layers:
+        id = layer.id
+        name = layer.name
+        log.info(f"Updating faces in layer {name} ({id})")
+
+        t0 = perf_counter()
+        niter = 0
+        init_n_faces = n_dirty_faces(db, map_layer=id)
+        n_faces = init_n_faces
+        while n_faces > 0:
+            log.info("%s dirty faces remaining", n_faces)
+            # Extract one face
+            face = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face WHERE map_layer = :layer LIMIT 1",
+                                dict(layer=id)).one()
+            update_map_face_python(db, face)
+            n_faces = n_dirty_faces(db, map_layer=id)
+            niter += 1
+
+        t1 = perf_counter()
+        log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
+
+
+def get_map_layers_needing_update(db: Database) -> list[int]:
+    """Get the map layers that need to be updated, sorted topologically"""
+    res = db.run_query(
+        """
+        SELECT ml.id, ml.name, ml.parent
+        FROM {data_schema}.map_layer ml
+        WHERE ml.topological;
+        """
+    ).all()
+    return res
+
+    res = db.run_query(
+        """
+        WITH layer_ids AS (
+            SELECT {topo_schema}.parent_map_layers(id) id
+            FROM {topo_schema}.__dirty_face
+        )
+        SELECT DISTINCT ON (ll.id) ll.id, ml.name, ml.parent FROM layer_ids ll
+        JOIN {data_schema}.map_layer ml
+          ON ll.id = ml.id
+        WHERE ml.topological;
+        """
+    ).all()
+    # Sort the layers topologically to put the parents last
+
+    layers = {layer.id: layer for layer in res}
+
+    ts = TopologicalSorter()
+    for layer in layers.values():
+        ts.add(layer.id, layer.parent)
+    sorted_layers = list(ts.static_order())
+
+    res.sort(key=lambda x: sorted_layers.index(x.parent))
+    res.reverse()
+
+    return res
 
 
 def update_map_face_plpgsql(db: Database):

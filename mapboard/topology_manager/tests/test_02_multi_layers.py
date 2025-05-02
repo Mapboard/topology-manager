@@ -105,26 +105,22 @@ class TestMultiLayers:
             assert res[0].layer == "bedrock"
 
     def test_remove_bedrock(self, db):
+        bedrock_id = map_layer_id(db, "bedrock")
         assert n_faces(db) == 2
+        assert n_faces(db, map_layer=bedrock_id) == 1
 
         # This works with savepoints but not nested transactions
         with db.savepoint(rollback="always"):
-            db.run_query("DELETE FROM test_map_data.linework WHERE type = 'bedrock'")
+            db.run_query("DELETE FROM test_map_data.linework WHERE map_layer = :map_layer", {"map_layer": bedrock_id})
             _update(db)
-            res = db.run_query(
-                "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
-            ).fetchall()
-
-            assert len(res) == 1
-            assert res[0].map_layer == map_layer_id(db, "surficial")
+            assert n_faces(db) == 1
+            assert n_faces(db, map_layer=map_layer_id(db, "surficial")) == 1
 
     def test_remove_bedrock_no_nested_transaction(self, db):
+        bedrock_id = map_layer_id(db, "bedrock")
         assert n_faces(db) == 2
-        db.run_query("DELETE FROM {data_schema}.linework WHERE type = 'bedrock'")
+        db.run_query("DELETE FROM test_map_data.linework WHERE map_layer = :map_layer", {"map_layer": bedrock_id})
         _update(db)
-        res = db.run_query(
-            "SELECT map_layer, ST_Area(geometry) area FROM test_topology.map_face"
-        ).fetchall()
 
-        assert len(res) == 1
-        assert res[0].map_layer == map_layer_id(db, "surficial")
+        assert n_faces(db) == 1
+        assert n_faces(db, map_layer=map_layer_id(db, "surficial")) == 1
