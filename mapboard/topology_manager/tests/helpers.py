@@ -57,11 +57,18 @@ def n_face_primitives(db, include_global=False):
     return db.run_query(sql).scalar()
 
 
-def n_faces(db, identified=False):
+def n_faces(db, *, identified=False, map_layer=None):
     sql = "SELECT count(*) FROM test_topology.map_face"
+    where = []
+    params = {}
     if identified:
-        sql += " WHERE unit_id IS NOT NULL"
-    return db.run_query(sql).scalar()
+        where.append("unit_id IS NOT NULL")
+    if map_layer is not None:
+        where.append("map_layer = :map_layer")
+        params["map_layer"] = map_layer
+    if len(where) > 0:
+        sql += " WHERE " + " AND ".join(where)
+    return db.run_query(sql, params).scalar()
 
 
 def map_layer_id(db, name: str):

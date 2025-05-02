@@ -70,7 +70,7 @@ class TestMapFaces:
         parent_lyr = map_layer_id(db, "parent")
         add_linework_type_to_layer(db, parent_lyr, "bedrock")
 
-        # Insert a line outside of the child layer
+        # Insert a line outside of the child layer that encompasses all child faces
         coords = [
             (-1, -1),
             (11, -1),
@@ -83,14 +83,20 @@ class TestMapFaces:
         # Solve the topology
         _update(db)
 
-        # Check that we have 102 map faces and one fewer primitive
+        # Check that we have 102 map faces and one fewer primitive.
+        # - The child layer now has 101 faces including the ring outside the 10x10 grid
+        # - The parent layer has 1 face that is 12x12 units and encompasses all child faces
+        # - Primitives are shared between layers so there are 101
         assert n_faces(db) == 102
         assert n_face_primitives(db) == 101
 
     def test_erase_and_consolidate_faces(self, db):
         """Test the erasure and consolidation of faces."""
         _child_layer = map_layer_id(db, "child")
+        _parent_lyr = map_layer_id(db, "parent")
 
+        # Delete lines that cover the bottom right corner of the child layer
+        # while leaving other lines intact. This should remove 4 faces from the
         db.run_sql(
             """
             UPDATE {data_schema}.linework
@@ -103,9 +109,14 @@ class TestMapFaces:
 
         _update(db)
 
-        # We should have merged 4 faces into 1
+        # We should have merged 4 faces into 1 in the child layer
+        # - 101-4+1=98 faces in child layer
         # - one face in parent layer
-        # - 100-4+1=97 faces in child layer
+        # - 99 total faces
+
+        assert n_faces(db, map_layer=_child_layer) == 98
+        assert n_faces(db, map_layer=_parent_lyr) == 1
+
         assert n_faces(db) == 99
         assert n_face_primitives(db) == 98
 

@@ -24,7 +24,7 @@ def update_map_face_python(db: Database):
         SELECT id,
             map_layer
         FROM {topo_schema}.__dirty_face
-        LIMIT 5
+        LIMIT 1
         """
     )
 
@@ -39,6 +39,7 @@ def update_map_face_python(db: Database):
             adjacent = [face_id]
 
         # r1 = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
+        # adjacent = r1.faces
 
         faces.append(
             DirtyFace(
