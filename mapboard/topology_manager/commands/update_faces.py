@@ -27,7 +27,7 @@ def update_faces(
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     engine: Engine = Option(
-        Engine.PYTHON, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
+        Engine.PLPGSQL, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
     ),
 ):
     """Update faces"""
@@ -40,7 +40,7 @@ def _update_faces(
     *,
     reset: bool = False,
     fill_holes: bool = False,
-    engine: Engine = Engine.PLPGSQL,
+    engine: Engine = Engine.PYTHON,
 ):
     # Load the engine from the environment if it's defined there.
     # This is mostly used in order to make sure that the tests run with the same engine
@@ -60,35 +60,24 @@ def _update_faces(
 
     db.run_sql(sql("procedures/prepare-update-face"))
 
-    nfaces = db.run_query(count_).scalar()
-
-    if nfaces == 0:
-        console.print("No faces to update")
-
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
 
-    console.print(f"Prepared to update {nfaces} faces in {t1 - t0:.2f} seconds")
+    log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
     t0 = perf_counter()
-
-    with Progress() as progress:
-        bar = progress.add_task("Updating faces", total=nfaces)
-        niter = 0
-        while nfaces > 0:
-            if engine == Engine.PLPGSQL:
-                update_map_face_plpgsql(db)
-            else:
-                update_map_face_python(db)
-            next_count = db.run_query(count_).scalar()
-            progress.update(bar, completed=nfaces - next_count)
-            nfaces = next_count
-            niter += 1
-
-        log.info(f"Updated {niter} times")
+    niter = 0
+    init_n_faces = db.run_query(count_).scalar()
+    n_faces = init_n_faces
+    while n_faces > 0:
+        log.info("%s dirty faces remaining", n_faces)
+        # Extract one face
+        update_map_face_python(db)
+        n_faces = db.run_query(count_).scalar()
+        niter += 1
 
     t1 = perf_counter()
-    log.info(f"Updated {nfaces} faces in {t1 - t0:.2f} seconds")
+    log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
 
 
 def update_map_face_plpgsql(db: Database):
@@ -96,4 +85,11 @@ def update_map_face_plpgsql(db: Database):
         db.run_query("SELECT {topo_schema}.update_map_face()").one()
     except Exception as e:
         console.print(f"Error updating faces: {e}", style="error")
-        raise e
+
+
+def get_n_dirty_faces(db: Database) -> int:
+    """Get the number of dirty faces"""
+    result = db.run_query(count_).scalar()
+    if result is None:
+        return 0
+    return result
