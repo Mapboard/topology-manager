@@ -22,11 +22,7 @@ def update_map_face_python(db: Database):
     rows = db.run_query(
         """
         SELECT id,
-            map_layer,
-            coalesce(
-                {topo_schema}.adjacent_faces(id, map_layer),
-                ARRAY[id]
-            ) AS adjacent_faces
+            map_layer
         FROM {topo_schema}.__dirty_face
         LIMIT 5
         """
@@ -37,13 +33,18 @@ def update_map_face_python(db: Database):
         face_id = res.id
         map_layer = res.map_layer
 
+        adjacent = db.run_query("SELECT {topo_schema}.adjacent_faces(:id, :map_layer)",
+                                dict(id=face_id, map_layer=map_layer)).scalar()
+        if adjacent is None:
+            adjacent = [face_id]
+
         # r1 = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
 
         faces.append(
             DirtyFace(
                 id=res.id,
                 map_layer=res.map_layer,
-                adjacent_faces=set(res.adjacent_faces),
+                adjacent_faces=set(adjacent),
             )
         )
     _update_faces(db, dissolve_adjacent_faces(faces))
