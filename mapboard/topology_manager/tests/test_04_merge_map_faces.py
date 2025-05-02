@@ -2,10 +2,38 @@
 
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer
-from ..commands.update import _update
+from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, \
+    create_map_layer, n_edges
+from ..commands.update import _update, _update_contacts
 
 log = get_logger(__name__)
+
+
+class TestSimpleEdgeRelationships:
+    def test_edges(self, db):
+        lyr = create_map_layer(db, "base")
+        add_linework_type_to_layer(db, lyr, "bedrock")
+
+        # Insert a line
+        insert_line(db, [(0, 0), (3, 0)], type="bedrock", map_layer=lyr)
+        _update(db)
+
+        # Check that we have the expected number of edges
+        assert n_edges(db) == 1
+
+        # Divide the line into two segments
+        insert_line(db, [(1, -1), (1, 1)], type="bedrock", map_layer=lyr)
+        _update(db)
+        assert n_edges(db) == 4
+
+        _id = insert_line(db, [(2, -1), (2, 1)], type="bedrock", map_layer=lyr)
+        _update(db)
+        assert n_edges(db) == 7
+
+        # Delete the last edge
+        db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
+        _update(db)
+        assert n_edges(db) == 4
 
 
 class TestMergeMapFaces:
@@ -33,6 +61,7 @@ class TestMergeMapFaces:
         ]
         insert_line(db, coords, type="bedrock", map_layer=parent_lyr)
         _update(db)
+        assert n_edges(db) == 1
         assert n_faces(db) == 2
         assert n_faces(db, map_layer=child_lyr) == 1
         assert n_face_primitives(db) == 1
@@ -42,8 +71,10 @@ class TestMergeMapFaces:
         child_lyr = map_layer_id(db, "child")
 
         insert_line(db, [(1, -1), (1, 3)], type="bedrock", map_layer=child_lyr)
+
         _update(db)
 
+        assert n_edges(db) == 5
         assert n_face_primitives(db) == 2
         assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
@@ -57,15 +88,17 @@ class TestMergeMapFaces:
         _update(db)
 
         assert n_face_primitives(db) == 4
+        assert n_edges(db) == 12
         assert n_faces(db, map_layer=child_lyr) == 4
         assert n_faces(db) == 5
 
     def test_merge_faces(self, db):
         # Delete one of the lines from the child layer
         child_lyr = map_layer_id(db, "child")
+        parent_lyr = map_layer_id(db, "parent")
 
         db.run_query(
-            "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(0,1), :srid))",
+            "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(-1,1), :srid))",
             {"map_layer": child_lyr}
         )
         _update(db)
@@ -79,6 +112,7 @@ class TestMergeMapFaces:
 
         # Check that we have the expected number of faces
         assert n_face_primitives(db) == 2
+        assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
 
     def test_merge_faces_again(self, db):
@@ -90,8 +124,9 @@ class TestMergeMapFaces:
         )
         _update(db)
 
+        assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
-        assert n_faces(db) == 2
+        assert n_faces(db) == 1
 
     def test_move_line_to_child_layer(self, db):
         child_lyr = map_layer_id(db, "child")
@@ -104,4 +139,5 @@ class TestMergeMapFaces:
         _update(db)
 
         # The parent layer should no longer have a face
+        assert n_face_primitives(db) == 1
         assert n_faces(db) == 1

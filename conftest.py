@@ -23,3 +23,9 @@ def pytest_addoption(parser):
         default=False,
         help="Keep the database after tests",
     )
+    parser.addoption(
+        "--commit",
+        action="store_true",
+        default=False,
+        help="Commit the database after tests",
+    )
