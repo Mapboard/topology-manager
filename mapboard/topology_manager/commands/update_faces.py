@@ -108,23 +108,14 @@ def get_map_layers_needing_update(db: Database) -> list[int]:
     """Get the map layers that need to be updated, sorted topologically"""
     res = db.run_query(
         """
-        SELECT ml.id, ml.name, ml.parent
-        FROM {data_schema}.map_layer ml
-        WHERE ml.topological;
-        """
-    ).all()
-    return res
-
-    res = db.run_query(
-        """
-        WITH layer_ids AS (
-            SELECT {topo_schema}.parent_map_layers(id) id
-            FROM {topo_schema}.__dirty_face
+        WITH parent_layers AS (
+          SELECT {topo_schema}.parent_map_layers(map_layer) id
+          FROM {topo_schema}.__dirty_face
         )
-        SELECT DISTINCT ON (ll.id) ll.id, ml.name, ml.parent FROM layer_ids ll
+        SELECT DISTINCT ON (ll.id) ll.id, ml.name, ml.parent FROM parent_layers ll
         JOIN {data_schema}.map_layer ml
           ON ll.id = ml.id
-        WHERE ml.topological;
+        WHERE ml.topological
         """
     ).all()
     # Sort the layers topologically to put the parents last
