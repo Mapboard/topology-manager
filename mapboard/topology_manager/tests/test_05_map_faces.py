@@ -1,10 +1,9 @@
 """Tests to ensure efficient calculations of map faces."""
 
-from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives
+from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer
 from ..commands.update import _update
 from pytest import mark
 
@@ -119,15 +118,3 @@ class TestMapFaces:
 
         assert n_faces(db) == 99
         assert n_face_primitives(db) == 98
-
-
-def create_map_layer(db: Database, name: str, parent: int = None):
-    lyr = db.run_query(
-        """
-        INSERT INTO {data_schema}.map_layer (NAME, topological, parent)
-        VALUES (:name, :topological, :parent)
-        RETURNING id
-        """,
-        {"name": name, "topological": True, "parent": parent},
-    ).scalar()
-    return lyr

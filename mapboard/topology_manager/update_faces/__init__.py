@@ -21,8 +21,7 @@ class DirtyFace(BaseModel):
 def update_map_face_python(db: Database):
     rows = db.run_query(
         """
-        SELECT id,
-            map_layer
+        SELECT id, map_layer
         FROM {topo_schema}.__dirty_face
         LIMIT 1
         """

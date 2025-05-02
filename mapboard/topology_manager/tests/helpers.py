@@ -1,6 +1,7 @@
 from geoalchemy2.shape import from_shape
 from psycopg2.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
+from macrostrat.database import Database
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
@@ -97,3 +98,15 @@ def add_polygon_type_to_layer(db, layer_id, polygon_type):
         """INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, "type") VALUES (:map_layer, :layer_type)""",
         dict(map_layer=layer_id, layer_type=polygon_type),
     )
+
+
+def create_map_layer(db: Database, name: str, parent: int = None):
+    lyr = db.run_query(
+        """
+        INSERT INTO {data_schema}.map_layer (NAME, topological, parent)
+        VALUES (:name, :topological, :parent)
+        RETURNING id
+        """,
+        {"name": name, "topological": True, "parent": parent},
+    ).scalar()
+    return lyr

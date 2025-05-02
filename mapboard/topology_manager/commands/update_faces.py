@@ -53,7 +53,7 @@ def _update_faces(
 
     t0 = perf_counter()
     if reset:
-        db.run_sql(sql("procedures/reset-map_face"))
+        db.run_sql(sql("procedures/reset-map-face"))
 
     if fill_holes:
         db.run_sql(sql("procedures/set-holes-as-dirty"))
