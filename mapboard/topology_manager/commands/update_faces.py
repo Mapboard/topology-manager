@@ -27,7 +27,7 @@ def update_faces(
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     engine: Engine = Option(
-        Engine.PLPGSQL, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
+        Engine.PYTHON, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
     ),
 ):
     """Update faces"""
@@ -46,6 +46,10 @@ def _update_faces(
     # This is mostly used in order to make sure that the tests run with the same engine
     # as the CLI commands. Eventually we should test with both engines at once.
     engine = os.environ.get("TOPO_ENGINE", engine)
+    # Hard-code the Python engine for now
+    engine = Engine.PYTHON
+
+    log.info("Updating faces with engine %s", engine)
 
     t0 = perf_counter()
     if reset:
@@ -92,3 +96,4 @@ def update_map_face_plpgsql(db: Database):
         db.run_query("SELECT {topo_schema}.update_map_face()").one()
     except Exception as e:
         console.print(f"Error updating faces: {e}", style="error")
+        raise e
