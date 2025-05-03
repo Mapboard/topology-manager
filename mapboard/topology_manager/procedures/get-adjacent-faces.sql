@@ -61,6 +61,7 @@ WITH RECURSIVE
     WHERE er.map_layer NOT IN (
       SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
     )
+    OR er.map_layer IS NULL -- this edge is not linked to any specific map layer
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
@@ -77,6 +78,8 @@ WITH RECURSIVE
     * starting from the given face_id and moving outwards
       accumulating adjacent faces in a given map layer
       until there are no more to find.
+
+      We should stop when we reach the global face, but we don't do this now.
 
       This works on face primitives but a similar approach
       could accumulate based on child topogeometries, for layers

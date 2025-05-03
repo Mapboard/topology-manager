@@ -81,6 +81,10 @@ def _update_faces(
 
     log.info("Found %d layers to update", len(layers))
 
+    dirty_faces = list(db.run_query("SELECT id FROM {topo_schema}.__dirty_face").scalars())
+
+    log.debug("Dirty faces: %s", dirty_faces)
+
     for layer in layers:
         id = layer.id
         name = layer.name
