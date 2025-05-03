@@ -59,7 +59,7 @@ def n_face_primitives(db, include_global=False):
 
 
 def n_faces(db, *, identified=False, map_layer=None):
-    sql = "SELECT count(*) FROM test_topology.map_face"
+    sql = "SELECT count(*) FROM {topo_schema}.map_face"
     where = []
     params = {}
     if identified:
@@ -73,7 +73,7 @@ def n_faces(db, *, identified=False, map_layer=None):
 
 
 def n_edges(db):
-    sql = "SELECT count(*) FROM test_topology.edge"
+    sql = "SELECT count(*) FROM {topo_schema}.edge"
     return db.run_query(sql).scalar()
 
 
@@ -86,7 +86,7 @@ def map_layer_id(db, name: str):
 
 def intersecting_faces(db, geom):
     return db.run_query(
-        "SELECT map_layer, st_area(geometry) area FROM test_topology.map_face WHERE st_intersects(geometry, :geom)",
+        "SELECT map_layer, st_area(geometry) area FROM {topo_schema}.map_face WHERE st_intersects(geometry, :geom)",
         dict(geom=geom),
     ).fetchall()
 
