@@ -3,7 +3,8 @@
 from macrostrat.utils import get_logger
 
 from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, \
-    create_map_layer, n_edges, square
+    create_map_layer, n_edges, square, point
+from .test_03_fill_holes import get_face_info
 from ..commands.update import _update, _update_contacts
 from ..update_faces import get_adjacent_faces
 
@@ -97,19 +98,19 @@ class TestMergeMapFaces:
         parent_lyr = map_layer_id(db, "parent")
 
         # Insert a square in the parent layer
-        coords = [
-            (0, 0),
-            (2, 0),
-            (2, 2),
-            (0, 2),
-            (0, 0),
-        ]
-        insert_line(db, coords, type="bedrock", map_layer=parent_lyr)
+        insert_line(db, square(2, (1, 1)), type="bedrock", map_layer=parent_lyr)
         _update(db)
         assert n_edges(db) == 1
-        assert n_faces(db) == 2
-        assert n_faces(db, map_layer=child_lyr) == 1
         assert n_face_primitives(db) == 1
+
+        face_info = get_face_info(db, point(1, 1), map_layer=parent_lyr)
+        assert face_info.face_id != 0
+        assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=child_lyr)
+        assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=parent_lyr)
+
+        assert n_faces(db, map_layer=parent_lyr) == 1
+        assert n_faces(db, map_layer=child_lyr) == 1
+        assert n_faces(db) == 2
 
     def test_insert_child_line(self, db):
         # Insert crossing lines in the child layer

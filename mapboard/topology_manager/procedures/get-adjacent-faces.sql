@@ -61,7 +61,10 @@ WITH RECURSIVE
     WHERE er.map_layer NOT IN (
       SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
     )
-    OR er.map_layer IS NULL -- this edge is not linked to any specific map layer
+    AND NOT er.is_child
+    OR er.map_layer IS NULL -- no line is registered to this edge in any layer
+    -- (it may not be yet cleaned up, or is just attached to a map face)
+
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
