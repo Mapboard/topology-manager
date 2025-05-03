@@ -9,6 +9,7 @@ from .helpers import (
     map_layer_id,
     n_faces,
     n_face_primitives,
+    get_face_id,
     point,
     square,
 )
@@ -171,9 +172,7 @@ def _test_internals(db, layers):
     center = point(3, 3)
 
     # Check that we have only one face
-    face_id = db.run_query(
-        "SELECT face_id FROM {topo_schema}.face_data WHERE ST_Intersects(ST_GetFaceGeometry(:topo_name, face_id), :point) LIMIT 1",
-        dict(point=center)).scalar()
+    face_id = get_face_id(db, center)
     dissolved = get_adjacent_faces(db, face_id, map_layer=bedrock_id)
     assert 0 in dissolved
 
@@ -187,11 +186,3 @@ def _test_internals(db, layers):
 
     assert n_faces(db) == 1
     assert n_faces(db, map_layer=layers["surficial"]) == 1
-
-
-def get_topology_state(db):
-    """Get the topology state"""
-    faces = db.run_query(
-        "SELECT * FROM {topo_schema}.face"
-    ).all()
-    return faces

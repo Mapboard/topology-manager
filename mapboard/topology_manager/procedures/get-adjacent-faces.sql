@@ -1,4 +1,43 @@
+/*
+        SELECT
+            f.id
+        FROM {topo_schema}.map_face f
+        JOIN {topo_schema}.relation r
+          ON (f.topo).id = r.topogeo_id
+          AND r.layer_id = (f.topo).layer_id
+        WHERE r.element_id = ANY(:faces)
+          AND r.element_type = 3
+          AND f.map_layer = :map_layer
+ */
+
 WITH RECURSIVE
+  -- These first two are mirrors of the __edge_relations table,
+  -- designed to remove that as a source of potential confusion
+  line_data AS (
+    SELECT
+      l.id,
+      l.topo,
+      {topo_schema}.child_map_layers(l.map_layer) map_layer,
+      l.map_layer root_map_layer,
+      l.type
+    FROM {data_schema}.linework l
+    JOIN {data_schema}.linework_type t
+      ON l.type = t.id
+    WHERE l.topo IS NOT null
+      AND l.map_layer IS NOT null
+  ),
+  edge_relations AS (
+    SELECT
+      f.id line_id,
+      r.element_id edge_id,
+      f.map_layer map_layer,
+      f.map_layer != f.root_map_layer is_child
+    FROM line_data f
+    JOIN {topo_schema}.relation r
+      ON (f.topo).id = r.topogeo_id
+      AND r.layer_id = (f.topo).layer_id
+    WHERE r.element_type = 2 -- edges
+  ),
   edges AS (SELECT
               edge_id,
               left_face,
@@ -17,7 +56,7 @@ WITH RECURSIVE
       er.line_id,
       er.is_child
     FROM edges
-    LEFT JOIN {topo_schema}.__edge_relation er
+    LEFT JOIN edge_relations er
     ON er.edge_id = edges.edge_id
     WHERE er.map_layer NOT IN (
       SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)

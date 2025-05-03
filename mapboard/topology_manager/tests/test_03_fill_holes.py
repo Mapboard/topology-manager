@@ -1,5 +1,27 @@
 from ..commands.update import _update
-from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square
+from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square, get_face_id
+from ..database import sql
+from ..update_faces import containing_map_faces, get_adjacent_faces
+from pydantic import BaseModel
+
+
+class MapFaceInfo(BaseModel):
+    face_id: int
+    map_face_id: int
+    map_layer: int
+
+
+def get_face_info(db, _point, map_layer):
+    face_id = get_face_id(db, _point)
+    # Check that we find a single containing map face
+    mf0 = containing_map_faces(db, [face_id], map_layer)
+    assert len(mf0) == 1
+    return MapFaceInfo(face_id=face_id, map_face_id=mf0[0], map_layer=map_layer)
+
+
+def _test_points(db, lyr):
+    points = [point(3, 3), point(5, 5)]
+    return [get_face_info(db, p, lyr) for p in points]
 
 
 class TestFillHoles:
@@ -10,9 +32,13 @@ class TestFillHoles:
         insert_line(db, square(2, center=(3, 3)), type="bedrock", map_layer=lyr)
         _update(db)
 
-        # Check that we have no map faces
+        # Check that we have no identified map faces
         assert n_faces(db) == 2
         assert n_faces(db, identified=True) == 0
+
+        points = _test_points(db, lyr)
+        assert points[0].face_id != points[1].face_id
+        assert points[0].map_face_id != points[1].map_face_id
 
     def test_identify_faces(self, db):
         insert_polygon(
@@ -62,15 +88,25 @@ class TestFillHoles:
         assert n_faces(db) == 2
 
     def test_remove_line(self, db):
+        _bedrock = map_layer_id(db, "bedrock")
         db.run_query(
             "DELETE FROM test_map_data.linework WHERE ST_Intersects(geometry, :geom)",
             {"geom": point(2, 2)},
         )
-        # There should only be one line remaining
+        # There should only be one line remaining, in the bedrock layer
         n = db.run_query("SELECT count(*) FROM test_map_data.linework").scalar()
         assert n == 1
 
         _update(db)
+
+        points = _test_points(db, _bedrock)
+        expanded = get_adjacent_faces(db, points[0].face_id, _bedrock)
+
+        assert points[1].face_id in expanded
+
+        assert points[0].face_id == points[1].face_id
+        assert points[0].map_face_id == points[1].map_face_id
+
         assert n_faces(db, identified=True) == 1
         assert n_faces(db) == 1
 
