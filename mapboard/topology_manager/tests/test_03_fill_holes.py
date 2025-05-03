@@ -3,11 +3,12 @@ from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, 
 from ..database import sql
 from ..update_faces import containing_map_faces, get_adjacent_faces
 from pydantic import BaseModel
+from typing import Optional
 
 
 class MapFaceInfo(BaseModel):
     face_id: int
-    map_face_id: int
+    map_face_id: Optional[int]
     map_layer: int
 
 
@@ -15,8 +16,11 @@ def get_face_info(db, _point, map_layer):
     face_id = get_face_id(db, _point)
     # Check that we find a single containing map face
     mf0 = containing_map_faces(db, [face_id], map_layer)
-    assert len(mf0) == 1
-    return MapFaceInfo(face_id=face_id, map_face_id=mf0[0], map_layer=map_layer)
+    assert len(mf0) <= 1
+    _id = None
+    if len(mf0) == 1:
+        _id = mf0[0]
+    return MapFaceInfo(face_id=face_id, map_face_id=_id, map_layer=map_layer)
 
 
 def _test_points(db, lyr):
@@ -107,7 +111,7 @@ class TestFillHoles:
         assert points[0].face_id == points[1].face_id
         assert points[0].map_face_id == points[1].map_face_id
 
-        assert n_faces(db, identified=True) == 1
+        assert n_faces(db, identified=True, map_layer=_bedrock) == 1
         assert n_faces(db) == 1
 
     def test_identifier(self, db):
