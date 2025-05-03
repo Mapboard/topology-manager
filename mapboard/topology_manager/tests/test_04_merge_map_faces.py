@@ -7,38 +7,35 @@ from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_fa
 from .test_03_fill_holes import get_face_info
 from ..commands.update import _update, _update_contacts
 from ..update_faces import get_adjacent_faces
+from pytest import fixture
 
 log = get_logger(__name__)
 
 
-class TestSimpleEdgeRelationships:
-    def test_edges(self, db):
-        lyr = create_map_layer(db, "base")
-        add_linework_type_to_layer(db, lyr, "bedrock")
+def test_simple_edge_relationships(db):
+    lyr = create_map_layer(db, "base")
+    add_linework_type_to_layer(db, lyr, "bedrock")
 
-        # Insert a line
-        insert_line(db, [(0, 0), (3, 0)], type="bedrock", map_layer=lyr)
-        _update(db)
+    # Insert a line
+    insert_line(db, [(0, 0), (3, 0)], type="bedrock", map_layer=lyr)
+    _update(db)
 
-        # Check that we have the expected number of edges
-        assert n_edges(db) == 1
+    # Check that we have the expected number of edges
+    assert n_edges(db) == 1
 
-        # Divide the line into two segments
-        insert_line(db, [(1, -1), (1, 1)], type="bedrock", map_layer=lyr)
-        _update(db)
-        assert n_edges(db) == 4
+    # Divide the line into two segments
+    insert_line(db, [(1, -1), (1, 1)], type="bedrock", map_layer=lyr)
+    _update(db)
+    assert n_edges(db) == 4
 
-        _id = insert_line(db, [(2, -1), (2, 1)], type="bedrock", map_layer=lyr)
-        _update(db)
-        assert n_edges(db) == 7
+    _id = insert_line(db, [(2, -1), (2, 1)], type="bedrock", map_layer=lyr)
+    _update(db)
+    assert n_edges(db) == 7
 
-        # Delete the last edge
-        db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
-        _update(db)
-        assert n_edges(db) == 4
-
-
-from pytest import fixture
+    # Delete the last edge
+    db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
+    _update(db)
+    assert n_edges(db) == 4
 
 
 @fixture
@@ -58,28 +55,27 @@ def layers(db):
     }
 
 
-class TestAdjacentFaceFinding:
-    def test_find_adjacent_faces(self, db, layers):
-        # There should only be the global face
-        assert db.run_query("SELECT face_id FROM {topo_schema}.face").scalar() == 0
-        # Insert a square into the child layer
-        insert_line(db, square(2, center=(0, 0)), type="bedrock", map_layer=layers["child"])
-        _update(db)
-        assert n_faces(db) == 1
-        # Get the face that intersects 0,0
-        face_id = db.run_query(
-            "SELECT face_id FROM {topo_schema}.face WHERE ST_Intersects(mbr, ST_SetSRID(ST_MakePoint(0, 0), :srid))",
-        ).scalar()
-        assert face_id is not None
+def test_find_adjacent_faces(db, layers):
+    # There should only be the global face
+    assert db.run_query("SELECT face_id FROM {topo_schema}.face").scalar() == 0
+    # Insert a square into the child layer
+    insert_line(db, square(2, center=(0, 0)), type="bedrock", map_layer=layers["child"])
+    _update(db)
+    assert n_faces(db) == 1
+    # Get the face that intersects 0,0
+    face_id = db.run_query(
+        "SELECT face_id FROM {topo_schema}.face WHERE ST_Intersects(mbr, ST_SetSRID(ST_MakePoint(0, 0), :srid))",
+    ).scalar()
+    assert face_id is not None
 
-        faces = get_adjacent_faces(db, face_id, layers["child"])
-        assert len(faces) == 1
-        assert faces[0] == face_id
+    faces = get_adjacent_faces(db, face_id, layers["child"])
+    assert len(faces) == 1
+    assert faces[0] == face_id
 
-        f1 = get_adjacent_faces(db, face_id, layers["parent"])
-        assert len(f1) == 2
-        assert face_id in f1
-        assert 0 in f1
+    f1 = get_adjacent_faces(db, face_id, layers["parent"])
+    assert len(f1) == 2
+    assert face_id in f1
+    assert 0 in f1
 
 
 class TestMergeMapFaces:
@@ -155,6 +151,12 @@ class TestMergeMapFaces:
             {"map_layer": child_lyr}
         ).scalar()
         assert n_lines == 1
+
+        # But we still have the square in the parent layer, so there should be a face there
+        face_info = get_face_info(db, point(1, 1), map_layer=parent_lyr)
+        assert face_info.face_id != 0
+        assert 0 in get_adjacent_faces(db, face_info.face_id, map_layer=child_lyr)
+        assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=parent_lyr)
 
         # Check that we have the expected number of faces
         assert n_face_primitives(db) == 2

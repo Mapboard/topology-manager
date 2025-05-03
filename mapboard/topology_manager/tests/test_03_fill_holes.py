@@ -14,6 +14,8 @@ class MapFaceInfo(BaseModel):
 
 def get_face_info(db, _point, map_layer):
     face_id = get_face_id(db, _point)
+    if face_id is None:
+        face_id = 0  # No face found, return the global face id
     # Check that we find a single containing map face
     mf0 = containing_map_faces(db, [face_id], map_layer)
     assert len(mf0) <= 1

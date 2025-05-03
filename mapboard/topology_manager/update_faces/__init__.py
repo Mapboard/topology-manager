@@ -95,9 +95,7 @@ def _update_face(db: Database, face: DirtyFace):
             """
             DELETE
             FROM {topo_schema}.map_face mf
-            WHERE
-                id = ANY (
-                :map_faces)
+            WHERE id = ANY (:map_faces)
             """,
             dict(map_faces=existing_map_faces),
         )
