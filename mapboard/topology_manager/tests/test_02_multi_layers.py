@@ -119,6 +119,9 @@ class TestMultiLayers:
 
     def test_remove_surficial(self, db, layers):
         assert n_faces(db) == 1
+        faces = intersecting_faces(db, point(3, 3))
+        assert len(faces) == 1
+        assert faces[0].map_layer == layers["surficial"]
         assert n_faces(db, map_layer=layers["surficial"]) == 1
         with db.savepoint(rollback="always"):
             db.run_query("DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
@@ -150,11 +153,12 @@ def _test_internals(db, layers):
     assert len(res) == 0
 
     # Delete edge relationships
-    db.run_sql(
-        "DELETE FROM {topo_schema}.__edge_relation"
-    )
-    db.run_sql(sql("procedures/post-update-contacts"))
+    # db.run_sql(
+    #     "DELETE FROM {topo_schema}.__edge_relation"
+    # )
+    # db.run_sql(sql("procedures/post-update-contacts"))
 
+    _update(db)
     _update(db)
 
     # We should also have deleted all edge relationships
@@ -164,13 +168,12 @@ def _test_internals(db, layers):
 
     # assert n_face_primitives(db) == 1
 
-    _update(db)
-
     center = point(3, 3)
 
     # Check that we have only one face
-    face_id = db.run_query("SELECT face_id FROM {topo_schema}.face WHERE ST_Intersects(mbr, :point) LIMIT 1",
-                           dict(point=center)).scalar()
+    face_id = db.run_query(
+        "SELECT face_id FROM {topo_schema}.face_data WHERE ST_Intersects(ST_GetFaceGeometry(:topo_name, face_id), :point) LIMIT 1",
+        dict(point=center)).scalar()
     dissolved = get_adjacent_faces(db, face_id, map_layer=bedrock_id)
     assert 0 in dissolved
 
@@ -183,4 +186,12 @@ def _test_internals(db, layers):
     assert len(faces) == 1
 
     assert n_faces(db) == 1
-    assert n_faces(db, map_layer=map_layer_id(db, "surficial")) == 1
+    assert n_faces(db, map_layer=layers["surficial"]) == 1
+
+
+def get_topology_state(db):
+    """Get the topology state"""
+    faces = db.run_query(
+        "SELECT * FROM {topo_schema}.face"
+    ).all()
+    return faces

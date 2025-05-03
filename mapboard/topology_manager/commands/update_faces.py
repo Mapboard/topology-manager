@@ -1,7 +1,6 @@
 import os
 from threading import Timer
 
-from rich.progress import Progress
 from typer import Option
 from time import perf_counter
 from macrostrat.database import Database
