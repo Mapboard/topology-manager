@@ -61,3 +61,11 @@ WHERE ef.edge_id NOT IN (
 DELETE FROM {topo_schema}.map_face f
 USING v1
 WHERE v1.map_face = f.id;
+
+/* expand dirty faces to cover parent layers.
+This is needed because we currently have a bit of a disconnected process.
+ */
+
+INSERT INTO {topo_schema}.__dirty_face
+SELECT id, {topo_schema}.parent_map_layers(map_layer) FROM {topo_schema}.__dirty_face
+ON CONFLICT DO NOTHING;

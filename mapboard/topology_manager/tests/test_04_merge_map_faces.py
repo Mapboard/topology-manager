@@ -159,6 +159,7 @@ class TestMergeMapFaces:
         # Check that we have the expected number of faces
         assert n_face_primitives(db) == 2
         assert n_faces(db, map_layer=child_lyr) == 2
+        assert n_faces(db, map_layer=parent_lyr) == 1
         assert n_faces(db) == 3
 
     def test_merge_faces_again(self, db):
