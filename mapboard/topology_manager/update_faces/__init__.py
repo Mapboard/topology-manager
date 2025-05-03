@@ -30,6 +30,8 @@ def update_map_face_python(db: Database, face):
     t1 = perf_counter()
     log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
 
+    log.info(res.faces)
+
     face = DirtyFace(
         id=face_id,
         map_layer=map_layer,
@@ -39,6 +41,11 @@ def update_map_face_python(db: Database, face):
 
     t2 = perf_counter()
     log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
+
+
+def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    res = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
+    return res.faces
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:

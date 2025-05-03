@@ -3,8 +3,9 @@
 from macrostrat.utils import get_logger
 
 from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, \
-    create_map_layer, n_edges
+    create_map_layer, n_edges, square
 from ..commands.update import _update, _update_contacts
+from ..update_faces import get_adjacent_faces
 
 log = get_logger(__name__)
 
@@ -34,6 +35,50 @@ class TestSimpleEdgeRelationships:
         db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
         _update(db)
         assert n_edges(db) == 4
+
+
+from pytest import fixture
+
+
+@fixture
+def layers(db):
+    """Create a set of layers for testing."""
+    # Create a base layer
+    base_lyr = create_map_layer(db, "parent")
+    add_linework_type_to_layer(db, base_lyr, "bedrock")
+
+    # Create a child layer
+    child_lyr = create_map_layer(db, "child", parent=base_lyr)
+    add_linework_type_to_layer(db, child_lyr, "bedrock")
+
+    return {
+        "parent": base_lyr,
+        "child": child_lyr,
+    }
+
+
+class TestAdjacentFaceFinding:
+    def test_find_adjacent_faces(self, db, layers):
+        # There should only be the global face
+        assert db.run_query("SELECT face_id FROM {topo_schema}.face").scalar() == 0
+        # Insert a square into the child layer
+        insert_line(db, square(2, center=(0, 0)), type="bedrock", map_layer=layers["child"])
+        _update(db)
+        assert n_faces(db) == 1
+        # Get the face that intersects 0,0
+        face_id = db.run_query(
+            "SELECT face_id FROM {topo_schema}.face WHERE ST_Intersects(mbr, ST_SetSRID(ST_MakePoint(0, 0), :srid))",
+        ).scalar()
+        assert face_id is not None
+
+        faces = get_adjacent_faces(db, face_id, layers["child"])
+        assert len(faces) == 1
+        assert faces[0] == face_id
+
+        f1 = get_adjacent_faces(db, face_id, layers["parent"])
+        assert len(f1) == 2
+        assert face_id in f1
+        assert 0 in f1
 
 
 class TestMergeMapFaces:

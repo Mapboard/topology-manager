@@ -46,7 +46,7 @@ WITH RECURSIVE
     SELECT
       ARRAY[]::integer[] AS faces,
       ARRAY[:face_id] edge_faces,
-      1 AS depth
+      0 AS depth
     UNION ALL
     SELECT
       r.faces || r.edge_faces faces,
