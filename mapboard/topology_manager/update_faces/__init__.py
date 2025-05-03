@@ -185,14 +185,11 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
         """
         SELECT
             f.id
-        FROM
-            {topo_schema}.relation r
-            JOIN {topo_schema}.map_face f
-        ON (f.topo).id = r.topogeo_id
-            AND r.layer_id = (f.topo).layer_id
-        WHERE
-            element_id = ANY (
-            :faces)
+        FROM {topo_schema}.relation r
+        JOIN {topo_schema}.map_face f
+          ON (f.topo).id = r.topogeo_id
+          AND r.layer_id = (f.topo).layer_id
+        WHERE element_id = ANY(:faces)
           AND element_type = 3
           AND f.map_layer = :map_layer
         """,

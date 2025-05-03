@@ -111,7 +111,7 @@ class TestMultiLayers:
         assert n_faces(db) == 1
         assert n_faces(db, map_layer=map_layer_id(db, "surficial")) == 1
         with db.savepoint(rollback="always"):
-            db.run_query("DELETE FROM test_map_data.linework WHERE type = 'surficial'")
+            db.run_query("DELETE FROM {data_schema}.linework WHERE type = 'surficial'")
             _update(db)
             assert n_faces(db) == 0
 
