@@ -70,7 +70,7 @@ def _update_faces(
     if fill_holes:
         db.run_sql(sql("procedures/set-holes-as-dirty"))
 
-    db.run_sql(sql("procedures/prepare-update-face"))
+    db.run_sql(sql("procedures/update-faces/01-prepare-update-faces"))
 
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
@@ -105,6 +105,8 @@ def _update_faces(
 
         t1 = perf_counter()
         log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
+
+    db.run_sql(sql("procedures/update-faces/02-post-update-faces"))
 
 
 def get_map_layers_needing_update(db: Database) -> list[int]:

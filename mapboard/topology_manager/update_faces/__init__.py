@@ -1,4 +1,3 @@
-from collections import defaultdict
 from time import perf_counter
 
 from macrostrat.database import Database
@@ -21,21 +20,16 @@ class DirtyFace(BaseModel):
 def update_map_face_python(db: Database, face):
     face_id = face.id
     map_layer = face.map_layer
-
-    log.info(f"Updating face {face_id} in layer {map_layer}")
     t0 = perf_counter()
 
-    res = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
+    log.info(f"Updating face {face_id} in layer {map_layer}")
 
-    t1 = perf_counter()
-    log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
-
-    log.info(res.faces)
+    faces = get_adjacent_faces(db, face_id, map_layer)
 
     face = DirtyFace(
         id=face_id,
         map_layer=map_layer,
-        adjacent_faces=set(res.faces),
+        adjacent_faces=set(faces),
     )
     _update_face(db, face)
 
@@ -44,8 +38,12 @@ def update_map_face_python(db: Database, face):
 
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
-    res = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
-    return res.faces
+    t0 = perf_counter()
+    res = db.run_query(sql("procedures/update-faces/get-adjacent-faces"),
+                       dict(face_id=face_id, map_layer=map_layer)).one()
+    t1 = perf_counter()
+    log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
+    return list(res.faces)
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
