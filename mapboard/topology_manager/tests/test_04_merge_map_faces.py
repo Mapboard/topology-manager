@@ -5,7 +5,7 @@ from macrostrat.utils import get_logger
 from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, \
     create_map_layer, n_edges, square, point
 from .test_03_fill_holes import get_face_info
-from ..commands.update import _update, _update_contacts
+from ..commands.update import _update, _update_contacts, _clean_topology
 from ..update_faces import get_adjacent_faces
 from pytest import fixture
 
@@ -104,10 +104,15 @@ class TestMergeMapFaces:
         child_lyr = layers["child"]
 
         insert_line(db, [(1, -1), (1, 3)], type="bedrock", map_layer=child_lyr)
+        db.session.commit()
+
+        _update_contacts(db)
+        _clean_topology(db)
+        assert n_edges(db) == 5
 
         _update(db)
 
-        assert n_edges(db) == 5
+        assert n_edges(db) == 5  # The new line makes 3 edges, combining with the square split in two
         assert n_face_primitives(db) == 2
         assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
@@ -144,7 +149,7 @@ class TestMergeMapFaces:
         assert n_lines == 1
 
         # But we still have the square in the parent layer, so there should be a face there
-        face_info = get_face_info(db, point(1, 1), map_layer=parent_lyr)
+        face_info = get_face_info(db, point(0.9, 1), map_layer=parent_lyr)
         assert face_info.face_id != 0
         assert 0 in get_adjacent_faces(db, face_info.face_id, map_layer=child_lyr)
         assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=parent_lyr)
