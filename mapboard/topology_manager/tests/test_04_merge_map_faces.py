@@ -42,7 +42,11 @@ def test_simple_edge_relationships(db):
 def layers(db):
     """Create a set of layers for testing."""
     # Create a base layer
-    base_lyr = create_map_layer(db, "parent")
+
+    grandparent = create_map_layer(db, "grandparent")
+    add_linework_type_to_layer(db, grandparent, "bedrock")
+
+    base_lyr = create_map_layer(db, "parent", parent=grandparent)
     add_linework_type_to_layer(db, base_lyr, "bedrock")
 
     # Create a child layer
@@ -50,6 +54,7 @@ def layers(db):
     add_linework_type_to_layer(db, child_lyr, "bedrock")
 
     return {
+        "grandparent": grandparent,
         "parent": base_lyr,
         "child": child_lyr,
     }
@@ -151,7 +156,7 @@ class TestMergeMapFaces:
         # But we still have the square in the parent layer, so there should be a face there
         face_info = get_face_info(db, point(0.9, 1), map_layer=parent_lyr)
         assert face_info.face_id != 0
-        assert 0 in get_adjacent_faces(db, face_info.face_id, map_layer=child_lyr)
+        assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=child_lyr)
         assert 0 not in get_adjacent_faces(db, face_info.face_id, map_layer=parent_lyr)
 
         # Check that we have the expected number of faces
@@ -171,7 +176,7 @@ class TestMergeMapFaces:
 
         assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
-        assert n_faces(db) == 1
+        assert n_faces(db) == 2
 
     def test_move_line_to_child_layer(self, db, layers):
         child_lyr = layers["child"]
@@ -186,3 +191,22 @@ class TestMergeMapFaces:
         # The parent layer should no longer have a face
         assert n_face_primitives(db) == 1
         assert n_faces(db) == 1
+
+    def test_grandparent_layer(self, db, layers):
+        grandparent_lyr = layers["grandparent"]
+
+        # Check that the grandparent layer has no faces
+        face_info = get_face_info(db, point(0.9, 1), map_layer=grandparent_lyr)
+        assert face_info.face_id != 0
+        assert 0 in get_adjacent_faces(db, face_info.face_id, map_layer=grandparent_lyr)
+
+        # Insert a square in the grandparent layer
+        insert_line(db, square(4, (1, 1)), type="bedrock", map_layer=grandparent_lyr)
+        _update(db)
+
+        # Check that we have the expected number of edges
+        assert n_edges(db) == 2
+
+        # Check that we have the expected number of faces
+        assert n_face_primitives(db) == 2
+        assert n_faces(db) == (2 + 1 + 1)
