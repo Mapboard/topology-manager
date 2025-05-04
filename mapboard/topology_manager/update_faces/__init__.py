@@ -31,40 +31,6 @@ def update_map_face_python(db: Database, face):
         map_layer=map_layer,
         adjacent_faces=set(faces),
     )
-    _update_face(db, face)
-
-    t2 = perf_counter()
-    log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
-
-
-def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
-    t0 = perf_counter()
-    res = db.run_query(sql("procedures/update-faces/get-adjacent-faces"),
-                       dict(face_id=face_id, map_layer=map_layer)).one()
-    t1 = perf_counter()
-    log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
-    return list(res.faces)
-
-
-def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
-    """Dissolve adjacent faces"""
-    grouped_faces = []
-    for face in faces:
-        for group in grouped_faces:
-            # If the face shares an adjacent face with any face in the group, add it to the group
-            if (
-                group.adjacent_faces & face.adjacent_faces
-                and group.map_layer == face.map_layer
-            ):
-                group.adjacent_faces.update(face.adjacent_faces)
-                break
-        else:
-            grouped_faces.append(face)
-    return grouped_faces
-
-
-def _update_face(db: Database, face: DirtyFace):
-    """Update a single face"""
     map_layer = face.map_layer
 
     # Weed out faces that include the global face
@@ -112,6 +78,18 @@ def _update_face(db: Database, face: DirtyFace):
     unmark_dirty_faces(db, map_layer, face_list)
 
     Timer.add_step("clean")
+
+    t2 = perf_counter()
+    log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
+
+
+def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    t0 = perf_counter()
+    res = db.run_query(sql("procedures/update-faces/get-adjacent-faces"),
+                       dict(face_id=face_id, map_layer=map_layer)).one()
+    t1 = perf_counter()
+    log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
+    return list(res.faces)
 
 
 def unmark_dirty_faces(db, map_layer, faces):
@@ -162,3 +140,20 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
         """,
         dict(faces=faces, map_layer=map_layer),
     ).scalars())
+
+
+def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
+    """Dissolve adjacent faces"""
+    grouped_faces = []
+    for face in faces:
+        for group in grouped_faces:
+            # If the face shares an adjacent face with any face in the group, add it to the group
+            if (
+                group.adjacent_faces & face.adjacent_faces
+                and group.map_layer == face.map_layer
+            ):
+                group.adjacent_faces.update(face.adjacent_faces)
+                break
+        else:
+            grouped_faces.append(face)
+    return grouped_faces
