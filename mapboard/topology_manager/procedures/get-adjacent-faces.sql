@@ -17,21 +17,16 @@ WITH RECURSIVE
     SELECT
       l.id,
       l.topo,
-      {topo_schema}.child_map_layers(l.map_layer) map_layer,
-      l.map_layer root_map_layer,
-      l.type
+      l.map_layer
     FROM {data_schema}.linework l
-    JOIN {data_schema}.linework_type t
-      ON l.type = t.id
     WHERE l.topo IS NOT null
-      AND l.map_layer IS NOT null
+     -- AND l.map_layer IS NOT null
   ),
   edge_relations AS (
     SELECT
       f.id line_id,
       r.element_id edge_id,
-      f.map_layer map_layer,
-      f.map_layer != f.root_map_layer is_child
+      f.map_layer map_layer
     FROM line_data f
     JOIN {topo_schema}.relation r
       ON (f.topo).id = r.topogeo_id
@@ -53,15 +48,14 @@ WITH RECURSIVE
       left_face,
       right_face,
       er.map_layer,
-      er.line_id,
-      er.is_child
+      er.line_id
     FROM edges
     LEFT JOIN edge_relations er
     ON er.edge_id = edges.edge_id
     WHERE er.map_layer NOT IN (
       SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
     )
-    AND NOT er.is_child
+    --AND NOT er.is_child
     OR er.map_layer IS NULL -- no line is registered to this edge in any layer
     -- (it may not be yet cleaned up, or is just attached to a map face)
 

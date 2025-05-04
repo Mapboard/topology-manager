@@ -87,18 +87,21 @@ def _update_face(db: Database, face: DirtyFace):
     existing_map_faces = list(containing_map_faces(db, face_list, face.map_layer))
 
     n_faces = len(existing_map_faces)
-    log.info(f"Found %s existing map faces", n_faces)
     if n_faces > 0:
         # For now, we delete any currently overlapping map faces.
         # We could choose to update/merge features instead
+        log.info("Deleting %s existing map faces", n_faces)
         db.run_query(
             """
             DELETE
             FROM {topo_schema}.map_face mf
             WHERE id = ANY (:map_faces)
+                AND mf.map_layer = :map_layer
             """,
-            dict(map_faces=existing_map_faces),
+            dict(map_faces=existing_map_faces, map_layer=map_layer),
         )
+    else:
+        log.info("No existing map faces to delete")
 
     if 0 not in face.adjacent_faces:
         log.info("Creating new topogeometry for %s faces", len(face_list))

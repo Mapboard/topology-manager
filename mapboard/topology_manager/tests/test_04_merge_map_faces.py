@@ -38,7 +38,7 @@ def test_simple_edge_relationships(db):
     assert n_edges(db) == 4
 
 
-@fixture
+@fixture(scope="class")
 def layers(db):
     """Create a set of layers for testing."""
     # Create a base layer
@@ -79,19 +79,10 @@ def test_find_adjacent_faces(db, layers):
 
 
 class TestMergeMapFaces:
-    def test_create_nested_map_layers(self, db):
-        """Create a parent and child map layer."""
-        parent_lyr = create_map_layer(db, "parent")
-        child_lyr = create_map_layer(db, "child", parent=parent_lyr)
-
-        # add a linework type
-        add_linework_type_to_layer(db, child_lyr, "bedrock")
-        add_linework_type_to_layer(db, parent_lyr, "bedrock")
-
-    def test_create_overlapping_faces(self, db):
+    def test_create_overlapping_faces(self, db, layers):
         """Create overlapping sets of lines to test face creation."""
-        child_lyr = map_layer_id(db, "child")
-        parent_lyr = map_layer_id(db, "parent")
+        child_lyr = layers["child"]
+        parent_lyr = layers["parent"]
 
         # Insert a square in the parent layer
         insert_line(db, square(2, (1, 1)), type="bedrock", map_layer=parent_lyr)
@@ -108,9 +99,9 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=child_lyr) == 1
         assert n_faces(db) == 2
 
-    def test_insert_child_line(self, db):
+    def test_insert_child_line(self, db, layers):
         # Insert crossing lines in the child layer
-        child_lyr = map_layer_id(db, "child")
+        child_lyr = layers["child"]
 
         insert_line(db, [(1, -1), (1, 3)], type="bedrock", map_layer=child_lyr)
 
@@ -121,9 +112,9 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
 
-    def test_insert_another_line(self, db):
+    def test_insert_another_line(self, db, layers):
         """Insert another line in the child layer."""
-        child_lyr = map_layer_id(db, "child")
+        child_lyr = layers["child"]
 
         insert_line(db, [(-1, 1), (3, 1)], type="bedrock", map_layer=child_lyr)
 
@@ -134,10 +125,10 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=child_lyr) == 4
         assert n_faces(db) == 5
 
-    def test_merge_faces(self, db):
+    def test_merge_faces(self, db, layers):
         # Delete one of the lines from the child layer
-        child_lyr = map_layer_id(db, "child")
-        parent_lyr = map_layer_id(db, "parent")
+        child_lyr = layers["child"]
+        parent_lyr = layers["parent"]
 
         db.run_query(
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(-1,1), :srid))",
@@ -164,8 +155,8 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=parent_lyr) == 1
         assert n_faces(db) == 3
 
-    def test_merge_faces_again(self, db):
-        child_lyr = map_layer_id(db, "child")
+    def test_merge_faces_again(self, db, layers):
+        child_lyr = layers["child"]
 
         db.run_query(
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
@@ -177,8 +168,8 @@ class TestMergeMapFaces:
         assert n_face_primitives(db) == 1
         assert n_faces(db) == 1
 
-    def test_move_line_to_child_layer(self, db):
-        child_lyr = map_layer_id(db, "child")
+    def test_move_line_to_child_layer(self, db, layers):
+        child_lyr = layers["child"]
 
         # Move the line to the child layer
         db.run_query(
