@@ -8,7 +8,7 @@ build:
 	bin/docker-dist --no-push
 
 test:
-	poetry run pytest -s
+	poetry run pytest -s --log-cli-level=info
 
 test-dev:
 	poetry run pytest -s --no-drop -x --log-level=info
