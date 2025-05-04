@@ -65,18 +65,10 @@ def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
 
 def _update_face(db: Database, face: DirtyFace):
     """Update a single face"""
-
-    layer_id = get_topolayer_id(db, "map_face", "topo")
-
     map_layer = face.map_layer
 
     # Weed out faces that include the global face
-    next_faces = []
     face_list = list(face.adjacent_faces)
-    if 0 in face.adjacent_faces:
-        unmark_dirty_faces(db, face.map_layer, face_list)
-    else:
-        next_faces.append(face)
 
     log.info("Adjacent faces: %s", face.adjacent_faces)
 
@@ -110,34 +102,10 @@ def _update_face(db: Database, face: DirtyFace):
         topo_element_array = [[face_id, 3] for face_id in face_list]
 
         db.run_query(
-            """
-            WITH
-                p0 AS (SELECT :topo_element_array AS topo_elements),
-                p1 AS (SELECT
-                           topology.createtopogeom(:topo_name, 3, :layer_id, p0.topo_elements) AS topo
-                       FROM
-                           p0),
-                p2 AS (SELECT
-                           topo,
-                           st_setsrid(topo::geometry, :srid) AS geom
-                       FROM
-                           p1)
-            INSERT
-            INTO {topo_schema}.map_face (
-                unit_id,
-                topo,
-                map_layer,
-                geometry
-            )
-            SELECT
-                {topo_schema}.unitForArea(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
-            FROM
-                p2
-            """,
+            sql("procedures/update-faces/insert-face-topogeom"),
             dict(
                 map_layer=face.map_layer,
                 topo_element_array=topo_element_array,
-                layer_id=layer_id,
             ),
         )
 
