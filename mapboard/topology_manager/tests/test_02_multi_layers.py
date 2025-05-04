@@ -106,7 +106,6 @@ class TestMultiLayers:
         assert has_bedrock
         assert has_surficial
 
-    @mark.skip("This does not work with savepoints")
     def test_remove_bedrock(self, db, layers):
         assert n_faces(db) == 2
         assert n_faces(db, map_layer=layers["bedrock"]) == 1
