@@ -1,64 +1,35 @@
-/*
-        SELECT
-            f.id
-        FROM {topo_schema}.map_face f
-        JOIN {topo_schema}.relation r
-          ON (f.topo).id = r.topogeo_id
-          AND r.layer_id = (f.topo).layer_id
-        WHERE r.element_id = ANY(:faces)
-          AND r.element_type = 3
-          AND f.map_layer = :map_layer
- */
-
 WITH RECURSIVE
   -- These first two are mirrors of the __edge_relations table,
   -- designed to remove that as a source of potential confusion
-  line_data AS (
-    SELECT
-      l.id,
-      l.topo,
-      l.map_layer
-    FROM {data_schema}.linework l
-    WHERE l.topo IS NOT null
-     -- AND l.map_layer IS NOT null
-  ),
   edge_relations AS (
     SELECT
-      f.id line_id,
-      r.element_id edge_id,
-      f.map_layer map_layer
-    FROM line_data f
+      l.id line_id,
+      l.map_layer,
+      r.element_id edge_id
+    FROM {data_schema}.linework l
     JOIN {topo_schema}.relation r
-      ON (f.topo).id = r.topogeo_id
-      AND r.layer_id = (f.topo).layer_id
+      ON (l.topo).id = r.topogeo_id
+      AND r.layer_id = (l.topo).layer_id
     WHERE r.element_type = 2 -- edges
-  ),
-  edges AS (SELECT
-              edge_id,
-              left_face,
-              right_face
-            FROM
-              {topo_schema}.edge_data
-            WHERE
-              left_face != right_face
+      AND l.topo IS NOT null
   ),
   joinable_edges AS (
     SELECT
-      edges.edge_id,
-      left_face,
-      right_face,
+      e.edge_id,
+      e.left_face,
+      e.right_face,
       er.map_layer,
       er.line_id
-    FROM edges
+    FROM {topo_schema}.edge_data e
     LEFT JOIN edge_relations er
-    ON er.edge_id = edges.edge_id
-    WHERE er.map_layer NOT IN (
-      SELECT * FROM {topo_schema}.parent_map_layers(:map_layer)
-    )
-    --AND NOT er.is_child
-    OR er.map_layer IS NULL -- no line is registered to this edge in any layer
+      ON er.edge_id = e.edge_id
+    WHERE
+      (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(:map_layer))
+      --AND NOT er.is_child
+      OR er.map_layer IS NULL -- no line is registered to this edge in any layer
     -- (it may not be yet cleaned up, or is just attached to a map face)
-
+      )
+      AND e.left_face != e.right_face
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
@@ -93,8 +64,7 @@ WITH RECURSIVE
         SELECT opp_face
         FROM face_adjacency fa
         WHERE fa.this_face = ANY(r.edge_faces)
-        AND NOT fa.opp_face = ANY(r.faces)
-        AND NOT fa.opp_face = ANY(r.edge_faces)
+        AND NOT fa.opp_face = ANY(r.faces || r.edge_faces)
       ) AS edge_faces,
       r.depth + 1
     FROM r
