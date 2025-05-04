@@ -86,8 +86,8 @@ class TestMapFaces:
         # - The child layer now has 101 faces including the ring outside the 10x10 grid
         # - The parent layer has 1 face that is 12x12 units and encompasses all child faces
         # - Primitives are shared between layers so there are 101
-        assert n_faces(db) == 102
         assert n_face_primitives(db) == 101
+        assert n_faces(db) == 102
 
     def test_erase_and_consolidate_faces(self, db):
         """Test the erasure and consolidation of faces."""

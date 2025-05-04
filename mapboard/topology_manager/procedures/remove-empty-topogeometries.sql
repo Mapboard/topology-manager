@@ -16,10 +16,11 @@ WITH lyr AS (
   EXCEPT
   SELECT ({column}).id
   FROM {table}
-  WHERE topo IS NOT NULL
+  WHERE {column} IS NOT NULL
 ), deleted AS (
   DELETE FROM {topo_schema}.relation
     WHERE topogeo_id IN (SELECT topogeo_id FROM to_delete)
+      AND layer_id = (SELECT layer_id FROM lyr)
     RETURNING *
 )
 SELECT count(*) FROM deleted;

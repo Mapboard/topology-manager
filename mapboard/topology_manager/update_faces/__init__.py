@@ -30,6 +30,8 @@ def update_map_face_python(db: Database, face):
     t1 = perf_counter()
     log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
 
+    log.info(res.faces)
+
     face = DirtyFace(
         id=face_id,
         map_layer=map_layer,
@@ -39,6 +41,11 @@ def update_map_face_python(db: Database, face):
 
     t2 = perf_counter()
     log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
+
+
+def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    res = db.run_query(sql("procedures/get-adjacent-faces"), dict(face_id=face_id, map_layer=map_layer)).one()
+    return res.faces
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
@@ -73,25 +80,28 @@ def _update_face(db: Database, face: DirtyFace):
     else:
         next_faces.append(face)
 
+    log.info("Adjacent faces: %s", face.adjacent_faces)
+
     # Get map faces that contain any of the listed faces in the particular map layer
     # we are looking at.
     existing_map_faces = list(containing_map_faces(db, face_list, face.map_layer))
 
     n_faces = len(existing_map_faces)
-    log.info(f"Found %s existing faces", n_faces)
     if n_faces > 0:
         # For now, we delete any currently overlapping map faces.
         # We could choose to update/merge features instead
+        log.info("Deleting %s existing map faces", n_faces)
         db.run_query(
             """
             DELETE
             FROM {topo_schema}.map_face mf
-            WHERE
-                id = ANY (
-                :map_faces)
+            WHERE id = ANY (:map_faces)
+                AND mf.map_layer = :map_layer
             """,
-            dict(map_faces=existing_map_faces),
+            dict(map_faces=existing_map_faces, map_layer=map_layer),
         )
+    else:
+        log.info("No existing map faces to delete")
 
     if 0 not in face.adjacent_faces:
         log.info("Creating new topogeometry for %s faces", len(face_list))
@@ -144,9 +154,7 @@ def unmark_dirty_faces(db, map_layer, faces):
            FROM {topo_schema}.__dirty_face df
            WHERE
                df.map_layer = :map_layer
-             AND (
-               id = ANY (
-               :dissolved_faces)
+             AND (id = ANY(:dissolved_faces)
               OR id = 0)
         """,
         dict(map_layer=map_layer, dissolved_faces=faces),
@@ -174,20 +182,17 @@ def get_topolayer_id(db: Database, table_name: str, feature_column: str):
 
 
 def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list[int]:
-    return db.run_query(
+    return list(db.run_query(
         """
         SELECT
             f.id
-        FROM
-            {topo_schema}.relation r
-            JOIN {topo_schema}.map_face f
-        ON (f.topo).id = r.topogeo_id
-            AND r.layer_id = (f.topo).layer_id
-        WHERE
-            element_id = ANY (
-            :faces)
-          AND element_type = 3
+        FROM {topo_schema}.map_face f
+        JOIN {topo_schema}.relation r
+          ON (f.topo).id = r.topogeo_id
+          AND r.layer_id = (f.topo).layer_id
+        WHERE r.element_id = ANY(:faces)
+          AND r.element_type = 3
           AND f.map_layer = :map_layer
         """,
         dict(faces=faces, map_layer=map_layer),
-    ).scalars()
+    ).scalars())

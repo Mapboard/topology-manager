@@ -5,19 +5,20 @@ from macrostrat.database import Database
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
+    geom = geometry
+    if not isinstance(geom, str):
+        geom = str(from_shape(geometry, srid=srid, extended=True))
+
+    if isinstance(map_layer, str):
+        map_layer = map_layer_id(db, map_layer)
+
     return db.run_query(
         "INSERT INTO {table} (type, map_layer, geometry) VALUES (:type, :map_layer, :geom) RETURNING id",
         {
             "type": type,
             "map_layer": map_layer,
             "table": Identifier("test_map_data", table),
-            "geom": str(
-                from_shape(
-                    geometry,
-                    srid=srid,
-                    extended=True,
-                )
-            ),
+            "geom": geom
         },
     ).scalar()
 
@@ -59,7 +60,7 @@ def n_face_primitives(db, include_global=False):
 
 
 def n_faces(db, *, identified=False, map_layer=None):
-    sql = "SELECT count(*) FROM test_topology.map_face"
+    sql = "SELECT count(*) FROM {topo_schema}.map_face"
     where = []
     params = {}
     if identified:
@@ -73,7 +74,7 @@ def n_faces(db, *, identified=False, map_layer=None):
 
 
 def n_edges(db):
-    sql = "SELECT count(*) FROM test_topology.edge"
+    sql = "SELECT count(*) FROM {topo_schema}.edge"
     return db.run_query(sql).scalar()
 
 
@@ -84,9 +85,15 @@ def map_layer_id(db, name: str):
     ).scalar()
 
 
+def get_face_id(db, _point):
+    return db.run_query(
+        "SELECT face_id FROM {topo_schema}.face_data WHERE ST_Intersects(ST_GetFaceGeometry(:topo_name, face_id), :point)",
+        dict(point=_point)).scalar()
+
+
 def intersecting_faces(db, geom):
     return db.run_query(
-        "SELECT map_layer, st_area(geometry) area FROM test_topology.map_face WHERE st_intersects(geometry, :geom)",
+        "SELECT map_layer, st_area(geometry) area FROM {topo_schema}.map_face WHERE st_intersects(geometry, :geom)",
         dict(geom=geom),
     ).fetchall()
 
