@@ -46,7 +46,7 @@ def remove_empty_topogeometries(db, schema, table, column):
 
     with db.session.begin_nested():
         res = db.run_query(
-            sql("procedures/remove-empty-topogeometries"), params
+            sql("procedures/clean-topology/remove-empty-topogeometries"), params
         ).scalar()
         db.session.commit()
         console.print(
@@ -64,15 +64,19 @@ def _clean_topology(db):
     remove_empty_topogeometries(db, data_schema, "linework", "topo")
     remove_empty_topogeometries(db, topo_schema, "map_face", "topo")
 
-    with db.session.begin_nested():
+    res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
+    log.info(f"Removed {res} unused primitives")
 
-        res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
-        db.session.commit()
-        log.info(f"Removed {res} unused primitives")
+    res = db.run_query(sql("procedures/clean-topology/heal-edges")).scalar()
+    log.info(f"Healed {res} edges")
 
+    # heal_edges_piecewise(db)
+
+
+def heal_edges_piecewise(db):
     with db.session.begin_nested():
         console.print("Healing edges", style="header")
-        res = db.run_query(sql("procedures/get-edges-to-heal"))
+        res = db.run_query(sql("procedures/clean-topology/get-edges-to-heal"))
         counter = 0
         for row in res:
             console.print(

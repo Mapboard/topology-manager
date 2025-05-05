@@ -45,6 +45,8 @@ def _update(
         _update_contacts(db, fix_failed=fix_failed)
         print_step(timer, "Update contacts")
 
+        _clean_topology(db)
+
         t0 = perf_counter()
         console.print("Updating faces", style="header")
         _update_faces(db, reset=reset, fill_holes=fill_holes)

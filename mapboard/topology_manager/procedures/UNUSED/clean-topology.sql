@@ -21,13 +21,8 @@ WHERE edge_id NOT IN (
   SELECT element_id
   FROM {topo_schema}.relation
   WHERE element_type = 2
-)
-AND left_face = right_face;
+);
 
-SELECT
-  topology.ST_RemEdgeModFace(:topo_name , edge_id)
-FROM {topo_schema}.edge_data
-WHERE edge_id NOT IN (SELECT edge_id FROM {topo_schema}.edge_topology);
 
 SELECT topology.ST_RemIsoNode(:topo_name ,node_id)
 FROM {topo_schema}.node
