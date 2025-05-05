@@ -12,6 +12,7 @@ from .helpers import (
     point,
     square,
 )
+from ..database import sql
 
 
 class TestNestedLayers:
@@ -171,6 +172,7 @@ class TestNestedLayers:
         # The bedrock layer should have:
         # - Two edges inherited from the parent layer
         # - One edge from the bisecting line
+        assert len(res) == 5
         assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 3
 
         # The tectonic block layer should have:
@@ -311,13 +313,6 @@ def test_layer_with_child(
     # )
     # Solve the topology
     _update(db)
-
-    # Check that the proper record has been added to the __edge_relation table
-    res = db.run_query(
-        "SELECT * FROM {topo_schema}.__edge_relation WHERE map_layer = :parent",
-        dict(parent=map_layer_id(db, "Layer with child")),
-    ).fetchall()
-    assert len(res) == 1
 
     # Get all faces
     res = db.run_query(

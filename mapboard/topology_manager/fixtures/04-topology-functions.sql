@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=:topo_name 
+WHERE schema_name=:topo_name
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -22,7 +22,7 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name=:topo_name 
+      WHERE schema_name=:topo_name
       AND table_name='contact';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -46,7 +46,7 @@ BEGIN
   SELECT l.layer_id
       INTO layer_id
       FROM topology.layer l
-      WHERE schema_name=  :topo_name 
+      WHERE schema_name=  :topo_name
       AND table_name='map_face';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -212,3 +212,30 @@ JOIN r
 )
 SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;
+
+/** Helper view for relationship between map edges */
+CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
+WITH v0 AS (
+  SELECT
+    l.id line_id,
+    {topo_schema}.child_map_layers(l.map_layer) map_layer,
+    l.map_layer root_map_layer,
+    r.element_id edge_id
+  FROM {topo_schema}.edge_data e
+  JOIN {topo_schema}.relation r
+    ON e.edge_id = r.element_id
+   AND r.element_type = 2 -- edges
+  JOIN {data_schema}.linework l
+    ON (l.topo).id = r.topogeo_id
+    AND r.layer_id = (l.topo).layer_id
+    AND l.topo IS NOT null
+  JOIN {data_schema}.map_layer ml
+    ON ml.id = r.layer_id
+   AND ml.topological
+)
+SELECT
+  line_id,
+  map_layer,
+  edge_id,
+  map_layer != root_map_layer is_child
+FROM v0;

@@ -6,7 +6,6 @@ from ..utilities import console
 count = sql("procedures/count-contact")
 get_contacts = sql("procedures/get-contacts-to-update")
 reset_errors = sql("procedures/reset-linework-errors")
-post_update = sql("procedures/post-update-contacts")
 
 
 def update_contacts(fix_failed: bool = False):
@@ -41,5 +40,3 @@ def _update_contacts(db: Database, fix_failed: bool = False):
                     console.print(f"[dim]{row.id}[/dim]: [error]{row.err}[/error]")
             progress.update(bar, advance=nrows)
             remaining -= nrows
-
-    db.run_query(post_update)
