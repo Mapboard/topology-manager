@@ -70,26 +70,31 @@ LEFT JOIN {data_schema}.map_layer l
   ON f.map_layer = l.id
 WHERE l.topological;
 
+CREATE OR REPLACE VIEW {topo_schema}.__edge_relation_base AS
+SELECT
+  l.id line_id,
+  l.map_layer,
+  r.element_id edge_id
+FROM {topo_schema}.edge_data e
+JOIN {topo_schema}.relation r
+  ON e.edge_id = r.element_id
+ AND r.element_type = 2 -- edges
+JOIN {data_schema}.linework l
+  ON (l.topo).id = r.topogeo_id
+  AND r.layer_id = (l.topo).layer_id
+  AND l.topo IS NOT null
+  AND l.map_layer IS NOT null;
+
 
 /** Helper view for relationship between map edges */
 CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
 WITH v0 AS (
   SELECT
-    l.id line_id,
+    l.line_id,
     {topo_schema}.child_map_layers(l.map_layer) map_layer,
     l.map_layer root_map_layer,
-    r.element_id edge_id
-  FROM {topo_schema}.edge_data e
-  JOIN {topo_schema}.relation r
-    ON e.edge_id = r.element_id
-   AND r.element_type = 2 -- edges
-  JOIN {data_schema}.linework l
-    ON (l.topo).id = r.topogeo_id
-    AND r.layer_id = (l.topo).layer_id
-    AND l.topo IS NOT null
-  JOIN {data_schema}.map_layer ml
-    ON ml.id = r.layer_id
-   AND ml.topological
+    l.edge_id
+  FROM {topo_schema}.__edge_relation_base l
 )
 SELECT
   line_id,

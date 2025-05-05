@@ -55,11 +55,10 @@ WITH RECURSIVE
       er.map_layer,
       er.line_id
     FROM {topo_schema}.edge_data e
-    LEFT JOIN {topo_schema}.__edge_relation er
+    LEFT JOIN {topo_schema}.__edge_relation_base er
       ON er.edge_id = e.edge_id
     WHERE
       (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
-      AND NOT er.is_child
       OR er.map_layer IS NULL -- no line is registered to this edge in any layer
       -- (it may not be yet cleaned up, or is just attached to a map face)
       )
