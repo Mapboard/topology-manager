@@ -82,8 +82,10 @@ JOIN {topo_schema}.relation r
 JOIN {data_schema}.linework l
   ON (l.topo).id = r.topogeo_id
   AND r.layer_id = (l.topo).layer_id
-  AND l.topo IS NOT null
-  AND l.map_layer IS NOT null;
+JOIN {data_schema}.map_layer ml
+  ON l.map_layer = ml.id
+WHERE l.topo IS NOT null
+  AND ml.topological;
 
 
 /** Helper view for relationship between map edges */
