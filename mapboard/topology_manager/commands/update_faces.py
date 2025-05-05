@@ -1,4 +1,5 @@
 import os
+import warnings
 from threading import Timer
 
 from typer import Option
@@ -37,7 +38,7 @@ def update_faces(
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     engine: Engine = Option(
-        Engine.PLPGSQL, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
+        Engine.PYTHON, help="Use Python or PL/pgSQL (not yet implemented)", envvar="TOPO_ENGINE"
     ),
 ):
     """Update faces"""
@@ -52,21 +53,14 @@ def _update_faces(
     fill_holes: bool = False,
     engine: Engine = Engine.PYTHON,
 ):
-    # Load the engine from the environment if it's defined there.
-    # This is mostly used in order to make sure that the tests run with the same engine
-    # as the CLI commands. Eventually we should test with both engines at once.
-    engine = os.environ.get("TOPO_ENGINE", engine)
-    # Hard-code the Python engine for now
-    engine = Engine.PYTHON
-
     log.info("Updating faces with engine %s", engine)
+
+    if fill_holes:
+        warnings.warn("The 'fill_holes' option has been removed", DeprecationWarning)
 
     t0 = perf_counter()
     if reset:
         db.run_sql(sql("procedures/reset-map-face"))
-
-    if fill_holes:
-        db.run_sql(sql("procedures/set-holes-as-dirty"))
 
     db.run_sql(sql("procedures/update-faces/01-prepare-update-faces"))
 
@@ -92,13 +86,6 @@ def _update_faces(
     log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
 
     db.run_sql(sql("procedures/update-faces/02-post-update-faces"))
-
-
-def update_map_face_plpgsql(db: Database):
-    try:
-        db.run_query("SELECT {topo_schema}.update_map_face()").one()
-    except Exception as e:
-        console.print(f"Error updating faces: {e}", style="error")
 
 
 def get_n_dirty_faces(db: Database) -> int:
