@@ -51,7 +51,7 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
         if 0 not in face_list:
             create_map_face(db, map_layer, face_list)
 
-    unmark_dirty_faces(db, map_layer, face_list)
+        unmark_dirty_faces(db, map_layer, face_list)
 
     Timer.add_step("clean")
 
