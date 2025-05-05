@@ -74,7 +74,7 @@ CREATE OR REPLACE VIEW {topo_schema}.__edge_relation_base AS
 SELECT
   l.id line_id,
   l.map_layer,
-  r.element_id edge_id
+  abs(r.element_id) edge_id
 FROM {topo_schema}.edge_data e
 JOIN {topo_schema}.relation r
   ON e.edge_id = abs(r.element_id)
