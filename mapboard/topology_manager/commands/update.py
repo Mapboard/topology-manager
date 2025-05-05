@@ -1,5 +1,6 @@
 import asyncio
 from contextvars import ContextVar
+from time import perf_counter
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import text
@@ -44,9 +45,14 @@ def _update(
         _update_contacts(db, fix_failed=fix_failed)
         print_step(timer, "Update contacts")
 
+        _clean_topology(db)
+
+        t0 = perf_counter()
         console.print("Updating faces", style="header")
         _update_faces(db, reset=reset, fill_holes=fill_holes)
-        print_step(timer, "Update faces")
+        t1 = perf_counter()
+        _print_step("Update faces", t1 - t0)
+        # print_step(timer, "Update faces")
 
         console.print("Cleaning topology", style="header")
         _clean_topology(db)
@@ -101,12 +107,16 @@ def print_step(timer, step_name=None):
     if step_name:
         step = timer._add_step(step_name)
 
-    step_time = f"{step.delta:.2f} seconds"
-    if step.delta > 60:
-        step_time = f"{step.delta / 60:.2f} minutes"
-    if step.delta < 0.5:
-        step_time = f"{step.delta * 1000:.2f} ms"
-    if step.delta < 0.0005:
-        step_time = f"{step.delta * 1000 * 1000:.0f} µs"
+    _print_step(step.name, step.delta)
 
-    console.print(f"Step [bold underline]{step.name}[/] took [cyan bold]{step_time}")
+
+def _print_step(name, tdelta):
+    step_time = f"{tdelta:.2f} seconds"
+    if tdelta > 60:
+        step_time = f"{tdelta / 60:.2f} minutes"
+    if tdelta < 0.5:
+        step_time = f"{tdelta * 1000:.2f} ms"
+    if tdelta < 0.0005:
+        step_time = f"{tdelta * 1000 * 1000:.0f} µs"
+
+    console.print(f"Step [bold underline]{name}[/] took [cyan bold]{step_time}")

@@ -104,8 +104,7 @@ __dest_topology := {topo_schema}.get_topological_map_layer(NEW);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
-  DELETE FROM {topo_schema}.__edge_relation
-  WHERE line_id = NEW.id;
+  PERFORM {topo_schema}.mark_surrounding_faces(OLD);
 
   RETURN NEW;
 END IF;
@@ -150,37 +149,6 @@ IF (
 END IF;
 /* We are now working with only cases where the topogeometry was changed */
 
-SELECT array_agg(elem)
-INTO __edges
-FROM (SELECT (topology.GetTopoGeomElements(NEW.topo))[1] elem) AS a;
-
-/* Delete unreferenced elements from topo tracker */
-DELETE FROM {topo_schema}.__edge_relation
-WHERE line_id IN (OLD.id)
-  AND NOT(edge_id = ANY(__edges));
-
-/* Add new objects into linework tracker */
-WITH ml AS (
-  SELECT {topo_schema}.child_map_layers(__dest_topology) id
-)
-INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, map_layer, is_child, line_id)
-SELECT unnest(__edges), ml.id, __dest_topology != ml.id, NEW.id
-FROM ml
-ON CONFLICT (edge_id, map_layer) DO UPDATE SET
-  line_id = NEW.id;
-
-/* This is probably where we should update map faces for referential
-   integrity
-
-Envisioned series of steps:
-1. Find overlapping map faces
-2. Join all of the overlapping faces
-3. Split faces on this new
-
-*/
-
-/* We can fall back to this if we don't have a handled case for now */
 PERFORM {topo_schema}.mark_surrounding_faces(OLD);
 PERFORM {topo_schema}.mark_surrounding_faces(NEW);
 RETURN NEW;

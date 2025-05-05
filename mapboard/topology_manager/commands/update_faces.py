@@ -1,4 +1,5 @@
 import os
+import warnings
 from threading import Timer
 
 from typer import Option
@@ -11,9 +12,8 @@ from typing import Optional
 
 from ..database import get_database, sql
 from ..utilities import console
-from ..update_faces import update_map_face_python
-
-from graphlib import TopologicalSorter
+from ..update_faces import update_map_face_python, delete_map_faces, create_map_face, unmark_dirty_faces
+from collections import defaultdict
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
@@ -39,7 +39,7 @@ def update_faces(
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     engine: Engine = Option(
-        Engine.PLPGSQL, help="Use Python or PL/pgSQL", envvar="TOPO_ENGINE"
+        Engine.PYTHON, help="Use Python or PL/pgSQL (not yet implemented)", envvar="TOPO_ENGINE"
     ),
 ):
     """Update faces"""
@@ -54,93 +54,64 @@ def _update_faces(
     fill_holes: bool = False,
     engine: Engine = Engine.PYTHON,
 ):
-    # Load the engine from the environment if it's defined there.
-    # This is mostly used in order to make sure that the tests run with the same engine
-    # as the CLI commands. Eventually we should test with both engines at once.
-    engine = os.environ.get("TOPO_ENGINE", engine)
-    # Hard-code the Python engine for now
-    engine = Engine.PYTHON
-
     log.info("Updating faces with engine %s", engine)
+
+    if fill_holes:
+        warnings.warn("The 'fill_holes' option has been removed", DeprecationWarning)
 
     t0 = perf_counter()
     if reset:
         db.run_sql(sql("procedures/reset-map-face"))
-
-    if fill_holes:
-        db.run_sql(sql("procedures/set-holes-as-dirty"))
-
-    db.run_sql(sql("procedures/prepare-update-face"))
 
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
 
     log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
-    layers = get_map_layers_needing_update(db)
+    t0 = perf_counter()
+    niter = 0
 
-    log.info("Found %d layers to update", len(layers))
-
-    dirty_faces = list(db.run_query("SELECT id FROM {topo_schema}.__dirty_face").scalars())
-
-    log.debug("Dirty faces: %s", dirty_faces)
-
-    for layer in layers:
-        id = layer.id
-        name = layer.name
-        log.info(f"Updating faces in layer {name} ({id})")
-
-        t0 = perf_counter()
-        niter = 0
-        init_n_faces = n_dirty_faces(db, map_layer=id)
-        n_faces = init_n_faces
-        while n_faces > 0:
-            log.info("%s dirty faces remaining", n_faces)
-            # Extract one face
-            face = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face WHERE map_layer = :layer LIMIT 1",
-                                dict(layer=id)).one()
-            update_map_face_python(db, face)
-            n_faces = n_dirty_faces(db, map_layer=id)
-            niter += 1
-
-        t1 = perf_counter()
-        log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
-
-
-def get_map_layers_needing_update(db: Database) -> list[int]:
-    """Get the map layers that need to be updated, sorted topologically"""
-    res = db.run_query(
-        """
-        WITH parent_layers AS (
-          SELECT {topo_schema}.parent_map_layers(map_layer) id
-          FROM {topo_schema}.__dirty_face
-        )
-        SELECT DISTINCT ON (ll.id) ll.id, ml.name, ml.parent FROM parent_layers ll
-        JOIN {data_schema}.map_layer ml
-          ON ll.id = ml.id
-        WHERE ml.topological
-        """
+    dirty_faces = db.run_query(
+        "SELECT id, map_layer FROM {topo_schema}.__dirty_face"
     ).all()
-    # Sort the layers topologically to put the parents last
+    init_n_faces = len(dirty_faces)
+    results = []
+    while len(dirty_faces) > 0:
+        log.info("%s dirty faces remaining", len(dirty_faces))
+        # Extract one face
+        face = dirty_faces.pop(0)
 
-    layers = {layer.id: layer for layer in res}
+        res = update_map_face_python(db, face, write=False)
+        results.append(res)
+        # Filter dirty faces
+        dirty_faces = [
+            d for d in dirty_faces if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
+        ]
+        niter += 1
 
-    ts = TopologicalSorter()
-    for layer in layers.values():
-        ts.add(layer.id, layer.parent)
-    sorted_layers = list(ts.static_order())
+    ## Delete old topogeoms
+    old_map_faces = []
+    for res in results:
+        old_map_faces += res.existing_map_faces
+    old_map_faces = list(set(old_map_faces))
+    if len(old_map_faces) > 0:
+        delete_map_faces(db, old_map_faces)
 
-    res.sort(key=lambda x: sorted_layers.index(x.parent))
-    res.reverse()
+    dissolved_faces_index = defaultdict(list)
 
-    return res
+    for res in results:
+        if 0 not in res.dissolved_faces:
+            create_map_face(db, res.map_layer, res.dissolved_faces)
+            dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
 
+    # Unmark dirty faces
+    for lyr, faces in dissolved_faces_index.items():
+        unmark_dirty_faces(db, lyr, list(set(faces)))
 
-def update_map_face_plpgsql(db: Database):
-    try:
-        db.run_query("SELECT {topo_schema}.update_map_face()").one()
-    except Exception as e:
-        console.print(f"Error updating faces: {e}", style="error")
+    t1 = perf_counter()
+    log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
+
+    db.run_sql(sql("procedures/update-faces/post-update-faces"))
 
 
 def get_n_dirty_faces(db: Database) -> int:
