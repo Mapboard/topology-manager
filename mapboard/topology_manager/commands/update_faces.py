@@ -12,7 +12,7 @@ from typing import Optional
 
 from ..database import get_database, sql
 from ..utilities import console
-from ..update_faces import update_map_face_python
+from ..update_faces import update_map_face_python, delete_map_faces, create_map_face
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
@@ -73,14 +73,28 @@ def _update_faces(
     niter = 0
     init_n_faces = n_dirty_faces(db)
     n_faces = init_n_faces
+    results = []
     while n_faces > 0:
         log.info("%s dirty faces remaining", n_faces)
         # Extract one face
         face = db.run_query("SELECT id, map_layer FROM {topo_schema}.__dirty_face LIMIT 1", ).one()
 
-        update_map_face_python(db, face)
+        res = update_map_face_python(db, face, write=False)
+        results.append(res)
         n_faces = n_dirty_faces(db)
         niter += 1
+
+    ## Delete old topogeoms
+    old_map_faces = []
+    for res in results:
+        old_map_faces += res.existing_map_faces
+    old_map_faces = list(set(old_map_faces))
+    if len(old_map_faces) > 0:
+        delete_map_faces(db, old_map_faces)
+
+    for res in results:
+        if 0 not in res.dissolved_faces:
+            create_map_face(db, res.map_layer, res.dissolved_faces)
 
     t1 = perf_counter()
     log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")

@@ -17,63 +17,39 @@ class DirtyFace(BaseModel):
     adjacent_faces: set[int]
 
 
-def update_map_face_python(db: Database, face):
+class FaceUpdateResult(BaseModel):
+    dissolved_faces: list[int]
+    existing_map_faces: list[int]
+    map_layer: int
+
+
+def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResult:
     face_id = face.id
     map_layer = face.map_layer
     t0 = perf_counter()
 
     log.info(f"Updating face {face_id} in layer {map_layer}")
 
-    faces = get_adjacent_faces(db, face_id, map_layer)
+    face_list = get_adjacent_faces(db, face_id, map_layer)
 
-    face = DirtyFace(
-        id=face_id,
-        map_layer=map_layer,
-        adjacent_faces=set(faces),
-    )
-    map_layer = face.map_layer
-
-    # Weed out faces that include the global face
-    face_list = list(face.adjacent_faces)
-
-    log.info("Adjacent faces: %s", face.adjacent_faces)
+    log.info("Adjacent faces: %s", face_list)
 
     # Get map faces that contain any of the listed faces in the particular map layer
     # we are looking at.
-    existing_map_faces = list(containing_map_faces(db, face_list, face.map_layer))
+    existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
 
     n_faces = len(existing_map_faces)
-    if n_faces > 0:
-        # For now, we delete any currently overlapping map faces.
-        # We could choose to update/merge features instead
-        log.info("Deleting %s existing map faces", n_faces)
-        db.run_query(
-            """
-            DELETE
-            FROM {topo_schema}.map_face mf
-            WHERE id = ANY (:map_faces)
-                AND mf.map_layer = :map_layer
-            """,
-            dict(map_faces=existing_map_faces, map_layer=map_layer),
-        )
-    else:
-        log.info("No existing map faces to delete")
+    if write:
+        if n_faces > 0:
+            # For now, we delete any currently overlapping map faces.
+            # We could choose to update/merge features instead
+            log.info("Deleting %s existing map faces", n_faces)
+            delete_map_faces(db, existing_map_faces)
+        else:
+            log.info("No existing map faces to delete")
 
-    if 0 not in face.adjacent_faces:
-        log.info("Creating new topogeometry for %s faces", len(face_list))
-        # We are not dealing with the global face, so we can actually
-        # create a new topogeometry
-
-        # Create a topogeometry
-        topo_element_array = [[face_id, 3] for face_id in face_list]
-
-        db.run_query(
-            sql("procedures/update-faces/insert-face-topogeom"),
-            dict(
-                map_layer=face.map_layer,
-                topo_element_array=topo_element_array,
-            ),
-        )
+        if 0 not in face_list:
+            create_map_face(db, map_layer, face_list)
 
     unmark_dirty_faces(db, map_layer, face_list)
 
@@ -82,14 +58,45 @@ def update_map_face_python(db: Database, face):
     t2 = perf_counter()
     log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
 
+    return FaceUpdateResult(
+        dissolved_faces=face_list,
+        existing_map_faces=existing_map_faces,
+        map_layer=map_layer,
+    )
+
+
+def delete_map_faces(db: Database, faces: list[int]):
+    """Delete map faces"""
+    db.run_query(
+        """
+        DELETE
+        FROM {topo_schema}.map_face mf
+        WHERE id = ANY (:map_faces)
+        """,
+        dict(map_faces=faces),
+    )
+
+
+def create_map_face(db: Database, map_layer: int, face_list: list[int]):
+    """Create a topogeometry"""
+    topo_element_array = [[face_id, 3] for face_id in face_list]
+    log.info("Creating new topogeometry for %s faces", len(face_list))
+    db.run_query(
+        sql("procedures/update-faces/insert-face-topogeom"),
+        dict(
+            map_layer=map_layer,
+            topo_element_array=topo_element_array,
+        ),
+    )
+
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
     t0 = perf_counter()
     res = db.run_query("SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
                        dict(face_id=face_id, map_layer=map_layer)).one()
+    faces = list(set(res.faces))
     t1 = perf_counter()
-    faces = list(res.faces)
-    log.info(f"Found {faces} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)")
+    log.info(f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)")
     return faces
 
 
