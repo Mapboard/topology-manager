@@ -63,8 +63,6 @@ def _update_faces(
     if reset:
         db.run_sql(sql("procedures/reset-map-face"))
 
-    # db.run_sql(sql("procedures/update-faces/01-prepare-update-faces"))
-
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
 
