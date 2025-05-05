@@ -42,9 +42,9 @@ def _update(
     console.print("Updating contacts", style="header")
     timer = Timer()
     with timer.context():
+        _clean_topology(db)
         _update_contacts(db, fix_failed=fix_failed)
         print_step(timer, "Update contacts")
-
         _clean_topology(db)
 
         t0 = perf_counter()

@@ -87,7 +87,7 @@ JOIN {data_schema}.map_layer ml
 WHERE l.topo IS NOT null
   AND ml.topological;
 
-
+DROP TABLE IF EXISTS {topo_schema}.__edge_relation CASCADE;
 /** Helper view for relationship between map edges */
 CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
 WITH v0 AS (

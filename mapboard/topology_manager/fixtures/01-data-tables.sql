@@ -134,4 +134,5 @@ SELECT
 	c1.with_children
 FROM p1
 JOIN c1
-  ON p1.map_layer = c1.map_layer
+  ON p1.map_layer = c1.map_layer;
+

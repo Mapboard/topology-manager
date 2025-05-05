@@ -102,7 +102,7 @@ def _update_faces(
     for res in results:
         if 0 not in res.dissolved_faces:
             create_map_face(db, res.map_layer, res.dissolved_faces)
-            dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
+        dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
 
     # Unmark dirty faces
     for lyr, faces in dissolved_faces_index.items():
