@@ -212,30 +212,3 @@ JOIN r
 )
 SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;
-
-/** Helper view for relationship between map edges */
-CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
-WITH v0 AS (
-  SELECT
-    l.id line_id,
-    {topo_schema}.child_map_layers(l.map_layer) map_layer,
-    l.map_layer root_map_layer,
-    r.element_id edge_id
-  FROM {topo_schema}.edge_data e
-  JOIN {topo_schema}.relation r
-    ON e.edge_id = r.element_id
-   AND r.element_type = 2 -- edges
-  JOIN {data_schema}.linework l
-    ON (l.topo).id = r.topogeo_id
-    AND r.layer_id = (l.topo).layer_id
-    AND l.topo IS NOT null
-  JOIN {data_schema}.map_layer ml
-    ON ml.id = r.layer_id
-   AND ml.topological
-)
-SELECT
-  line_id,
-  map_layer,
-  edge_id,
-  map_layer != root_map_layer is_child
-FROM v0;

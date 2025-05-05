@@ -47,20 +47,6 @@ CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
 RETURNS {topo_schema}.face_group
 AS $$
 WITH RECURSIVE
-  -- These first two are mirrors of the __edge_relations table,
-  -- designed to remove that as a source of potential confusion
-  edge_relations AS (
-    SELECT
-      l.id line_id,
-      l.map_layer,
-      r.element_id edge_id
-    FROM {data_schema}.linework l
-    JOIN {topo_schema}.relation r
-      ON (l.topo).id = r.topogeo_id
-      AND r.layer_id = (l.topo).layer_id
-    WHERE r.element_type = 2 -- edges
-      AND l.topo IS NOT null
-  ),
   joinable_edges AS (
     SELECT
       e.edge_id,
@@ -69,11 +55,11 @@ WITH RECURSIVE
       er.map_layer,
       er.line_id
     FROM {topo_schema}.edge_data e
-    LEFT JOIN edge_relations er
+    LEFT JOIN {topo_schema}.__edge_relation er
       ON er.edge_id = e.edge_id
     WHERE
       (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
-      --AND NOT er.is_child
+      AND NOT er.is_child
       OR er.map_layer IS NULL -- no line is registered to this edge in any layer
       -- (it may not be yet cleaned up, or is just attached to a map face)
       )
