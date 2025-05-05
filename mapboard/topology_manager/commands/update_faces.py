@@ -85,7 +85,7 @@ def _update_faces(
     t1 = perf_counter()
     log.info(f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)")
 
-    db.run_sql(sql("procedures/update-faces/02-post-update-faces"))
+    db.run_sql(sql("procedures/update-faces/post-update-faces"))
 
 
 def get_n_dirty_faces(db: Database) -> int:

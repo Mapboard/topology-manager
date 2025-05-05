@@ -85,11 +85,12 @@ def update_map_face_python(db: Database, face):
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
     t0 = perf_counter()
-    res = db.run_query(sql("procedures/update-faces/get-adjacent-faces"),
+    res = db.run_query("SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
                        dict(face_id=face_id, map_layer=map_layer)).one()
     t1 = perf_counter()
-    log.info(f"Found {len(res.faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.depth} iterations)")
-    return list(res.faces)
+    faces = list(res.faces)
+    log.info(f"Found {faces} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)")
+    return faces
 
 
 def unmark_dirty_faces(db, map_layer, faces):
