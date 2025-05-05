@@ -77,7 +77,7 @@ SELECT
   r.element_id edge_id
 FROM {topo_schema}.edge_data e
 JOIN {topo_schema}.relation r
-  ON e.edge_id = r.element_id
+  ON e.edge_id = abs(r.element_id)
  AND r.element_type = 2 -- edges
 JOIN {data_schema}.linework l
   ON (l.topo).id = r.topogeo_id

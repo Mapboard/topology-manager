@@ -18,7 +18,7 @@ SELECT
   topology.ST_RemEdgeModFace(:topo_name , edge_id)
 FROM {topo_schema}.edge_data
 WHERE edge_id NOT IN (
-  SELECT element_id
+  SELECT abs(element_id)
   FROM {topo_schema}.relation
   WHERE element_type = 2
 );
