@@ -33,6 +33,99 @@ SELECT CASE
 END
 $$ LANGUAGE SQL IMMUTABLE;
 
+DROP TYPE IF EXISTS {topo_schema}.face_group CASCADE;
+CREATE TYPE {topo_schema}.face_group AS (
+  faces integer[],
+  niter integer,
+  map_layer integer
+);
+
+CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
+  face_id integer,
+  _map_layer integer
+)
+RETURNS {topo_schema}.face_group
+AS $$
+WITH RECURSIVE
+  -- These first two are mirrors of the __edge_relations table,
+  -- designed to remove that as a source of potential confusion
+  edge_relations AS (
+    SELECT
+      l.id line_id,
+      l.map_layer,
+      r.element_id edge_id
+    FROM {data_schema}.linework l
+    JOIN {topo_schema}.relation r
+      ON (l.topo).id = r.topogeo_id
+      AND r.layer_id = (l.topo).layer_id
+    WHERE r.element_type = 2 -- edges
+      AND l.topo IS NOT null
+  ),
+  joinable_edges AS (
+    SELECT
+      e.edge_id,
+      e.left_face,
+      e.right_face,
+      er.map_layer,
+      er.line_id
+    FROM {topo_schema}.edge_data e
+    LEFT JOIN edge_relations er
+      ON er.edge_id = e.edge_id
+    WHERE
+      (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
+      --AND NOT er.is_child
+      OR er.map_layer IS NULL -- no line is registered to this edge in any layer
+      -- (it may not be yet cleaned up, or is just attached to a map face)
+      )
+      AND e.left_face != e.right_face
+  ),
+  face_relations AS (
+    SELECT left_face, right_face FROM joinable_edges
+    UNION ALL
+    SELECT right_face, left_face FROM joinable_edges
+  ),
+  face_adjacency AS (
+    SELECT left_face this_face, right_face opp_face
+    FROM face_relations
+    GROUP BY left_face, right_face
+  ),
+  r(faces, edge_faces, depth) AS (
+    /** This recursive query works outwards as a 'wave',
+    * starting from the given face_id and moving outwards
+      accumulating adjacent faces in a given map layer
+      until there are no more to find.
+
+      We should stop when we reach the global face, but we don't do this now.
+
+      This works on face primitives but a similar approach
+      could accumulate based on child topogeometries, for layers
+      with child topological layers...
+     */
+    SELECT
+      ARRAY[]::integer[] AS faces,
+      ARRAY[face_id] edge_faces,
+      0 AS depth
+    UNION ALL
+    SELECT
+      r.faces || r.edge_faces faces,
+      array(
+        SELECT opp_face
+        FROM face_adjacency fa
+        WHERE fa.this_face = ANY(r.edge_faces)
+        AND NOT fa.opp_face = ANY(r.faces || r.edge_faces)
+      ) AS edge_faces,
+      r.depth + 1
+    FROM r
+    WHERE array_length(r.edge_faces, 1) > 0
+    GROUP BY r.faces, r.edge_faces, r.depth
+  )
+SELECT faces, depth niter, _map_layer map_layer
+FROM r
+ORDER BY depth DESC
+LIMIT 1;
+$$ LANGUAGE SQL STABLE;
+
+
 /** Get faces that can be dissolved into a given map layer */
 CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
   face_id integer,
@@ -40,43 +133,5 @@ CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
 )
 RETURNS integer[]
 AS $$
-WITH RECURSIVE r(faces, adjacent, cycle) AS (
-SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, face_id))
-  ARRAY[left_face, right_face] faces,
-  {topo_schema}.opposite_face(edge, face_id) adjacent,
-  false
-FROM {topo_schema}.edge_data edge
-LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = edge.edge_id
-WHERE (edge.left_face = face_id OR edge.right_face = face_id)
-  AND edge.left_face != edge.right_face
-  AND er.map_layer IS DISTINCT FROM _map_layer
-  AND NOT EXISTS (
-    SELECT edge_id FROM {topo_schema}.__edge_relation er
-    WHERE edge_id = edge.edge_id
-      AND er.map_layer IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
-  )
-UNION
-SELECT DISTINCT ON ({topo_schema}.opposite_face(edge, r1.adjacent))
-  r1.faces || {topo_schema}.opposite_face(edge, r1.adjacent) faces,
-  {topo_schema}.opposite_face(edge, r1.adjacent) adjacent,
-  ({topo_schema}.opposite_face(edge, r1.adjacent) = ANY(r1.faces)) AS cycle
-FROM {topo_schema}.edge_data edge
-LEFT JOIN {topo_schema}.__edge_relation er
-  ON er.edge_id = edge.edge_id
-JOIN r r1
-  ON (r1.adjacent = edge.left_face OR r1.adjacent = edge.right_face)
-WHERE edge.left_face != edge.right_face
-  AND NOT cycle
-  AND NOT r1.adjacent = 0
-  AND er.map_layer IS DISTINCT FROM _map_layer
-  AND NOT EXISTS (
-    SELECT edge_id FROM {topo_schema}.__edge_relation er
-    WHERE edge_id = edge.edge_id
-      AND er.map_layer IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
-  )
-), b AS (
-SELECT DISTINCT unnest(faces) face FROM r WHERE NOT cycle
-)
-SELECT array_agg(face) faces FROM b;
-$$ LANGUAGE SQL IMMUTABLE;
+  SELECT ({topo_schema}.get_adjacent_faces_core(face_id, _map_layer)).faces
+$$ LANGUAGE SQL STABLE;

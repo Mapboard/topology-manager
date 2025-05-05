@@ -204,7 +204,7 @@ class TestNestedLayers:
         for r0 in res:
             assert r0.face_id != 0
             assert r0.face_id in v1
-            assert r0.adjacent is None
+            assert len(r0.adjacent) == 1 and r0.adjacent[0] == r0.face_id
 
         # Get all faces
         res = db.run_query(
