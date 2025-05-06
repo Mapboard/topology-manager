@@ -32,7 +32,7 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
 
     face_list = get_adjacent_faces(db, face_id, map_layer)
 
-    log.info("Adjacent faces: %s", face_list)
+    log.debug("Adjacent faces: %s", face_list)
 
     # Get map faces that contain any of the listed faces in the particular map layer
     # we are looking at.

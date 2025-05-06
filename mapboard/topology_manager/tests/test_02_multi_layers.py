@@ -57,6 +57,16 @@ def layers(db):
     bedrock_id = map_layer_id(db, "bedrock")
     surficial_id = map_layer_id(db, "surficial")
 
+    return {
+        "bedrock": bedrock_id,
+        "surficial": surficial_id,
+    }
+
+
+@fixture(scope="class")
+def basic_polys(db, layers):
+    bedrock_id = layers["bedrock"]
+    surficial_id = layers["surficial"]
     # Insert a square
     insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=bedrock_id)
 
@@ -77,14 +87,9 @@ def layers(db):
     # Solve the topology
     _update(db)
 
-    return {
-        "bedrock": bedrock_id,
-        "surficial": surficial_id,
-    }
-
 
 class TestMultiLayers:
-    def test_multi_layers(self, db, layers):
+    def test_multi_layers(self, db, layers, basic_polys):
         """Insert two overlapping squares that belong to different sub-topologies"""
         # Check if map layer is integer
 
@@ -106,7 +111,7 @@ class TestMultiLayers:
         assert has_bedrock
         assert has_surficial
 
-    def test_remove_bedrock(self, db, layers):
+    def test_remove_bedrock(self, db, layers, basic_polys):
         assert n_faces(db) == 2
         assert n_faces(db, map_layer=layers["bedrock"]) == 1
 
@@ -114,10 +119,10 @@ class TestMultiLayers:
         with db.savepoint(rollback="always"):
             _test_internals(db, layers)
 
-    def test_remove_bedrock_no_nested_transaction(self, db, layers):
+    def test_remove_bedrock_no_nested_transaction(self, db, layers, basic_polys):
         _test_internals(db, layers)
 
-    def test_remove_surficial(self, db, layers):
+    def test_remove_surficial(self, db, layers, basic_polys):
         assert n_faces(db) == 1
         faces = intersecting_faces(db, point(3, 3))
         assert len(faces) == 1
@@ -185,3 +190,22 @@ def _test_internals(db, layers):
 
     assert n_faces(db) == 1
     assert n_faces(db, map_layer=layers["surficial"]) == 1
+
+    # Check that we have a single face
+    assert n_faces(db) == 1
+
+
+def test_negative_edge_id(db, layers):
+    """Test that face IDs and edge IDs can be negative"""
+
+    assert n_faces(db) == 0
+
+    # Insert half a square going clockwise
+    insert_line(db, ((-1, -1), (-1, 1), (1, 1)), type="bedrock", map_layer=layers["bedrock"])
+
+    # Join it with half a square going counter-clockwise
+    insert_line(db, ((-1, -1), (1, -1), (1, 1)), type="bedrock", map_layer=layers["bedrock"])
+
+    _update(db)
+
+    assert n_faces(db) == 1

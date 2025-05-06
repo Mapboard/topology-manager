@@ -53,7 +53,7 @@ def point(x, y):
 
 
 def n_face_primitives(db, include_global=False):
-    sql = "SELECT count(*) FROM test_topology.face"
+    sql = "SELECT count(*) FROM {topo_schema}.face"
     if not include_global:
         sql += " WHERE face_id != 0"
     return db.run_query(sql).scalar()
