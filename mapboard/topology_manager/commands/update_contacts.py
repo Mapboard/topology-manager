@@ -39,8 +39,8 @@ def _update_contacts(db: Database, fix_failed: bool = False):
         nops = 0
         batch_size = 1
         while remaining > 0:
-            if nops % 100 == 0:
-                _clean_topology(db)
+            # if nops % 100 == 0:
+            #    _clean_topology(db)
 
             t0 = perf_counter()
             rows = db.run_query(sql("procedures/update-contact"), {"n": batch_size}).all()

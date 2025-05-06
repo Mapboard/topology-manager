@@ -3,7 +3,8 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from ..commands.update import _update
-from .helpers import n_faces, square, map_layer_id, insert_line
+from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry
+from shapely.geometry import LineString
 
 proc = Path(__file__).parent / "fixtures" / "procedures"
 
@@ -138,3 +139,47 @@ def test_create_and_delete_line(db):
 
     _update(db)
     assert n_faces(db) == 0
+
+
+def test_update_line_geometry(db):
+    # We want to make sure that line changes are recorded automatically
+    bedrock_id = map_layer_id(db, "bedrock")
+    line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
+
+    _update(db)
+    assert n_faces(db) == 1
+
+    assert get_geometry_hash(db, line_id) is not None
+
+    _update(db)
+
+    # Update the geometry
+    db.run_query(
+        "UPDATE {data_schema}.linework SET geometry = :geom WHERE id = :id",
+        {"id": line_id, "geom": prepare_geometry(LineString(square(2, (0, 0), )), srid=32612)},
+    )
+
+    assert get_geometry_hash(db, line_id) is None
+
+    _update(db)
+
+    assert n_faces(db) == 1
+
+    assert get_geometry_hash(db, line_id) is not None
+
+    # Delete the line
+    db.run_query(
+        "DELETE FROM {data_schema}.linework WHERE id = :id",
+        {"id": line_id},
+    )
+
+    _update(db)
+    assert n_faces(db) == 0
+
+
+def get_geometry_hash(db, line_id):
+    # Check that the geometry_hash is updated
+    return db.run_query(
+        "SELECT geometry_hash FROM {data_schema}.linework WHERE id = :id",
+        {"id": line_id},
+    ).scalar()

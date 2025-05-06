@@ -5,10 +5,6 @@ from macrostrat.database import Database
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
-    geom = geometry
-    if not isinstance(geom, str):
-        geom = str(from_shape(geometry, srid=srid, extended=True))
-
     if isinstance(map_layer, str):
         map_layer = map_layer_id(db, map_layer)
 
@@ -18,9 +14,15 @@ def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612
             "type": type,
             "map_layer": map_layer,
             "table": Identifier("test_map_data", table),
-            "geom": geom
+            "geom": prepare_geometry(geometry, srid=srid)
         },
     ).scalar()
+
+
+def prepare_geometry(geom, srid=32612):
+    if not isinstance(geom, str):
+        geom = str(from_shape(geom, srid=srid, extended=True))
+    return geom
 
 
 def square(size, center=(0, 0)):

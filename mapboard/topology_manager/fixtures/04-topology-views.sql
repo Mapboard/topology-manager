@@ -87,9 +87,14 @@ JOIN {data_schema}.map_layer ml
 WHERE l.topo IS NOT null
   AND ml.topological;
 
--- Create indices to assist in the computation of this view
-CREATE INDEX IF NOT EXISTS {topo_schema}.__edge_relation_base_line_id_idx
-  ON {topo_schema}.__edge_relation_base (line_id);
+-- Create indices on core tables
+CREATE INDEX IF NOT EXISTS relation_edge_id_index
+ON {topo_schema}.relation (element_id, (abs(element_id)), topogeo_id)
+WHERE element_type = 2;
+
+CREATE INDEX IF NOT EXISTS linework_topo_id_index
+ON {data_schema}.linework (((topo).id), ((topo).layer_id))
+WHERE map_layer IS NOT null AND topo IS NOT null;
 
 DROP TABLE IF EXISTS {topo_schema}.__edge_relation CASCADE;
 /** Helper view for relationship between map edges */
