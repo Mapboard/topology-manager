@@ -13,7 +13,7 @@ SELECT
   array_agg(ec.edge_id) edges,
   count(ec.line_id) n_geom
 FROM node_edge ne
-JOIN {topo_schema}.__edge_relation_dynamic ec
+JOIN {topo_schema}.__edge_relation ec
   ON ne.edge_id = ec.edge_id
  AND NOT ec.is_child
 GROUP BY node_id

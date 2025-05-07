@@ -171,7 +171,7 @@ class TestNestedLayers:
         assert n_edges == 3
 
         res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation_dynamic",
+            "SELECT * FROM {topo_schema}.__edge_relation",
         ).fetchall()
         # The bedrock layer should have:
         # - Two edges inherited from the parent layer
