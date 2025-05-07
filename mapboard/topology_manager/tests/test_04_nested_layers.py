@@ -11,6 +11,7 @@ from .helpers import (
     map_layer_id,
     point,
     square,
+    n_edge_relations,
 )
 from ..database import sql
 
@@ -131,10 +132,13 @@ class TestNestedLayers:
         assert n_edges == 1
 
         # Check that the proper record has been added to the __edge_relation table
+        res = n_edge_relations(db)
+        assert res == 1
+
         res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation_dynamic",
+            "SELECT * FROM {topo_schema}.__edge_relation"
         ).fetchall()
-        assert len(res) == 1
+
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
         assert len([r for r in res if r.map_layer == lyr_id]) == 1

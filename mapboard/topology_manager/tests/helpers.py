@@ -124,3 +124,19 @@ def create_map_layer(db: Database, name: str, parent: int = None):
         {"name": name, "topological": True, "parent": parent},
     ).scalar()
     return lyr
+
+
+def n_edge_relations(db):
+    r1 = db.run_query(
+        "SELECT count(*) FROM {topo_schema}.__edge_relation_dynamic",
+    ).scalar()
+
+    r2 = db.run_query(
+        "SELECT count(*) FROM {topo_schema}.__edge_relation",
+    ).scalar()
+
+    if r1 != r2:
+        raise ValueError(
+            f"Number of cached edge relations ({r2}) is not correct ({r1})"
+        )
+    return r1

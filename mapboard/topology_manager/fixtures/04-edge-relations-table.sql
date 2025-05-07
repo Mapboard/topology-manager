@@ -74,9 +74,7 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  IF NEW.element_type != 2 THEN
-    RETURN NULL;
-  END IF;
+  RAISE NOTICE 'Updating edge relation table for %', TG_OP;
 
   -- In all other cases we insert
   INSERT INTO {topo_schema}.__edge_relation (
@@ -96,19 +94,24 @@ BEGIN
   WHERE l.topo IS NOT NULL
     AND (l.topo).id = NEW.topogeo_id
     AND (l.topo).layer_id = NEW.layer_id
-  ON CONFLICT (line_id, edge_id) DO UPDATE
-  SET
-    topogeo_id = EXCLUDED.topogeo_id,
-    topolayer_id = EXCLUDED.topolayer_id;
+  ON CONFLICT DO NOTHING;
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_edge_relation
-AFTER INSERT OR UPDATE OR DELETE
+BEFORE INSERT OR UPDATE
 ON {topo_schema}.relation
 FOR EACH ROW
+WHEN (NEW.element_type = 2)
+EXECUTE FUNCTION {topo_schema}.update_edge_relation();
+
+CREATE TRIGGER delete_edge_relation
+BEFORE DELETE
+ON {topo_schema}.relation
+FOR EACH ROW
+WHEN (OLD.element_type = 2)
 EXECUTE FUNCTION {topo_schema}.update_edge_relation();
 
 /** Change the map layer if it is updated for a line */
@@ -123,8 +126,50 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_edge_relation_map_layer
-AFTER UPDATE
+BEFORE UPDATE
 ON {data_schema}.linework
 FOR EACH ROW
 WHEN (OLD.map_layer IS DISTINCT FROM NEW.map_layer)
 EXECUTE FUNCTION {topo_schema}.update_edge_relation_map_layer();
+
+/** Create trigger for linework topology */
+CREATE OR REPLACE FUNCTION {topo_schema}.update_line_edge_relation()
+RETURNS trigger AS $$
+DECLARE
+  __edges integer[];
+BEGIN
+
+  IF TG_OP = 'UPDATE' THEN
+    -- not sure if we need to delete on update
+    DELETE FROM {topo_schema}.__edge_relation
+    WHERE line_id = OLD.id;
+  END IF;
+
+  INSERT INTO {topo_schema}.__edge_relation (
+    line_id,
+    map_layer,
+    edge_id,
+    topogeo_id,
+    topolayer_id
+  )
+  SELECT
+    NEW.id line_id,
+    NEW.map_layer,
+    abs(r.element_id) edge_id,
+    (NEW.topo).id topogeo_id,
+    (NEW.topo).layer_id topolayer_id
+  FROM {topo_schema}.relation r
+  WHERE NEW.topo IS NOT NULL
+    AND (NEW.topo).id = r.topogeo_id
+    AND (NEW.topo).layer_id = r.layer_id
+  ON CONFLICT DO NOTHING;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_line_edge_relation
+BEFORE INSERT OR UPDATE ON {data_schema}.linework
+FOR EACH ROW
+WHEN (NEW.topo IS NOT NULL)
+EXECUTE FUNCTION {topo_schema}.update_line_edge_relation();
