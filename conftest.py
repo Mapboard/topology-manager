@@ -5,7 +5,9 @@ load_dotenv()
 
 from mapboard.topology_manager.tests.fixtures import *
 
-disable_loggers = ['macrostrat.database.utils']
+# disable_loggers = ['macrostrat.database.utils']
+
+disable_loggers = []
 
 
 def pytest_configure():

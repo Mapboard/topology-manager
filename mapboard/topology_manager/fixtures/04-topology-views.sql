@@ -69,29 +69,3 @@ LEFT JOIN {data_schema}.polygon_type t
 LEFT JOIN {data_schema}.map_layer l
   ON f.map_layer = l.id
 WHERE l.topological;
-
-CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
-SELECT
-  l.id line_id,
-  l.map_layer,
-  abs(r.element_id) edge_id
-FROM {topo_schema}.edge_data e
-JOIN {topo_schema}.relation r
-  ON e.edge_id = abs(r.element_id)
- AND r.element_type = 2 -- edges
-JOIN {data_schema}.linework l
-  ON (l.topo).id = r.topogeo_id
-  AND r.layer_id = (l.topo).layer_id
-JOIN {data_schema}.map_layer ml
-  ON l.map_layer = ml.id
-WHERE l.topo IS NOT null
-  AND ml.topological;
-
--- Create indices on core tables
-CREATE INDEX IF NOT EXISTS relation_edge_id_index
-ON {topo_schema}.relation (element_id, (abs(element_id)), topogeo_id)
-WHERE element_type = 2;
-
-CREATE INDEX IF NOT EXISTS linework_topo_id_index
-ON {data_schema}.linework (((topo).id), ((topo).layer_id))
-WHERE map_layer IS NOT null AND topo IS NOT null;

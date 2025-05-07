@@ -132,7 +132,7 @@ class TestNestedLayers:
 
         # Check that the proper record has been added to the __edge_relation table
         res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation",
+            "SELECT * FROM {topo_schema}.__edge_relation_dynamic",
         ).fetchall()
         assert len(res) == 1
         # The tectonic block layer should have:
@@ -167,7 +167,7 @@ class TestNestedLayers:
         assert n_edges == 3
 
         res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation",
+            "SELECT * FROM {topo_schema}.__edge_relation_dynamic",
         ).fetchall()
         # The bedrock layer should have:
         # - Two edges inherited from the parent layer
