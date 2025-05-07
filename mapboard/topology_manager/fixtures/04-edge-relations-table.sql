@@ -6,6 +6,9 @@ adjacency queries, and is updated by the triggers on the linework
 and relation tables.
 */
 
+-- Some earlier iterations had a view for this...
+DROP VIEW IF EXISTS {topo_schema}.__edge_relation_base;
+DROP VIEW IF EXISTS {topo_schema}.__edge_relation;
 
 /** A dynamic view that can store a guide */
 CREATE OR REPLACE VIEW {topo_schema}.__edge_relation_dynamic AS
@@ -34,6 +37,13 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
   topolayer_id integer NOT NULL,
   PRIMARY KEY (line_id, edge_id)
 );
+
+/** Create an index to make map-layer lookups faster */
+CREATE INDEX IF NOT EXISTS edge_relation_map_layer_idx
+ON {topo_schema}.__edge_relation (map_layer);
+/** Create an index to make edge_id lookups faster */
+CREATE INDEX IF NOT EXISTS edge_relation_edge_id_idx
+ON {topo_schema}.__edge_relation (edge_id);
 
 /** Initial population of the table */
 INSERT INTO {topo_schema}.__edge_relation (
