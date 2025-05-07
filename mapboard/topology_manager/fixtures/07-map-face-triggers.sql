@@ -55,7 +55,7 @@ WITH RECURSIVE
       er.map_layer,
       er.line_id
     FROM {topo_schema}.edge_data e
-    LEFT JOIN {topo_schema}.__edge_relation_base er
+    LEFT JOIN {topo_schema}.__edge_relation er
       ON er.edge_id = e.edge_id
     WHERE
       (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))

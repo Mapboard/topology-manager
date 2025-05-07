@@ -134,7 +134,7 @@ class TestNestedLayers:
         res = db.run_query(
             "SELECT * FROM {topo_schema}.__edge_relation",
         ).fetchall()
-        assert len(res) == 2
+        assert len(res) == 1
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
         assert len([r for r in res if r.map_layer == lyr_id]) == 1
@@ -171,9 +171,10 @@ class TestNestedLayers:
         ).fetchall()
         # The bedrock layer should have:
         # - Two edges inherited from the parent layer
-        # - One edge from the bisecting line
-        assert len(res) == 5
-        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 3
+        # - One edge from the bisecting line (in the child layer)
+        # We don't keep separate records for the parent layer (this has been changed)
+        assert len(res) == 3
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 1
 
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square

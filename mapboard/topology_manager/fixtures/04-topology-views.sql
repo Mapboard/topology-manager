@@ -70,7 +70,7 @@ LEFT JOIN {data_schema}.map_layer l
   ON f.map_layer = l.id
 WHERE l.topological;
 
-CREATE OR REPLACE VIEW {topo_schema}.__edge_relation_base AS
+CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
 SELECT
   l.id line_id,
   l.map_layer,
@@ -95,21 +95,3 @@ WHERE element_type = 2;
 CREATE INDEX IF NOT EXISTS linework_topo_id_index
 ON {data_schema}.linework (((topo).id), ((topo).layer_id))
 WHERE map_layer IS NOT null AND topo IS NOT null;
-
-DROP TABLE IF EXISTS {topo_schema}.__edge_relation CASCADE;
-/** Helper view for relationship between map edges */
-CREATE OR REPLACE VIEW {topo_schema}.__edge_relation AS
-WITH v0 AS (
-  SELECT
-    l.line_id,
-    {topo_schema}.child_map_layers(l.map_layer) map_layer,
-    l.map_layer root_map_layer,
-    l.edge_id
-  FROM {topo_schema}.__edge_relation_base l
-)
-SELECT
-  line_id,
-  map_layer,
-  edge_id,
-  map_layer != root_map_layer is_child
-FROM v0;
