@@ -118,10 +118,11 @@ SELECT
   p.type,
   p.geometry
 FROM {data_schema}.polygon p
-JOIN {data_schema}.polygon_type t
-  ON p.type = t.id
 JOIN {data_schema}.map_layer l
   ON p.map_layer = l.id
+JOIN {data_schema}.map_layer_polygon_type mlpt
+  ON mlpt.type = p.type
+ AND mlpt.map_layer = l.id
 WHERE l.id = _map_layer
   AND l.topological
   AND ST_Contains(face, p.geometry)

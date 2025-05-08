@@ -7,8 +7,8 @@ and relation tables.
 */
 
 -- Some earlier iterations had a view for this...
-DROP VIEW IF EXISTS {topo_schema}.__edge_relation_base;
 DROP VIEW IF EXISTS {topo_schema}.__edge_relation;
+DROP VIEW IF EXISTS {topo_schema}.__edge_relation_base;
 
 /** A dynamic view that can store a guide */
 CREATE OR REPLACE VIEW {topo_schema}.__edge_relation_dynamic AS
