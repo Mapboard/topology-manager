@@ -110,14 +110,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_edge_relation
+CREATE OR REPLACE TRIGGER update_edge_relation
 BEFORE INSERT OR UPDATE
 ON {topo_schema}.relation
 FOR EACH ROW
 WHEN (NEW.element_type = 2)
 EXECUTE FUNCTION {topo_schema}.update_edge_relation();
 
-CREATE TRIGGER delete_edge_relation
+CREATE OR REPLACE TRIGGER delete_edge_relation
 BEFORE DELETE
 ON {topo_schema}.relation
 FOR EACH ROW

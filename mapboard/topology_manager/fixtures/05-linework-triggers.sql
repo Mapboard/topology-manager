@@ -14,9 +14,14 @@ WHERE l.id = $1.map_layer
   AND l.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
+RETURNS uuid AS $$
+SELECT md5(ST_AsBinary(geom))::uuid;
+$$ LANGUAGE SQL IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(_line {data_schema}.linework)
 RETURNS uuid AS $$
-SELECT md5(ST_AsBinary(_line.geometry))::uuid;
+SELECT {topo_schema}.hash_geometry(_line.geometry);
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
