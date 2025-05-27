@@ -77,6 +77,7 @@ def _start_watcher():
         needs_update.set(False)
         # Do the update
         _update(db)
+        db.session.close()
         update_in_progress.set(False)
 
     conn = db.engine.connect()

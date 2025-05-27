@@ -3,7 +3,7 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from ..commands.update import _update
-from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry
+from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry, n_edge_relations
 from shapely.geometry import LineString
 
 proc = Path(__file__).parent / "fixtures" / "procedures"
@@ -61,6 +61,8 @@ class TestTopology:
         """Solve topology and check that we have a map face"""
         _update(db)
         assert n_faces(db) == 1
+
+        assert n_edge_relations(db) > 0
 
     def test_change_line_type(self, db):
         """Change a line type and check that the map face is NOT removed
