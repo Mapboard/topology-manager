@@ -28,38 +28,28 @@ class TestCompositeLayers:
 
     def test_create_bedrock_grid(self, db):
         """Create overlapping sets of lines to test face creation."""
-        count_on_each_axis = 5
         child_lyr = map_layer_id(db, child_layer_name)
 
-        timer = Timer()
-        with timer.context():
-            for x in range(grid_count_on_each_axis + 1):
-                insert_line(
-                    db,
-                    ((x, 0), (x, grid_count_on_each_axis)),
-                    type="bedrock",
-                    map_layer=child_lyr,
-                )
-            for y in range(grid_count_on_each_axis + 1):
-                insert_line(
-                    db,
-                    ((0, y), (grid_count_on_each_axis, y)),
-                    type="bedrock",
-                    map_layer=child_lyr,
-                )
+        for val in range(grid_count_on_each_axis + 1):
+            insert_line(
+                db,
+                ((val, 0), (val, grid_count_on_each_axis)),
+                type="bedrock",
+                map_layer=child_lyr,
+            )
+            insert_line(
+                db,
+                ((0, val), (grid_count_on_each_axis, val)),
+                type="bedrock",
+                map_layer=child_lyr,
+            )
 
-            Timer.add_step("insert-lines")
+        # Solve the faces
+        _update(db)
 
-            # Solve the faces
-            _update(db)
-
-            Timer.add_step("update")
-
-            # Check that we have 100 map faces
-            assert n_faces(db) == grid_count_on_each_axis ** 2
-            assert n_face_primitives(db) == grid_count_on_each_axis ** 2
-
-        log.info(timer.server_timings())
+        # Check that we have 100 map faces
+        assert n_faces(db) == grid_count_on_each_axis ** 2
+        assert n_face_primitives(db) == grid_count_on_each_axis ** 2
 
     def test_add_parent_layer(self, db):
         # Add a parent layer with encompassing faces
