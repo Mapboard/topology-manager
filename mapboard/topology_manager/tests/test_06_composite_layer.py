@@ -15,8 +15,11 @@ child_layer_name = "rocks"
 class TestCompositeLayers:
     def test_create_nested_map_layers(self, db):
         """Create a parent and child map layer."""
-        parent_lyr = create_map_layer(db, parent_layer_name)
+        grandparent_lyr = create_map_layer(db, "map-area")
+        parent_lyr = create_map_layer(db, parent_layer_name, parent=grandparent_lyr)
         child_lyr = create_map_layer(db, child_layer_name, parent=parent_lyr)
+
+        surficial_lyr = create_map_layer(db, "surficial", parent=grandparent_lyr)
 
         # add a linework type
         add_linework_type_to_layer(db, child_lyr, "bedrock")
