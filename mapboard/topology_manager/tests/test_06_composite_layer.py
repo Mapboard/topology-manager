@@ -3,33 +3,20 @@
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import (
-    insert_line,
-    map_layer_id,
-    add_linework_type_to_layer,
-    n_faces,
-    n_face_primitives,
-    create_map_layer,
-)
+from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer
 from ..commands.update import _update
 from pytest import mark
 
 log = get_logger(__name__)
 
+parent_layer_name = "tectonic-block"
+child_layer_name = "rocks"
 
 class TestCompositeLayers:
     def test_create_nested_map_layers(self, db):
         """Create a parent and child map layer."""
-
-        grandparent_lyr = create_map_layer(db, "map-area")
-        parent_lyr = create_map_layer(db, "tectonic-block", parent=grandparent_lyr)
-        child_lyr = create_map_layer(db, "bedrock", parent=parent_lyr)
-
-        # Surficial layer
-        create_map_layer(db, "surficial", parent=grandparent_lyr)
-
-        # Create linework types
-        add_linework_type_to_layer(db, child_lyr, "contact")
+        parent_lyr = create_map_layer(db, parent_layer_name)
+        child_lyr = create_map_layer(db, child_layer_name, parent=parent_lyr)
 
         # add a linework type
         add_linework_type_to_layer(db, child_lyr, "bedrock")
@@ -37,8 +24,7 @@ class TestCompositeLayers:
     @mark.parametrize("count_on_each_axis", [1, 5, 10])
     def test_create_faces_with_overlapping_lines(self, db, count_on_each_axis):
         """Create overlapping sets of lines to test face creation."""
-        child_lyr = map_layer_id(db, "child")
-        parent_lyr = map_layer_id(db, "parent")
+        child_lyr = map_layer_id(db, child_layer_name)
 
         timer = Timer()
         with timer.context():
@@ -65,14 +51,14 @@ class TestCompositeLayers:
             Timer.add_step("update")
 
             # Check that we have 100 map faces
-            assert n_faces(db) == count_on_each_axis**2
-            assert n_face_primitives(db) == count_on_each_axis**2
+            assert n_faces(db) == count_on_each_axis ** 2
+            assert n_face_primitives(db) == count_on_each_axis ** 2
 
         log.info(timer.server_timings())
 
     def test_add_parent_layer(self, db):
         # Add a parent layer with encompassing faces
-        parent_lyr = map_layer_id(db, "parent")
+        parent_lyr = map_layer_id(db, parent_layer_name)
         add_linework_type_to_layer(db, parent_lyr, "bedrock")
 
         # Insert a line outside of the child layer that encompasses all child faces
@@ -97,8 +83,8 @@ class TestCompositeLayers:
 
     def test_erase_and_consolidate_faces(self, db):
         """Test the erasure and consolidation of faces."""
-        _child_layer = map_layer_id(db, "child")
-        _parent_lyr = map_layer_id(db, "parent")
+        _child_layer = map_layer_id(db, child_layer_name)
+        _parent_lyr = map_layer_id(db, parent_layer_name)
 
         # Delete lines that cover the bottom right corner of the child layer
         # while leaving other lines intact. This should remove 4 faces from the
