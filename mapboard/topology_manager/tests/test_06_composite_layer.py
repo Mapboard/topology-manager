@@ -3,7 +3,7 @@
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer
+from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer, square
 from ..commands.update import _update
 from pytest import mark
 
@@ -107,3 +107,18 @@ class TestCompositeLayers:
 
         assert n_faces(db) == grid_count_on_each_axis**2 + 2 - 4 + 1
         assert n_face_primitives(db) == grid_count_on_each_axis**2 - 3 + 1
+
+    def test_create_surficial_face(self, db):
+        """Create a surficial face that overlaps with the bedrock layer."""
+        surficial_lyr = map_layer_id(db, "surficial")
+
+        # Add a linework type
+        add_linework_type_to_layer(db, surficial_lyr, "bedrock")
+
+        insert_line(db, square(2, (3.5, 3.5)), type="surficial", map_layer=surficial_lyr)
+
+        # Solve the topology
+        _update(db)
+
+        # Check that we have created a new face in the surficial layer
+        assert n_faces(db, map_layer=surficial_lyr) == 1

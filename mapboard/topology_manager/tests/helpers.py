@@ -102,7 +102,7 @@ def intersecting_faces(db, geom):
 
 def add_linework_type_to_layer(db, layer_id, linework_type):
     db.run_query(
-        """INSERT INTO {data_schema}.map_layer_linework_type (map_layer, "type") VALUES (:map_layer, :layer_type)""",
+        """INSERT INTO {data_schema}.map_layer_linework_type (map_layer, "type") VALUES (:map_layer, :layer_type) ON CONFLICT DO NOTHING""",
         dict(map_layer=layer_id, layer_type=linework_type),
     )
 
