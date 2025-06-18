@@ -62,7 +62,9 @@ SELECT
   f.geometry,
   l.id map_layer,
   t.color,
-  t.name
+  t.name,
+  'fgdc:' || replace(t.symbol, '-K', '') symbol,
+  t.symbol_color
 FROM {topo_schema}.map_face f
 LEFT JOIN {data_schema}.polygon_type t
   ON f.unit_id = t.id
