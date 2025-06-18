@@ -116,9 +116,36 @@ class TestCompositeLayers:
         add_linework_type_to_layer(db, surficial_lyr, "bedrock")
 
         insert_line(db, square(2, (3.5, 3.5)), type="surficial", map_layer=surficial_lyr)
+        # This square will overlap the bedrock layer. It should cover one entire face in the bedrock layer,
+        # as well as part of eight other faces.
+
+        # The composite layer should have eight bedrock faces that have areas < 1.0
 
         # Solve the topology
         _update(db)
 
         # Check that we have created a new face in the surficial layer
         assert n_faces(db, map_layer=surficial_lyr) == 1
+
+    def test_create_composite_layer(self, db):
+        """Create a composite layer that includes the bedrock and surficial layers."""
+        grandparent_lyr = map_layer_id(db, "map-area")
+        parent_lyr = map_layer_id(db, parent_layer_name)
+        child_lyr = map_layer_id(db, child_layer_name)
+        surficial_lyr = map_layer_id(db, "surficial")
+
+        # Create a composite layer placeholder
+        composite_lyr = create_map_layer(
+            db,
+            "composite",
+            parent=grandparent_lyr,
+        )
+        # This composite layer will be 'derived' from the bedrock and surficial layers.
+        # It does not have geometries of its own. It's also not a 'parent' in the hierarchy,
+        # but is its own special type of layer.
+
+        # Solve the topology
+        _update(db)
+
+        # Check that we have created a new face in the composite layer
+        assert n_faces(db, map_layer=composite_lyr) == 0
