@@ -9,12 +9,16 @@ from pytest import mark
 
 log = get_logger(__name__)
 
-parent_layer_name = ("tectonic-block")
+parent_layer_name = "tectonic-block"
 child_layer_name = "rocks"
 
 grid_count_on_each_axis = 7
 
 class TestCompositeLayers:
+    """We want to be able to create composite layers that build on top of each other, despite
+    faces being internally unrelated. This is needed to support the creation of geological
+    maps that have overlapping units, such as surficial and bedrock mapping.
+    """
     def test_create_nested_map_layers(self, db):
         """Create a parent and child map layer."""
         grandparent_lyr = create_map_layer(db, "map-area")
