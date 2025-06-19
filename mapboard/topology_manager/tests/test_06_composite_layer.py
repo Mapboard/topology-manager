@@ -22,6 +22,7 @@ from ..commands.update_faces.helpers import (
     create_map_face,
     FaceUpdateResult,
     containing_map_faces,
+    get_face_primitives,
 )
 
 log = get_logger(__name__)
@@ -230,16 +231,35 @@ def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateR
 
     # Insert the topmost layer's faces into the composite layer
 
+    visited_face_primitives = set()
+
+    # Get intersecting with dirty map faces...
     db.run_sql(
         """
         INSERT INTO {topo_schema}.map_face (map_layer, unit_id, geometry, topo)
         SELECT :map_layer, unit_id, geometry, topo
         FROM {topo_schema}.map_face
-        WHERE id = ANY(:topmost_map_faces)
+        WHERE id = ANY(:map_faces)
         """,
-        dict(map_layer=map_layer, topmost_map_faces=topmost_map_faces),
+        dict(map_layer=map_layer, map_faces=topmost_map_faces),
     )
+
+    _face_primitives = get_face_primitives(db, topmost_map_faces)
+    visited_face_primitives.update(_face_primitives)
 
     assert n_faces(db, map_layer=map_layer) == 1
 
-    print(topmost_map_faces)
+    # Proceed to the next layer. This is harder.
+    for layer in reversed_layers[1:]:
+        log.info("Updating composite layer with faces from layer %s", layer)
+
+        # Get the faces from the current layer
+        current_faces = list(containing_map_faces(db, all_faces, layer))
+
+        if not current_faces:
+            log.info("No faces to add from layer %s", layer)
+            continue
+
+        # We need to merge these faces into the composite layer
+        for face_id in current_faces:
+            update_map_face_python(db, face_id, map_layer, write=True)

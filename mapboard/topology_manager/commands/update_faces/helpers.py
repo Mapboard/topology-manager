@@ -177,6 +177,24 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
     )
 
 
+def get_face_primitives(db: Database, map_faces: list[int]) -> list[int]:
+    return list(
+        db.run_query(
+            """
+            SELECT DISTINCT ON (r.element_id)
+                r.element_id
+            FROM {topo_schema}.map_face f
+            JOIN {topo_schema}.relation r
+            ON (f.topo).id = r.topogeo_id
+                AND r.layer_id = (f.topo).layer_id
+            WHERE f.id = ANY(:map_faces)
+              AND r.element_type = 3
+            """,
+            dict(map_faces=map_faces),
+        ).scalars()
+    )
+
+
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
     """Dissolve adjacent faces"""
     grouped_faces = []

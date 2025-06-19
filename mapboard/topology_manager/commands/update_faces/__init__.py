@@ -12,12 +12,8 @@ from typing import Optional
 from ...database import get_database, sql
 from .helpers import (
     update_map_face_python,
-    delete_map_faces,
-    create_map_face,
-    unmark_dirty_faces,
     persist_map_face_updates,
 )
-from collections import defaultdict
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
