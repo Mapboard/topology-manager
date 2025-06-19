@@ -37,6 +37,8 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
 
     # Get map faces that contain any of the listed faces in the particular map layer
     # we are looking at.
+
+    # This is actually the most important element of the function
     existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
 
     res = FaceUpdateResult(

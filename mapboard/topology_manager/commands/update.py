@@ -3,7 +3,6 @@ from contextvars import ContextVar
 from time import perf_counter
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from sqlalchemy import text
 from typer import Option
 
 from ..database import Database, get_database

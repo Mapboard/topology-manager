@@ -95,7 +95,8 @@ def _update_faces(
 
         res = update_map_face_python(db, face, write=incremental)
         results.append(res)
-        # Filter dirty faces
+
+        # Filter dirty faces to remove the ones that have been dissolved into the current face
         dirty_faces = [
             d
             for d in dirty_faces
