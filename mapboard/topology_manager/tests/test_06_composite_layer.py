@@ -140,10 +140,10 @@ class TestCompositeLayers:
         add_linework_type_to_layer(db, surficial_lyr, "bedrock")
 
         insert_line(
-            db, square(2, (3.5, 3.5)), type="surficial", map_layer=surficial_lyr
+            db, square(4, (4.5, 4.5)), type="surficial", map_layer=surficial_lyr
         )
-        # This square will overlap the bedrock layer. It should cover one entire face in the bedrock layer,
-        # as well as part of eight other faces.
+        # This square will overlap the bedrock layer. It should cover nine entire faces in the bedrock layer,
+        # as well as part of 14 other faces.
 
         # The composite layer should have eight bedrock faces that have areas < 1.0
 
@@ -178,7 +178,12 @@ class TestCompositeLayers:
 
         update_composite_layer(db, composite_lyr, [child_lyr, surficial_lyr])
 
-        assert n_faces(db, map_layer=composite_lyr) > 5
+        _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
+        assert n_faces(db, map_layer=child_lyr) == _bedrock_count
+
+        assert (
+            n_faces(db, map_layer=composite_lyr) == _bedrock_count - 9 + 1
+        )
 
 
 def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
@@ -223,14 +228,7 @@ def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateR
     delete_map_faces(db, existing_map_faces)
     # We may need to add the entire geometry of any dirty face to the dirty faces for the composite layer.
 
-    # Now we can update the composite layer with the faces from the constituent layers
-
-    # start with the topmost layer - this face just goes in as-is
-    topmost_layer = reversed_layers[0]
-
-    topmost_map_faces = list(containing_map_faces(db, all_faces, topmost_layer))
-
-    assert n_faces(db, map_layer=topmost_layer) == 1
+    assert n_faces(db, map_layer=reversed_layers[0]) == 1
 
     # Insert the topmost layer's faces into the composite layer
 
