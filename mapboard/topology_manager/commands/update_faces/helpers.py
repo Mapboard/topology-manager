@@ -6,7 +6,7 @@ from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
 from functools import lru_cache
 
-from ..database import sql
+from ...database import sql
 
 log = get_logger(__name__)
 
@@ -91,12 +91,19 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
 
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    """Essentially a python wrapper around the get_adjacent_faces SQL function
+    TODO: get adjacent faces for multiple map layers at once.
+    """
     t0 = perf_counter()
-    res = db.run_query("SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
-                       dict(face_id=face_id, map_layer=map_layer)).one()
+    res = db.run_query(
+        "SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
+        dict(face_id=face_id, map_layer=map_layer),
+    ).one()
     faces = list(set(res.faces))
     t1 = perf_counter()
-    log.info(f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)")
+    log.info(
+        f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
+    )
     return faces
 
 
@@ -134,8 +141,9 @@ def get_topolayer_id(db: Database, table_name: str, feature_column: str):
 
 
 def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list[int]:
-    return list(db.run_query(
-        """
+    return list(
+        db.run_query(
+            """
         SELECT
             f.id
         FROM {topo_schema}.map_face f
@@ -146,8 +154,9 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
           AND r.element_type = 3
           AND f.map_layer = :map_layer
         """,
-        dict(faces=faces, map_layer=map_layer),
-    ).scalars())
+            dict(faces=faces, map_layer=map_layer),
+        ).scalars()
+    )
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:

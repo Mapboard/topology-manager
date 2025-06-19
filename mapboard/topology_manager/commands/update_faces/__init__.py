@@ -1,4 +1,3 @@
-import os
 import warnings
 from threading import Timer
 
@@ -10,9 +9,8 @@ from macrostrat.utils import get_logger
 from enum import Enum
 from typing import Optional
 
-from ..database import get_database, sql
-from ..utilities import console
-from ..update_faces import (
+from ...database import get_database, sql
+from .helpers import (
     update_map_face_python,
     delete_map_faces,
     create_map_face,

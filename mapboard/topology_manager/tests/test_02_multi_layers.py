@@ -8,16 +8,14 @@ from .helpers import (
     intersecting_faces,
     map_layer_id,
     n_faces,
-    n_face_primitives,
     n_lines,
     get_face_id,
     point,
     square,
     prepare_geometry,
 )
-from ..database import sql
 from shapely.geometry import Polygon
-from ..update_faces import get_adjacent_faces
+from ..commands.update_faces.helpers import get_adjacent_faces
 
 from pytest import fixture
 

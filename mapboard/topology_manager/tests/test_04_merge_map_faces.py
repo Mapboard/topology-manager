@@ -6,7 +6,7 @@ from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_fa
     create_map_layer, n_edges, square, point
 from .test_03_fill_holes import get_face_info
 from ..commands.update import _update, _update_contacts, _clean_topology
-from ..update_faces import get_adjacent_faces
+from ..commands.update_faces.helpers import get_adjacent_faces
 from pytest import fixture
 
 log = get_logger(__name__)
