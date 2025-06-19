@@ -2,11 +2,20 @@
 
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, \
-    create_map_layer, n_edges, square, point
+from .helpers import (
+    insert_line,
+    map_layer_id,
+    add_linework_type_to_layer,
+    n_faces,
+    n_face_primitives,
+    create_map_layer,
+    n_edges,
+    square,
+    point,
+)
 from .test_03_fill_holes import get_face_info
 from ..commands.update import _update, _update_contacts, _clean_topology
-from ..update_faces import get_adjacent_faces
+from ..commands.update_faces.helpers import get_adjacent_faces
 from pytest import fixture
 
 log = get_logger(__name__)
@@ -117,7 +126,9 @@ class TestMergeMapFaces:
 
         _update(db)
 
-        assert n_edges(db) == 5  # The new line makes 3 edges, combining with the square split in two
+        assert (
+            n_edges(db) == 5
+        )  # The new line makes 3 edges, combining with the square split in two
         assert n_face_primitives(db) == 2
         assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
@@ -142,14 +153,14 @@ class TestMergeMapFaces:
 
         db.run_query(
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(-1,1), :srid))",
-            {"map_layer": child_lyr}
+            {"map_layer": child_lyr},
         )
         _update(db)
 
         # Should be a single line in the child layer
         n_lines = db.run_query(
             "SELECT count(*) FROM {data_schema}.linework WHERE map_layer = :map_layer",
-            {"map_layer": child_lyr}
+            {"map_layer": child_lyr},
         ).scalar()
         assert n_lines == 1
 
@@ -170,7 +181,7 @@ class TestMergeMapFaces:
 
         db.run_query(
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
-            {"map_layer": child_lyr}
+            {"map_layer": child_lyr},
         )
         _update(db)
 
@@ -184,7 +195,7 @@ class TestMergeMapFaces:
         # Move the line to the child layer
         db.run_query(
             "UPDATE {data_schema}.linework SET map_layer = :map_layer WHERE map_layer = :parent_lyr",
-            {"map_layer": child_lyr, "parent_lyr": map_layer_id(db, "parent")}
+            {"map_layer": child_lyr, "parent_lyr": map_layer_id(db, "parent")},
         )
         _update(db)
 
