@@ -17,7 +17,7 @@ from .helpers import (
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
-log = get_logger(__name__)
+log = get_logger("mapboard.topology_manager.update_faces")
 
 
 def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:
@@ -85,7 +85,7 @@ def _update_faces(
     init_n_faces = len(dirty_faces)
     results = []
     while len(dirty_faces) > 0:
-        log.info("%s dirty faces remaining", len(dirty_faces))
+        log.debug("%s dirty faces remaining", len(dirty_faces))
         # Extract one face
         face = dirty_faces.pop(0)
 

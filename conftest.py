@@ -5,9 +5,10 @@ load_dotenv()
 
 from mapboard.topology_manager.tests.fixtures import *
 
-# disable_loggers = ['macrostrat.database.utils']
+disable_loggers = ["macrostrat.database.utils"]
+# INFO log level
 
-disable_loggers = []
+# disable_loggers = []
 
 
 def pytest_configure():
@@ -15,6 +16,9 @@ def pytest_configure():
     for logger_name in disable_loggers:
         logger = logging.getLogger(logger_name)
         logger.disabled = True
+
+    log = logging.getLogger("mapboard.topology_manager.update_faces")
+    log.setLevel(logging.INFO)
 
 
 # Add option to keep the database after tests

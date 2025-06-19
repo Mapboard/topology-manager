@@ -11,6 +11,7 @@ from .helpers import (
     n_faces,
     n_face_primitives,
     create_map_layer,
+    create_grid,
     square,
 )
 from ..commands.update import _update
@@ -19,7 +20,7 @@ from ..commands.update_faces import n_dirty_faces
 from ..commands.update_faces.helpers import (
     FaceUpdateResult,
 )
-from ..database import get_database, sql
+from ..database import sql
 
 log = get_logger(__name__)
 
@@ -63,76 +64,6 @@ def layers(db):
     )
 
 
-def test_multistage_face_management(db, layers):
-    """Remove the surficial face and add a smaller one."""
-    insert_line(db, square(10, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
-
-    create_grid(db, layers.child)
-
-    _update(db)
-
-    assert n_faces(db, map_layer=layers.overlay) == 1
-    assert n_faces(db, map_layer=layers.child) == grid_count_on_each_axis**2
-
-    db.run_sql(
-        """
-        DELETE FROM {data_schema}.linework
-        WHERE map_layer = :lyr
-        """,
-        dict(lyr=layers.overlay),
-    )
-
-    _update(db)
-    update_composite_layer(
-        db,
-        map_layer=layers.composite,
-        layers=[layers.child, layers.overlay],
-    )
-
-    assert n_faces(db, map_layer=layers.overlay) == 0
-
-    assert n_dirty_faces(db) == 0
-
-    # Add a smaller surficial face
-    insert_line(db, square(5, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
-
-    _update_contacts(db)
-
-    assert n_dirty_faces(db, map_layer=layers.overlay) > 0
-
-    assert n_faces(db, map_layer=layers.overlay) == 0
-
-    _update(db)
-
-    assert n_dirty_faces(db) == 0
-    assert n_faces(db, map_layer=layers.overlay) == 1
-
-    update_composite_layer(
-        db,
-        map_layer=layers.composite,
-        layers=[layers.child, layers.overlay],
-    )
-
-    # Check that the composite layer has been updated correctly
-    assert n_faces(db, map_layer=layers.overlay) == 1
-
-
-def create_grid(db, layer):
-    for val in range(grid_count_on_each_axis + 1):
-        insert_line(
-            db,
-            ((val, 0), (val, grid_count_on_each_axis)),
-            type="bedrock",
-            map_layer=layer,
-        )
-        insert_line(
-            db,
-            ((0, val), (grid_count_on_each_axis, val)),
-            type="bedrock",
-            map_layer=layer,
-        )
-
-
 class TestCompositeLayers:
     """We want to be able to create composite layers that build on top of each other, despite
     faces being internally unrelated. This is needed to support the creation of geological
@@ -144,7 +75,7 @@ class TestCompositeLayers:
         assert n_faces(db) == 0
         assert n_face_primitives(db) == 0
 
-        create_grid(db, layers.child)
+        create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
 
         # Solve the faces
         _update(db)

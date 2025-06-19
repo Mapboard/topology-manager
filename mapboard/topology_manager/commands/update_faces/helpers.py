@@ -9,7 +9,7 @@ from functools import lru_cache
 
 from ...database import sql
 
-log = get_logger(__name__)
+log = get_logger("mapboard.topology_manager.update_faces")
 
 
 class DirtyFace(BaseModel):
@@ -74,10 +74,19 @@ def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
     else:
         log.info("No existing map faces to delete")
 
+    creation_stats = defaultdict(int)
+
     for res in updates:
         if 0 not in res.dissolved_faces:
             create_map_face(db, res.map_layer, res.dissolved_faces)
+            creation_stats[res.map_layer] += 1
         dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
+
+    log.info(
+        "Created %s new map faces in layers: %s",
+        sum(creation_stats.values()),
+        "\n".join(f"{lyr}: {count}" for lyr, count in creation_stats.items()),
+    )
 
     for lyr, faces in dissolved_faces_index.items():
         unmark_dirty_faces(db, lyr, list(set(faces)))
@@ -98,7 +107,7 @@ def delete_map_faces(db: Database, faces: list[int]):
 def create_map_face(db: Database, map_layer: int, face_list: list[int]):
     """Create a topogeometry"""
     topo_element_array = [[face_id, 3] for face_id in face_list]
-    log.info("Creating new topogeometry for %s faces", len(face_list))
+    # log.debug("Creating new topogeometry for %s faces", len(face_list))
     db.run_query(
         sql("procedures/update-faces/insert-face-topogeom"),
         dict(
@@ -119,7 +128,7 @@ def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
     ).one()
     faces = list(set(res.faces))
     t1 = perf_counter()
-    log.info(
+    log.debug(
         f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
     )
     return faces
