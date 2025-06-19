@@ -3,7 +3,7 @@ from .clean_topology import clean_topology
 from .create_tables import _create_tables
 from .update import update
 from .update_contacts import update_contacts
-from .update_faces import update_faces
+from .update_faces import __init__
 
 
 def create_tables_cmd():

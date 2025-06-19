@@ -1,5 +1,13 @@
 from ..commands.update import _update
-from .helpers import insert_line, insert_polygon, map_layer_id, n_faces, point, square, get_face_id
+from .helpers import (
+    insert_line,
+    insert_polygon,
+    map_layer_id,
+    n_faces,
+    point,
+    square,
+    get_face_id,
+)
 from ..database import sql
 from ..commands.update_faces.helpers import containing_map_faces, get_adjacent_faces
 from pydantic import BaseModel

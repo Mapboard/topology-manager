@@ -15,6 +15,7 @@ from .helpers import (
     delete_map_faces,
     create_map_face,
     unmark_dirty_faces,
+    persist_map_face_updates,
 )
 from collections import defaultdict
 
@@ -104,23 +105,7 @@ def _update_faces(
 
     ## Delete old topogeoms
     if not incremental:
-        old_map_faces = []
-        for res in results:
-            old_map_faces += res.existing_map_faces
-        old_map_faces = list(set(old_map_faces))
-        if len(old_map_faces) > 0:
-            delete_map_faces(db, old_map_faces)
-
-        dissolved_faces_index = defaultdict(list)
-
-        for res in results:
-            if 0 not in res.dissolved_faces:
-                create_map_face(db, res.map_layer, res.dissolved_faces)
-            dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
-
-        # Unmark dirty faces
-        for lyr, faces in dissolved_faces_index.items():
-            unmark_dirty_faces(db, lyr, list(set(faces)))
+        persist_map_face_updates(db, results)
 
     t1 = perf_counter()
     log.info(
