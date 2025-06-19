@@ -24,6 +24,7 @@ from ..commands.update_faces.helpers import (
     containing_map_faces,
     get_face_primitives,
 )
+from ..database import get_database, sql
 
 log = get_logger(__name__)
 
@@ -177,6 +178,8 @@ class TestCompositeLayers:
 
         update_composite_layer(db, composite_lyr, [child_lyr, surficial_lyr])
 
+        assert n_faces(db, map_layer=composite_lyr) > 5
+
 
 def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
     """Update a composite layer by merging faces from the specified layers."""
@@ -231,35 +234,18 @@ def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateR
 
     # Insert the topmost layer's faces into the composite layer
 
-    visited_face_primitives = set()
-
     # Get intersecting with dirty map faces...
-    db.run_sql(
-        """
-        INSERT INTO {topo_schema}.map_face (map_layer, unit_id, geometry, topo)
-        SELECT :map_layer, unit_id, geometry, topo
-        FROM {topo_schema}.map_face
-        WHERE id = ANY(:map_faces)
-        """,
-        dict(map_layer=map_layer, map_faces=topmost_map_faces),
-    )
-
-    _face_primitives = get_face_primitives(db, topmost_map_faces)
-    visited_face_primitives.update(_face_primitives)
-
-    assert n_faces(db, map_layer=map_layer) == 1
-
-    # Proceed to the next layer. This is harder.
-    for layer in reversed_layers[1:]:
+    overlay_layers = []
+    for layer in reversed_layers:
         log.info("Updating composite layer with faces from layer %s", layer)
-
-        # Get the faces from the current layer
-        current_faces = list(containing_map_faces(db, all_faces, layer))
-
-        if not current_faces:
-            log.info("No faces to add from layer %s", layer)
-            continue
-
-        # We need to merge these faces into the composite layer
-        for face_id in current_faces:
-            update_map_face_python(db, face_id, map_layer, write=True)
+        ids = db.run_query(
+            sql("procedures/update-faces/update-composite-face-elements"),
+            dict(
+                map_layer=layer,
+                overlay_layers=overlay_layers,
+                composite_layer=map_layer,
+            ),
+        ).scalars()
+        _n_faces = len(list(ids))
+        overlay_layers.append(layer)
+        log.info("Inserted %s map faces from layer %s", _n_faces, layer)
