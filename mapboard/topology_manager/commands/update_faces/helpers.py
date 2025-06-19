@@ -1,3 +1,4 @@
+from collections import defaultdict
 from time import perf_counter
 
 from macrostrat.database import Database
@@ -6,7 +7,7 @@ from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
 from functools import lru_cache
 
-from ..database import sql
+from ...database import sql
 
 log = get_logger(__name__)
 
@@ -38,32 +39,48 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
     # we are looking at.
     existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
 
-    n_faces = len(existing_map_faces)
+    res = FaceUpdateResult(
+        dissolved_faces=face_list,
+        existing_map_faces=existing_map_faces,
+        map_layer=map_layer,
+    )
+
     if write:
-        if n_faces > 0:
-            # For now, we delete any currently overlapping map faces.
-            # We could choose to update/merge features instead
-            log.info("Deleting %s existing map faces", n_faces)
-            delete_map_faces(db, existing_map_faces)
-        else:
-            log.info("No existing map faces to delete")
-
-        if 0 not in face_list:
-            create_map_face(db, map_layer, face_list)
-
-        unmark_dirty_faces(db, map_layer, face_list)
+        persist_map_face_updates(db, [res])
 
     Timer.add_step("clean")
 
     t2 = perf_counter()
     log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
 
-    return FaceUpdateResult(
-        dissolved_faces=face_list,
-        existing_map_faces=existing_map_faces,
-        map_layer=map_layer,
-    )
+    return res
 
+
+def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
+    """Persist updates to map faces to the database."""
+    map_faces_to_delete: set[int] = set()
+    dissolved_faces_index = defaultdict(list)
+
+    for res in updates:
+        map_faces_to_delete.update(set(res.existing_map_faces))
+        # Dirty faces are stored per-layer, which we might want to change in the future?
+
+    # For now, we delete any currently overlapping map faces.
+    # We could choose to update/merge features instead, if we stored changesets
+    # for each existing map face.
+    if len(map_faces_to_delete) > 0:
+        log.info("Deleting %s existing map faces", len(map_faces_to_delete))
+        delete_map_faces(db, list(map_faces_to_delete))
+    else:
+        log.info("No existing map faces to delete")
+
+    for res in updates:
+        if 0 not in res.dissolved_faces:
+            create_map_face(db, res.map_layer, res.dissolved_faces)
+        dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
+
+    for lyr, faces in dissolved_faces_index.items():
+        unmark_dirty_faces(db, lyr, list(set(faces)))
 
 def delete_map_faces(db: Database, faces: list[int]):
     """Delete map faces"""
@@ -91,12 +108,19 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
 
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    """Essentially a python wrapper around the get_adjacent_faces SQL function
+    TODO: get adjacent faces for multiple map layers at once.
+    """
     t0 = perf_counter()
-    res = db.run_query("SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
-                       dict(face_id=face_id, map_layer=map_layer)).one()
+    res = db.run_query(
+        "SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
+        dict(face_id=face_id, map_layer=map_layer),
+    ).one()
     faces = list(set(res.faces))
     t1 = perf_counter()
-    log.info(f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)")
+    log.info(
+        f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
+    )
     return faces
 
 
@@ -134,8 +158,9 @@ def get_topolayer_id(db: Database, table_name: str, feature_column: str):
 
 
 def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list[int]:
-    return list(db.run_query(
-        """
+    return list(
+        db.run_query(
+            """
         SELECT
             f.id
         FROM {topo_schema}.map_face f
@@ -146,8 +171,9 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
           AND r.element_type = 3
           AND f.map_layer = :map_layer
         """,
-        dict(faces=faces, map_layer=map_layer),
-    ).scalars())
+            dict(faces=faces, map_layer=map_layer),
+        ).scalars()
+    )
 
 
 def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:

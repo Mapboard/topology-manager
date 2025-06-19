@@ -14,7 +14,7 @@ def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612
             "type": type,
             "map_layer": map_layer,
             "table": Identifier("test_map_data", table),
-            "geom": prepare_geometry(geometry, srid=srid)
+            "geom": prepare_geometry(geometry, srid=srid),
         },
     ).scalar()
 
@@ -75,6 +75,14 @@ def n_faces(db, *, identified=False, map_layer=None):
     return db.run_query(sql, params).scalar()
 
 
+def n_lines(db, *, map_layer=None):
+    sql = "SELECT count(*) FROM {data_schema}.linework"
+    if map_layer is not None:
+        sql += " WHERE map_layer = :map_layer"
+        return db.run_query(sql, {"map_layer": map_layer}).scalar()
+    return db.run_query(sql).scalar()
+
+
 def n_edges(db):
     sql = "SELECT count(*) FROM {topo_schema}.edge"
     return db.run_query(sql).scalar()
@@ -90,7 +98,8 @@ def map_layer_id(db, name: str):
 def get_face_id(db, _point):
     return db.run_query(
         "SELECT face_id FROM {topo_schema}.face_data WHERE ST_Intersects(ST_GetFaceGeometry(:topo_name, face_id), :point)",
-        dict(point=_point)).scalar()
+        dict(point=_point),
+    ).scalar()
 
 
 def intersecting_faces(db, geom):
