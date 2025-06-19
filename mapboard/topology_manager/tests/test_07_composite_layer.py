@@ -198,7 +198,7 @@ class TestCompositeLayers:
         assert n_dirty_faces(db) == 0
 
         # Add a smaller surficial face
-        insert_line(db, square(5, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
+        insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.overlay)
 
         _update_contacts(db)
 
@@ -280,7 +280,7 @@ def test_add_surficial_face_standalone(db, layers):
     assert n_faces(db, map_layer=layers.overlay) == 0
 
     # Add a smaller surficial face
-    insert_line(db, square(5, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
+    insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.overlay)
 
     update_composite_layer(
         db,

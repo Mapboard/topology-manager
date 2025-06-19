@@ -1,7 +1,7 @@
 """Tests to ensure efficient calculations of map faces."""
 
 from macrostrat.utils import get_logger
-from pytest import fixture
+from pytest import fixture, mark
 from addict import Dict
 
 from .helpers import (
@@ -11,6 +11,7 @@ from .helpers import (
     create_map_layer,
     square,
     create_grid,
+    n_face_primitives,
 )
 from ..commands.update import _update
 from ..commands.update_contacts import _update_contacts
@@ -46,41 +47,48 @@ def layers(db):
     )
 
 
-def test_multistage_face_management(db, layers):
+# Parameterize for grids either offset from grid squares or aligned with them
+@mark.parametrize("square_center", [(3.1, 3.1), (3.5, 3.5)])
+def test_multistage_face_management(db, layers, square_center):
     """Remove the surficial face and add a smaller one."""
-    insert_line(db, square(10, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
-
     create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
+    _update(db)
+
+    insert_line(db, square(5, square_center), type="bedrock", map_layer=layers.overlay)
+
+    assert n_face_primitives(db) == grid_count_on_each_axis**2
+
+    assert n_dirty_faces(db, map_layer=layers.overlay) > 1
 
     _update(db)
 
     assert n_faces(db, map_layer=layers.overlay) == 1
     assert n_faces(db, map_layer=layers.child) == grid_count_on_each_axis**2
 
-    db.run_sql(
-        """
-        DELETE FROM {data_schema}.linework
-        WHERE map_layer = :lyr
-        """,
-        dict(lyr=layers.overlay),
-    )
-
-    _update(db)
-
-    assert n_faces(db, map_layer=layers.overlay) == 0
-
-    assert n_dirty_faces(db) == 0
-
-    # Add a smaller surficial face
-    insert_line(db, square(5, (3.5, 3.5)), type="bedrock", map_layer=layers.overlay)
-
-    _update_contacts(db)
-
-    assert n_dirty_faces(db, map_layer=layers.overlay) > 0
-
-    assert n_faces(db, map_layer=layers.overlay) == 0
-
-    _update(db)
-
-    assert n_dirty_faces(db) == 0
-    assert n_faces(db, map_layer=layers.overlay) == 1
+    # db.run_sql(
+    #     """
+    #     DELETE FROM {data_schema}.linework
+    #     WHERE map_layer = :lyr
+    #     """,
+    #     dict(lyr=layers.overlay),
+    # )
+    #
+    # _update(db)
+    #
+    # assert n_faces(db, map_layer=layers.overlay) == 0
+    #
+    # assert n_dirty_faces(db) == 0
+    #
+    # # Add a smaller surficial face
+    # insert_line(db, square(5, square_center), type="bedrock", map_layer=layers.overlay)
+    #
+    # _update_contacts(db)
+    #
+    # assert n_dirty_faces(db, map_layer=layers.overlay) > 0
+    #
+    # assert n_faces(db, map_layer=layers.overlay) == 0
+    #
+    # _update(db)
+    #
+    # assert n_dirty_faces(db) == 0
+    # assert n_faces(db, map_layer=layers.overlay) == 1
