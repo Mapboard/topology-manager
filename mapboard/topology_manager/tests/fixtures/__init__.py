@@ -2,12 +2,15 @@ import os
 
 from macrostrat.database.utils import temp_database
 from pytest import fixture
+from macrostrat.utils import get_logger
 
 from ...commands.create_tables import _create_tables
 from ...database import Database
 from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
+
+log = get_logger(__name__)
 
 
 @fixture(scope="session")
@@ -50,4 +53,6 @@ def db(base_db, pytestconfig):
         yield base_db
     else:
         with base_db.transaction(rollback="always"):
+            log.info("Starting database transaction")
             yield base_db
+        log.info("Rolling back database transaction")
