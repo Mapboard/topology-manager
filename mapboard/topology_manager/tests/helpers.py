@@ -74,6 +74,13 @@ def n_faces(db, *, identified=False, map_layer=None):
         sql += " WHERE " + " AND ".join(where)
     return db.run_query(sql, params).scalar()
 
+def n_lines(db, *, map_layer=None):
+    sql = "SELECT count(*) FROM {data_schema}.linework"
+    if map_layer is not None:
+        sql += " WHERE map_layer = :map_layer"
+        return db.run_query(sql, {"map_layer": map_layer}).scalar()
+    return db.run_query(sql).scalar()
+
 
 def n_edges(db):
     sql = "SELECT count(*) FROM {topo_schema}.edge"

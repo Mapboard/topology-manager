@@ -34,9 +34,11 @@ def update(
 
 def _update(
     db: Database,
+    *,
     reset: bool = False,
     fill_holes: bool = False,
     fix_failed: bool = False,
+    incremental: bool = False,
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")
@@ -49,7 +51,7 @@ def _update(
 
         t0 = perf_counter()
         console.print("Updating faces", style="header")
-        _update_faces(db, reset=reset, fill_holes=fill_holes)
+        _update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental)
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
         # print_step(timer, "Update faces")
