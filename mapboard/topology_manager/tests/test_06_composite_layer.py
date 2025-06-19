@@ -21,10 +21,8 @@ from ..commands.update_faces.helpers import (
     unmark_dirty_faces,
     create_map_face,
     FaceUpdateResult,
+    containing_map_faces,
 )
-from ..database import sql
-
-from pytest import mark
 
 log = get_logger(__name__)
 
@@ -176,6 +174,8 @@ class TestCompositeLayers:
         # Check that we have created a new face in the composite layer
         assert n_faces(db, map_layer=composite_lyr) == 0
 
+        update_composite_layer(db, composite_lyr, [child_lyr, surficial_lyr])
+
 
 def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
     """Update a composite layer by merging faces from the specified layers."""
@@ -199,3 +199,47 @@ def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateR
     )
 
     _update(db)
+
+    reversed_layers = list(reversed(layers))
+
+    # We can now trust that the composite layer is populated for each constituent layer.
+    # For now we set all faces as dirty...
+    all_faces = [
+        int(face_id)
+        for face_id in db.run_query(
+            """
+        SELECT face_id FROM {topo_schema}.face_data
+        """,
+            dict(map_layer=map_layer),
+        ).scalars()
+    ]
+
+    # Delete faces in the composite layer that overlap any dirty face
+    existing_map_faces = list(containing_map_faces(db, all_faces, map_layer))
+    delete_map_faces(db, existing_map_faces)
+    # We may need to add the entire geometry of any dirty face to the dirty faces for the composite layer.
+
+    # Now we can update the composite layer with the faces from the constituent layers
+
+    # start with the topmost layer - this face just goes in as-is
+    topmost_layer = reversed_layers[0]
+
+    topmost_map_faces = list(containing_map_faces(db, all_faces, topmost_layer))
+
+    assert n_faces(db, map_layer=topmost_layer) == 1
+
+    # Insert the topmost layer's faces into the composite layer
+
+    db.run_sql(
+        """
+        INSERT INTO {topo_schema}.map_face (map_layer, unit_id, geometry, topo)
+        SELECT :map_layer, unit_id, geometry, topo
+        FROM {topo_schema}.map_face
+        WHERE id = ANY(:topmost_map_faces)
+        """,
+        dict(map_layer=map_layer, topmost_map_faces=topmost_map_faces),
+    )
+
+    assert n_faces(db, map_layer=map_layer) == 1
+
+    print(topmost_map_faces)

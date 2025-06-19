@@ -37,8 +37,6 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
 
     # Get map faces that contain any of the listed faces in the particular map layer
     # we are looking at.
-
-    # This is actually the most important element of the function
     existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
 
     res = FaceUpdateResult(
@@ -83,6 +81,7 @@ def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
 
     for lyr, faces in dissolved_faces_index.items():
         unmark_dirty_faces(db, lyr, list(set(faces)))
+
 
 def delete_map_faces(db: Database, faces: list[int]):
     """Delete map faces"""
