@@ -123,6 +123,32 @@ def add_polygon_type_to_layer(db, layer_id, polygon_type):
     )
 
 
+def create_composite_layer(
+    db: Database, name: str, layers: list[int], *, parent: int = None
+):
+    lyr = db.run_query(
+        """
+        INSERT INTO {data_schema}.map_layer (
+            "name",
+            parent,
+            topological,
+            editable,
+            composited_from
+        )
+        VALUES (:name, :parent, :topological, :editable, :composited_from)
+        RETURNING id
+        """,
+        {
+            "name": name,
+            "topological": True,
+            "editable": False,
+            "parent": parent,
+            "composited_from": layers,
+        },
+    ).scalar()
+    return lyr
+
+
 def create_map_layer(db: Database, name: str, parent: int = None):
     lyr = db.run_query(
         """

@@ -23,6 +23,7 @@ from .helpers import (
     n_faces,
     n_face_primitives,
     create_map_layer,
+    create_composite_layer,
     create_grid,
     square,
 )
@@ -56,9 +57,10 @@ def layers(db):
         add_linework_type_to_layer(db, lyr, "bedrock")
 
     # Create a composite layer placeholder
-    composite_lyr = create_map_layer(
+    composite_lyr = create_composite_layer(
         db,
         "composite",
+        [child_lyr, surficial_lyr],
         parent=grandparent_lyr,
     )
 
