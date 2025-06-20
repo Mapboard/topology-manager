@@ -169,16 +169,10 @@ class TestCompositeLayers:
         # but is its own special type of layer.
 
         # Solve the topology
-        _update(db)
-
-        # Check that we have created a new face in the composite layer
-        assert n_faces(db, map_layer=layers.composite) == 0
-
         update_composite_layer(db, layers.composite, [layers.child, layers.overlay])
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
         assert n_faces(db, map_layer=layers.child) == _bedrock_count
-
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
     def test_remove_surficial_face_and_add_smaller_one(self, db, layers):
@@ -191,7 +185,6 @@ class TestCompositeLayers:
             dict(lyr=layers.overlay),
         )
 
-        _update(db)
         update_composite_layer(
             db,
             map_layer=layers.composite,
@@ -201,7 +194,6 @@ class TestCompositeLayers:
         _bedrock_count = grid_count_on_each_axis**2 - 4 + 1 + 1
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count
-
         assert n_faces(db, map_layer=layers.overlay) == 0
 
         assert n_dirty_faces(db) == 0
@@ -212,19 +204,16 @@ class TestCompositeLayers:
         _update_contacts(db)
 
         assert n_dirty_faces(db, map_layer=layers.overlay) > 0
-
         assert n_faces(db, map_layer=layers.overlay) == 0
-
-        _update(db)
-
-        assert n_dirty_faces(db) == 0
-        assert n_faces(db, map_layer=layers.overlay) == 1
 
         update_composite_layer(
             db,
             map_layer=layers.composite,
             layers=[layers.child, layers.overlay],
         )
+
+        assert n_dirty_faces(db) == 0
+        assert n_faces(db, map_layer=layers.overlay) == 1
 
         # Check that the composite layer has been updated correctly
         assert n_faces(db, map_layer=layers.child) == _bedrock_count

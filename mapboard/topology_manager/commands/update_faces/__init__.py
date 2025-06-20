@@ -6,7 +6,6 @@ from typer import Option
 from time import perf_counter
 from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
-from macrostrat.utils import get_logger
 from enum import Enum
 from typing import Optional
 
