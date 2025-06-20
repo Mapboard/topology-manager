@@ -11,14 +11,9 @@ from enum import Enum
 from typing import Optional
 
 from ...database import get_database, sql
-from .helpers import (
-    update_map_face_python,
-    persist_map_face_updates,
-    log
-)
+from .helpers import update_map_face_python, persist_map_face_updates, log
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
-
 
 
 def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:

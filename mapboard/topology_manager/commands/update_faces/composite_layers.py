@@ -1,31 +1,14 @@
 from ..update import _update
-from .helpers import (
-    FaceUpdateResult, log
-)
+from .helpers import FaceUpdateResult, log
 from ...database import sql
-
+from psycopg2.sql import Identifier
 
 
 def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
     """Update a composite layer by merging faces from the specified layers."""
 
     # Ensure that the composite layer has all the necessary linework/polygon types
-    db.run_sql(
-        """
-        INSERT INTO {data_schema}.map_layer_linework_type (map_layer, "type")
-        SELECT :map_layer, "type"
-        FROM {data_schema}.map_layer_linework_type
-        WHERE map_layer = ANY (:layers)
-        ON CONFLICT DO NOTHING;
-
-        INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, "type")
-        SELECT :map_layer, "type"
-        FROM {data_schema}.map_layer_polygon_type
-        WHERE map_layer = ANY (:layers)
-        ON CONFLICT DO NOTHING;
-        """,
-        dict(map_layer=map_layer, layers=layers),
-    )
+    add_composite_layer_types(db, map_layer, layers)
 
     # We can now trust that the composite layer is populated for each constituent layer.
     # For now we set all faces as dirty...
@@ -57,3 +40,33 @@ def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateR
         _n_faces = len(list(ids))
         overlay_layers.append(layer)
         log.info("Inserted %s map faces from layer %s", _n_faces, layer)
+
+
+def add_composite_layer_types(db, map_layer: int, layers: list[int]):
+    """Add linework and polygon types from the specified layers to the composite layer."""
+    for feature_type in ["linework", "polygon"]:
+        table = Identifier(
+            db.instance_params["data_schema_name"], f"map_layer_{feature_type}_type"
+        )
+        db.run_sql(
+            """
+            WITH source_types AS (
+                SELECT "type"
+                FROM {table}
+                WHERE map_layer = ANY (:layers)
+            ), a AS (
+                DELETE FROM {table}
+                WHERE map_layer = :map_layer
+                AND "type" NOT IN (SELECT * FROM source_types)
+            )
+            INSERT INTO {table} (map_layer, "type")
+            SELECT :map_layer, "type"
+            FROM source_types
+            ON CONFLICT DO NOTHING;
+            """,
+            dict(
+                table=table,
+                map_layer=map_layer,
+                layers=layers,
+            ),
+        )
