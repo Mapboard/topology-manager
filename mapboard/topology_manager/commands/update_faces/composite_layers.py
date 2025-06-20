@@ -2,18 +2,10 @@ from ..update import _update
 from .helpers import FaceUpdateResult, log
 from ...database import sql
 from psycopg2.sql import Identifier
-
+from functools import lru_cache
 
 def update_composite_layer(db, map_layer: int) -> FaceUpdateResult:
-    layers = db.run_query(
-        "SELECT composited_from FROM {data_schema}.map_layer WHERE id = :map_layer",
-        dict(map_layer=map_layer),
-    ).scalar()
-    if layers is None:
-        raise ValueError(
-            f"Layer {map_layer} is not a composite layer or does not exist."
-        )
-
+    layers = get_composite_layers(db, map_layer)
     return _update_composite_layer(db, map_layer, layers)
 
 
@@ -83,3 +75,14 @@ def add_composite_layer_types(db, map_layer: int, layers: list[int]):
                 layers=layers,
             ),
         )
+
+@lru_cache(maxsize=128)
+def get_composite_layers(db, map_layer: int) -> list[int]:
+    """Get the list of composite layers that a given map layer is part of."""
+    layers = db.run_query(
+        "SELECT composited_from FROM {data_schema}.map_layer WHERE id = :map_layer",
+        dict(map_layer=map_layer),
+    ).scalar()
+    if layers is None:
+        raise ValueError(f"Layer {map_layer} is not a composite layer or does not exist.")
+    return layers

@@ -2,7 +2,7 @@ import warnings
 from threading import Timer
 
 from black.trans import defaultdict
-from typer import Option
+from typer import Option, Argument
 from time import perf_counter
 from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
@@ -31,6 +31,8 @@ class Engine(str, Enum):
 
 
 def update_faces(
+    db: Database = Argument(callback=get_database, help="Database connection"),
+    *,
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     engine: Engine = Option(
@@ -38,24 +40,8 @@ def update_faces(
         help="Use Python or PL/pgSQL (not yet implemented)",
         envvar="TOPO_ENGINE",
     ),
-):
-    """Update faces"""
-    db = get_database()
-    _update_faces(
-        db,
-        reset=reset,
-        fill_holes=fill_holes,
-        engine=engine,
-    )
-
-
-def _update_faces(
-    db,
-    *,
-    reset: bool = False,
-    fill_holes: bool = False,
-    engine: Engine = Engine.PYTHON,
-    incremental: bool = False,
+    composite_layers: bool = Option(False, help="Update composite layers"),
+    incremental: bool = Option(False, help="Incremental update of faces, vs. batch"),
 ):
     log.info("Updating faces with engine %s", engine)
 
@@ -113,6 +99,15 @@ def _update_faces(
     )
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
+
+
+def _update_faces(*args, **kwargs):
+    warnings.warn(
+        "The 'update_faces' function has been deprecated. "
+        "Use the 'topology_manager.commands.update_faces.update_faces' command instead.",
+        DeprecationWarning,
+    )
+    update_faces(*args, **kwargs)
 
 
 def get_dirty_faces_layer_index(dirty_faces: list[dict]) -> dict[int, int]:

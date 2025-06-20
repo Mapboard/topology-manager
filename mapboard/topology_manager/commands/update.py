@@ -9,7 +9,7 @@ from ..database import Database, get_database
 from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
-from .update_faces import _update_faces
+from .update_faces import update_faces
 from macrostrat.utils.timer import Timer
 
 verbose = True
@@ -50,7 +50,7 @@ def _update(
 
         t0 = perf_counter()
         console.print("Updating faces", style="header")
-        _update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental)
+        update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental)
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
         # print_step(timer, "Update faces")
