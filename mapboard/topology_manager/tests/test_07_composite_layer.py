@@ -139,14 +139,24 @@ class TestCompositeLayers:
 
         _update(db, composite_layers=False)
 
-        assert (
-            n_faces(db, map_layer=layers.child)
-            == grid_count_on_each_axis**2 + 1 - 4 + 1
-        )
+        n_child_faces = grid_count_on_each_axis**2 + 1 - 4 + 1
+
+        assert n_faces(db, map_layer=layers.child) == n_child_faces
         assert n_faces(db, map_layer=layers.parent) == 1
 
         assert n_faces(db) == grid_count_on_each_axis**2 + 2 - 4 + 1
-        assert n_face_primitives(db) == grid_count_on_each_axis**2 - 3 + 1
+
+        expected_n_primitives = grid_count_on_each_axis**2 - 3 + 1
+
+        assert n_face_primitives(db) == expected_n_primitives
+
+        # Now, update the composite layer to reflect the changes
+
+        _update(db)
+        # Check that the composite layer has been updated correctly
+        assert n_face_primitives(db) == expected_n_primitives
+        assert n_faces(db, map_layer=layers.child) == n_child_faces
+        assert n_faces(db, map_layer=layers.composite) == n_child_faces
 
     def test_create_surficial_face(self, db, layers):
         """Create a surficial face that overlaps with the bedrock layer."""
@@ -157,22 +167,12 @@ class TestCompositeLayers:
         # The composite layer should have eight bedrock faces that have areas < 1.0
 
         # Solve the topology
-        _update(db, composite_layers=False)
-
-        # Check that we have created a new face in the surficial layer
-        assert n_faces(db, map_layer=layers.overlay) == 1
-
-    def test_create_composite_layer(self, db, layers):
-        """Create a composite layer that includes the bedrock and surficial layers."""
-
-        # This composite layer will be 'derived' from the bedrock and surficial layers.
-        # It does not have geometries of its own. It's also not a 'parent' in the hierarchy,
-        # but is its own special type of layer.
-
-        # Solve the topology
         _update(db)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
+
+        # Check that we have created a new face in the surficial layer
+        assert n_faces(db, map_layer=layers.overlay) == 1
         assert n_faces(db, map_layer=layers.child) == _bedrock_count
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
