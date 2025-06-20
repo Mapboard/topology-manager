@@ -30,7 +30,6 @@ from .helpers import (
 from ..commands.update import _update
 from ..commands.update_contacts import _update_contacts
 from ..commands.update_faces import n_dirty_faces
-from ..commands.update_faces.composite_layers import update_composite_layer
 
 log = get_logger(__name__)
 
@@ -89,7 +88,7 @@ class TestCompositeLayers:
         create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
 
         # Solve the faces
-        _update(db)
+        _update(db, composite_layers=False)
 
         # Check that we have 100 map faces
         assert n_faces(db) == grid_count_on_each_axis**2
@@ -113,7 +112,7 @@ class TestCompositeLayers:
         insert_line(db, coords, type="bedrock", map_layer=layers.parent)
 
         # Solve the topology
-        _update(db)
+        _update(db, composite_layers=False)
 
         # Check that we have 102 map faces and one fewer primitive.
         # - The child layer now has 101 faces including the ring outside the 10x10 grid
@@ -138,7 +137,7 @@ class TestCompositeLayers:
             dict(child_lyr=layers.child),
         )
 
-        _update(db)
+        _update(db, composite_layers=False)
 
         assert (
             n_faces(db, map_layer=layers.child)
@@ -158,7 +157,7 @@ class TestCompositeLayers:
         # The composite layer should have eight bedrock faces that have areas < 1.0
 
         # Solve the topology
-        _update(db)
+        _update(db, composite_layers=False)
 
         # Check that we have created a new face in the surficial layer
         assert n_faces(db, map_layer=layers.overlay) == 1
@@ -171,7 +170,7 @@ class TestCompositeLayers:
         # but is its own special type of layer.
 
         # Solve the topology
-        update_composite_layer(db, layers.composite)
+        _update(db)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
         assert n_faces(db, map_layer=layers.child) == _bedrock_count
@@ -187,7 +186,7 @@ class TestCompositeLayers:
             dict(lyr=layers.overlay),
         )
 
-        update_composite_layer(db, layers.composite)
+        _update(db)
 
         _bedrock_count = grid_count_on_each_axis**2 - 4 + 1 + 1
 
@@ -204,10 +203,7 @@ class TestCompositeLayers:
         assert n_dirty_faces(db, map_layer=layers.overlay) > 0
         assert n_faces(db, map_layer=layers.overlay) == 0
 
-        update_composite_layer(
-            db,
-            layers.composite,
-        )
+        _update(db)
 
         assert n_dirty_faces(db) == 0
         assert n_faces(db, map_layer=layers.overlay) == 1
@@ -224,9 +220,6 @@ def test_add_surficial_face_standalone(db, layers):
     # Add a smaller surficial face
     insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.overlay)
 
-    update_composite_layer(
-        db,
-        layers.composite,
-    )
+    _update(db)
 
     assert n_faces(db, map_layer=layers.overlay) == 1

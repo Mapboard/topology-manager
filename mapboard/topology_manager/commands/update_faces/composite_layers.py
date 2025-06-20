@@ -1,8 +1,8 @@
-from ..update import _update
 from .helpers import FaceUpdateResult, log
 from ...database import sql
 from psycopg2.sql import Identifier
 from functools import lru_cache
+
 
 def update_composite_layer(db, map_layer: int) -> FaceUpdateResult:
     layers = get_composite_layers(db, map_layer)
@@ -22,8 +22,6 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
         "DELETE FROM {topo_schema}.map_face WHERE map_layer = :map_layer",
         dict(map_layer=map_layer),
     )
-
-    _update(db)
 
     # We may need to add the entire geometry of any dirty face to the dirty faces for the composite layer.
 
@@ -76,6 +74,7 @@ def add_composite_layer_types(db, map_layer: int, layers: list[int]):
             ),
         )
 
+
 @lru_cache(maxsize=128)
 def get_composite_layers(db, map_layer: int) -> list[int]:
     """Get the list of composite layers that a given map layer is part of."""
@@ -84,5 +83,7 @@ def get_composite_layers(db, map_layer: int) -> list[int]:
         dict(map_layer=map_layer),
     ).scalar()
     if layers is None:
-        raise ValueError(f"Layer {map_layer} is not a composite layer or does not exist.")
+        raise ValueError(
+            f"Layer {map_layer} is not a composite layer or does not exist."
+        )
     return layers

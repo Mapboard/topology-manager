@@ -11,6 +11,7 @@ from typing import Optional
 
 from ...database import get_database, sql
 from .helpers import update_map_face_python, persist_map_face_updates, log
+from .composite_layers import update_composite_layer
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
@@ -40,7 +41,7 @@ def update_faces(
         help="Use Python or PL/pgSQL (not yet implemented)",
         envvar="TOPO_ENGINE",
     ),
-    composite_layers: bool = Option(False, help="Update composite layers"),
+    composite_layers: bool = Option(True, help="Update composite layers"),
     incremental: bool = Option(False, help="Incremental update of faces, vs. batch"),
 ):
     log.info("Updating faces with engine %s", engine)
@@ -99,6 +100,16 @@ def update_faces(
     )
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
+
+    # Update faces for composite layers if requested
+    if composite_layers:
+        log.info("Updating composite layers")
+        composite_layers = db.run_query(
+            "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
+        ).scalars()
+        for layer in composite_layers:
+            log.info("Updating composite layer %s", layer)
+            update_composite_layer(db, layer)
 
 
 def _update_faces(*args, **kwargs):

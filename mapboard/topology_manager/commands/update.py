@@ -20,12 +20,19 @@ def update(
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     watch: bool = Option(False, help="Watch for changes"),
     fix_failed: bool = Option(False, help="Fix failed contacts"),
+    composite_layers: bool = Option(True, help="Update composite layers"),
 ):
     """Update the topology"""
 
     db = get_database()
 
-    _update(db, reset=reset, fill_holes=fill_holes, fix_failed=fix_failed)
+    _update(
+        db,
+        reset=reset,
+        fill_holes=fill_holes,
+        fix_failed=fix_failed,
+        composite_layers=composite_layers,
+    )
 
     if watch:
         _start_watcher()
@@ -38,6 +45,7 @@ def _update(
     fill_holes: bool = False,
     fix_failed: bool = False,
     incremental: bool = False,
+    composite_layers: bool = True,
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")
@@ -50,7 +58,7 @@ def _update(
 
         t0 = perf_counter()
         console.print("Updating faces", style="header")
-        update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental)
+        update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental, composite_layers=composite_layers)
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
         # print_step(timer, "Update faces")
