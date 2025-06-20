@@ -47,19 +47,28 @@ CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
 RETURNS {topo_schema}.face_group
 AS $$
 WITH RECURSIVE
+  edge_groups AS (
+    SELECT
+      e.edge_id,
+      e.left_face,
+      e.right_face,
+      array_remove(array_agg(er.map_layer), null) layers
+    FROM {topo_schema}.edge_data e
+    LEFT JOIN {topo_schema}.__edge_relation er
+      ON er.edge_id = e.edge_id
+    WHERE e.left_face != e.right_face
+    GROUP BY e.edge_id, e.left_face, e.right_face
+  ),
   joinable_edges AS (
     SELECT
       e.edge_id,
       e.left_face,
       e.right_face
-    FROM {topo_schema}.edge_data e
-    LEFT JOIN {topo_schema}.__edge_relation er
-      ON er.edge_id = e.edge_id
-    WHERE e.left_face != e.right_face AND (
-        NOT er.map_layer = any(array(SELECT * FROM {topo_schema}.parent_map_layers(_map_layer)))
-        OR er.map_layer IS NULL -- no line is registered to this edge in any layer
-      -- (it may not be yet cleaned up, or is just attached to a map face)
-      )
+    FROM edge_groups e
+    WHERE
+      NOT layers && array(SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
+      OR array_length(layers, 1) = 0
+
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
