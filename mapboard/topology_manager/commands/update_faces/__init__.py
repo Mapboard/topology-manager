@@ -14,12 +14,11 @@ from ...database import get_database, sql
 from .helpers import (
     update_map_face_python,
     persist_map_face_updates,
-    persist_map_face_updates_simple,
+    log
 )
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
-log = get_logger("mapboard.topology_manager.update_faces")
 
 
 def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:

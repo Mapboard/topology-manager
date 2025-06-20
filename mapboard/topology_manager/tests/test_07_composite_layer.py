@@ -13,7 +13,7 @@ in the future if desired.
 """
 
 from macrostrat.utils import get_logger
-from pytest import fixture, mark
+from pytest import fixture
 from addict import Dict
 
 from .helpers import (
@@ -29,10 +29,7 @@ from .helpers import (
 from ..commands.update import _update
 from ..commands.update_contacts import _update_contacts
 from ..commands.update_faces import n_dirty_faces
-from ..commands.update_faces.helpers import (
-    FaceUpdateResult,
-)
-from ..database import sql
+from ..commands.update_faces.composite_layers import update_composite_layer
 
 log = get_logger(__name__)
 
@@ -232,59 +229,6 @@ class TestCompositeLayers:
         # Check that the composite layer has been updated correctly
         assert n_faces(db, map_layer=layers.child) == _bedrock_count
         assert n_faces(db, map_layer=layers.overlay) == 1
-
-
-def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
-    """Update a composite layer by merging faces from the specified layers."""
-
-    # Ensure that the composite layer has all the necessary linework/polygon types
-    db.run_sql(
-        """
-    INSERT INTO {data_schema}.map_layer_linework_type (map_layer, "type")
-    SELECT :map_layer, "type"
-    FROM {data_schema}.map_layer_linework_type
-    WHERE map_layer = ANY (:layers)
-    ON CONFLICT DO NOTHING;
-
-    INSERT INTO {data_schema}.map_layer_polygon_type (map_layer, "type")
-    SELECT :map_layer, "type"
-    FROM {data_schema}.map_layer_polygon_type
-    WHERE map_layer = ANY (:layers)
-    ON CONFLICT DO NOTHING;
-    """,
-        dict(map_layer=map_layer, layers=layers),
-    )
-
-    # We can now trust that the composite layer is populated for each constituent layer.
-    # For now we set all faces as dirty...
-
-    db.run_sql(
-        "DELETE FROM {topo_schema}.map_face WHERE map_layer = :map_layer",
-        dict(map_layer=map_layer),
-    )
-
-    _update(db)
-
-    # We may need to add the entire geometry of any dirty face to the dirty faces for the composite layer.
-
-    # Insert the topmost layer's faces into the composite layer
-    reversed_layers = list(reversed(layers))
-
-    # Get intersecting with dirty map faces...
-    overlay_layers = []
-    for layer in reversed_layers:
-        log.info("Updating composite layer with faces from layer %s", layer)
-        ids = db.run_query(
-            sql("procedures/update-faces/update-composite-face-elements"),
-            dict(
-                map_layer=layer,
-                overlay_layers=overlay_layers,
-                composite_layer=map_layer,
-            ),
-        ).scalars()
-        _n_faces = len(list(ids))
-        overlay_layers.append(layer)
-        log.info("Inserted %s map faces from layer %s", _n_faces, layer)
 
 
 def test_add_surficial_face_standalone(db, layers):
