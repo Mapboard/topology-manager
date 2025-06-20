@@ -1,6 +1,7 @@
 import warnings
 from threading import Timer
 
+from black.trans import defaultdict
 from typer import Option
 from time import perf_counter
 from macrostrat.database import Database
@@ -13,6 +14,7 @@ from ...database import get_database, sql
 from .helpers import (
     update_map_face_python,
     persist_map_face_updates,
+    persist_map_face_updates_simple,
 )
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
@@ -83,9 +85,14 @@ def _update_faces(
         "SELECT id, map_layer FROM {topo_schema}.__dirty_face"
     ).all()
     init_n_faces = len(dirty_faces)
+    ix = get_dirty_faces_layer_index(dirty_faces)
+    log.info(
+        "Dirty faces in layers: %s",
+        ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
+    )
     results = []
     while len(dirty_faces) > 0:
-        log.debug("%s dirty faces remaining", len(dirty_faces))
+        log.info("%s dirty faces remaining", len(dirty_faces),)
         # Extract one face
         face = dirty_faces.pop(0)
 
@@ -110,6 +117,14 @@ def _update_faces(
     )
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
+
+
+def get_dirty_faces_layer_index(dirty_faces: list[dict]) -> dict[int, int]:
+    face_ix = defaultdict(int)
+    for face in dirty_faces:
+        face_ix[face.map_layer] += 1
+
+    return face_ix
 
 
 def get_n_dirty_faces(db: Database) -> int:

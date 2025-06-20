@@ -54,9 +54,11 @@ def test_multistage_face_management(db, layers, square_center):
     create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
     _update(db)
 
+    assert n_face_primitives(db) == grid_count_on_each_axis**2
+
     insert_line(db, square(5, square_center), type="bedrock", map_layer=layers.overlay)
 
-    assert n_face_primitives(db) == grid_count_on_each_axis**2
+    _update_contacts(db)
 
     assert n_dirty_faces(db, map_layer=layers.overlay) > 1
 

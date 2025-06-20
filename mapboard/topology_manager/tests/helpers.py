@@ -151,7 +151,11 @@ def n_edge_relations(db):
     return r1
 
 
-def create_grid(db, layer, cells_on_each_axis=10, ):
+def create_grid(
+    db,
+    layer,
+    cells_on_each_axis=10,
+):
     for val in range(cells_on_each_axis + 1):
         insert_line(
             db,

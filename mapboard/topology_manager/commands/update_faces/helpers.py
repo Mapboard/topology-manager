@@ -92,6 +92,22 @@ def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
         unmark_dirty_faces(db, lyr, list(set(faces)))
 
 
+def persist_map_face_updates_simple(db: Database, updates: list[FaceUpdateResult]):
+    """Persist updates to map faces to the database.
+
+    A simple version without batching updates.
+    """
+
+    for res in updates:
+        if len(res.existing_map_faces) > 0:
+            delete_map_faces(db, list(res.existing_map_faces))
+
+        if 0 not in res.dissolved_faces:
+            create_map_face(db, res.map_layer, res.dissolved_faces)
+
+        unmark_dirty_faces(db, res.map_layer, res.dissolved_faces)
+
+
 def delete_map_faces(db: Database, faces: list[int]):
     """Delete map faces"""
     db.run_query(
