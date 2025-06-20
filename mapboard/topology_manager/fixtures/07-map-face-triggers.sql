@@ -51,18 +51,15 @@ WITH RECURSIVE
     SELECT
       e.edge_id,
       e.left_face,
-      e.right_face,
-      er.map_layer,
-      er.line_id
+      e.right_face
     FROM {topo_schema}.edge_data e
     LEFT JOIN {topo_schema}.__edge_relation er
       ON er.edge_id = e.edge_id
-    WHERE
-      (er.map_layer NOT IN (SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
-      OR er.map_layer IS NULL -- no line is registered to this edge in any layer
+    WHERE e.left_face != e.right_face AND (
+        NOT er.map_layer = any(array(SELECT * FROM {topo_schema}.parent_map_layers(_map_layer)))
+        OR er.map_layer IS NULL -- no line is registered to this edge in any layer
       -- (it may not be yet cleaned up, or is just attached to a map face)
       )
-      AND e.left_face != e.right_face
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
