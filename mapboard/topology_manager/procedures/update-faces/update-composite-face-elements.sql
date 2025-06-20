@@ -22,7 +22,7 @@ overlay_primitives AS (
     -- However, it might be a bit slower for multiple overlapping layers.
     AND f.map_layer = ANY(:overlay_layers)
 ),
- layer_features AS (
+layer_features AS (
   SELECT
     f.id,
     f.unit_id,
@@ -37,14 +37,15 @@ overlay_primitives AS (
   WHERE r.element_type = 3
     AND f.map_layer = :map_layer
 ),
-feature_summary AS (SELECT f.id,
-                           f.unit_id,
-                           count(element_id)         all_count,
-                           sum(has_overlay::integer) overlay_count,
-                           array_remove(array_agg(case when not has_overlay then element_id end),
-                                          null) AS no_overlay_elements
-                    FROM layer_features f
-                    GROUP BY f.id, f.unit_id
+feature_summary AS (
+  SELECT f.id,
+    f.unit_id,
+    count(element_id)         all_count,
+    sum(has_overlay::integer) overlay_count,
+    array_remove(array_agg(case when not has_overlay then element_id end),
+                  null) AS no_overlay_elements
+  FROM layer_features f
+  GROUP BY f.id, f.unit_id
 ),
 p1 AS (SELECT f.id,
               f.unit_id,
@@ -57,23 +58,31 @@ p1 AS (SELECT f.id,
        WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count > 0 AND overlay_count < all_count)
 )
 INSERT INTO {topo_schema}.map_face (
+  source_id,
   unit_id,
-  topo,
+  source_layer,
   map_layer,
+  topo,
   geometry
 )
+-- Features to be inserted as is
 SELECT
+  f.id,
   f.unit_id,
-  f.topo,
+  :map_layer,
   :composite_layer,
+  f.topo,
   f.geometry
 FROM {topo_schema}.map_face f
 WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count = 0)
 UNION ALL
+-- Features that need to be updated with a new topogeometry
 SELECT
+  p1.id,
   p1.unit_id,
-  p1.topo,
+  :map_layer,
   :composite_layer,
+  p1.topo,
   st_setsrid(p1.topo::geometry, :srid)
 FROM p1
 RETURNING id
