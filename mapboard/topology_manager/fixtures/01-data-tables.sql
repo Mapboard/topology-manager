@@ -14,12 +14,45 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
     parent integer CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
     topological boolean DEFAULT false,
     editable boolean DEFAULT true,
-    composited_from integer[],
+    composited_from integer[]
     -- Ideas for future functionality:
     -- simplified boolean DEFAULT false,
     -- derived_from integer[],
-    CHECK (NOT (composited_from IS NOT NULL AND editable)) -- composite layers cannot be editable
 );
+
+/** Trigger for composite layer constraints */
+-- Check that all layers in composited_from exist.
+-- This is in lieu of having a foreign key constraint on map_layer.composited_from
+CREATE OR REPLACE FUNCTION {data_schema}.check_composited_from()
+  RETURNS trigger AS $$
+BEGIN
+  IF NEW.composited_from IS NOT NULL THEN
+    IF NOT NEW.topological THEN
+      RAISE EXCEPTION 'Composite layers must be topological';
+    END IF;
+
+    IF NEW.editable THEN
+      RAISE EXCEPTION 'Composite layers cannot be editable';
+    END IF;
+
+    -- Check if all referenced layers exist
+    IF EXISTS (
+      SELECT *
+      FROM unnest(NEW.composited_from)
+      EXCEPT
+      SELECT id
+      FROM {data_schema}.map_layer
+    ) THEN
+      RAISE EXCEPTION 'All layers in composited_from must exist';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_composited_from_trigger
+  BEFORE INSERT OR UPDATE ON {data_schema}.map_layer
+  FOR EACH ROW EXECUTE FUNCTION {data_schema}.check_composited_from();
 
 
 CREATE TABLE IF NOT EXISTS {data_schema}.linework_type (
