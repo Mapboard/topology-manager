@@ -42,11 +42,24 @@ CREATE TYPE {topo_schema}.face_group AS (
 
 CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
   face_id integer,
-  _map_layer integer
+  _map_layer integer,
+  _barrier_layers integer[] DEFAULT ARRAY[]::integer[]
 )
 RETURNS {topo_schema}.face_group
 AS $$
 WITH RECURSIVE
+  boundary_layers_no_parents AS (
+    -- Layers at which face dissolving stops
+    SELECT _map_layer AS id
+    -- Additional barrier layers can be added here. They and their parents will be used
+    UNION ALL
+    SELECT unnest(_barrier_layers) AS id
+  ),
+  boundary_layers AS (
+    -- Get all parent layers of the boundary layers
+    SELECT DISTINCT ON (id) {topo_schema}.parent_map_layers(lyr.id) AS id
+    FROM boundary_layers_no_parents lyr
+  ),
   edge_groups AS (
     SELECT
       e.edge_id,
@@ -66,9 +79,8 @@ WITH RECURSIVE
       e.right_face
     FROM edge_groups e
     WHERE
-      NOT layers && array(SELECT * FROM {topo_schema}.parent_map_layers(_map_layer))
+      NOT layers && array(SELECT * FROM boundary_layers)
       OR array_length(layers, 1) = 0
-
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
