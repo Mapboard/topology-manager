@@ -1,4 +1,11 @@
 /*
+This is the core algorithm that accumulates topology faces
+into a map layer, starting from a given face_id.
+
+Right now this works separately for each map layer,
+but we might find optimizations by separately handling
+nested map layers.
+
 Potential alternate algorithm:
 
 1. get overlapping map faces
@@ -51,7 +58,8 @@ WITH RECURSIVE
   boundary_layers_no_parents AS (
     -- Layers at which face dissolving stops
     SELECT _map_layer AS id
-    -- Additional barrier layers can be added here. They and their parents will be used
+    -- Additional barrier layers can be added here. They and their parents will be used.
+    -- This can be used to create composite layers, etc.
     UNION ALL
     SELECT unnest(_barrier_layers) AS id
   ),
