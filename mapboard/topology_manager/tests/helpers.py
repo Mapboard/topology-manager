@@ -149,3 +149,23 @@ def n_edge_relations(db):
             f"Number of cached edge relations ({r2}) is not correct ({r1})"
         )
     return r1
+
+
+def create_grid(
+    db,
+    layer,
+    cells_on_each_axis=10,
+):
+    for val in range(cells_on_each_axis + 1):
+        insert_line(
+            db,
+            ((val, 0), (val, cells_on_each_axis)),
+            type="bedrock",
+            map_layer=layer,
+        )
+        insert_line(
+            db,
+            ((0, val), (cells_on_each_axis, val)),
+            type="bedrock",
+            map_layer=layer,
+        )
