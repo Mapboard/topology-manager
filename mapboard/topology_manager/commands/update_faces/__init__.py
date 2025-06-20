@@ -92,7 +92,10 @@ def _update_faces(
     )
     results = []
     while len(dirty_faces) > 0:
-        log.info("%s dirty faces remaining", len(dirty_faces),)
+        log.info(
+            "%s dirty faces remaining",
+            len(dirty_faces),
+        )
         # Extract one face
         face = dirty_faces.pop(0)
 

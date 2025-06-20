@@ -47,6 +47,40 @@ def layers(db):
     )
 
 
+def test_faces_sharing_common_edge(db, layers):
+    """Test that faces sharing an edge are still treated independently."""
+    # Create two square faces
+
+    insert_line(db, square(1, (0.5, 0.5)), type="bedrock", map_layer=layers.child)
+    insert_line(db, square(1, (1.5, 0.5)), type="bedrock", map_layer=layers.child)
+
+    _update(db)
+
+    assert n_faces(db, map_layer=layers.child) == 2
+
+
+def test_faces_sharing_common_edge_multilayer(db, layers):
+    """Test that faces sharing an edge are still treated independently."""
+    # Create two square faces
+
+    insert_line(db, square(1, (0.5, 0.5)), type="bedrock", map_layer=layers.child)
+    insert_line(db, square(1, (1.5, 0.5)), type="bedrock", map_layer=layers.overlay)
+    insert_line(db, square(1, (2.5, 0.5)), type="bedrock", map_layer=layers.child)
+
+    _update_contacts(db)
+
+    assert n_face_primitives(db) == 3
+    assert n_dirty_faces(db, map_layer=layers.child) > 0
+    assert n_dirty_faces(db, map_layer=layers.overlay) > 0
+    assert n_faces(db, map_layer=layers.child) == 0
+    assert n_faces(db, map_layer=layers.overlay) == 0
+
+    _update(db)
+
+    assert n_faces(db, map_layer=layers.child) == 2
+    assert n_faces(db, map_layer=layers.overlay) == 1
+
+
 # Parameterize for grids either offset from grid squares or aligned with them
 @mark.parametrize("square_center", [(3.1, 3.1), (3.5, 3.5)])
 def test_multistage_face_management(db, layers, square_center):
