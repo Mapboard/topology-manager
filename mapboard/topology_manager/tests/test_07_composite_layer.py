@@ -1,4 +1,16 @@
-"""Tests to ensure efficient calculations of map faces."""
+"""Tests to ensure efficient calculations of map faces with overlays.
+
+There are two efficient ways to handle this:
+1. Accumulate faces the 'naïve' way using overlay layers as barriers.
+2. Composite already-existing topogeometries from other layers using set operations.
+
+The second method is likely more efficient, but requires that constituent layers are
+already populated.
+
+We've not yet explored the 'naïve' approach but have integrated a _barrier_layers
+parameter into the `get_adjacent_faces_core` PostGIS function to allow for this
+in the future if desired.
+"""
 
 from macrostrat.utils import get_logger
 from pytest import fixture, mark

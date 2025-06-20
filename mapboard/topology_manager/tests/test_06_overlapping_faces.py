@@ -1,4 +1,4 @@
-"""Tests to ensure efficient calculations of map faces."""
+"""Tests for map faces that share edges between layers."""
 
 from macrostrat.utils import get_logger
 from pytest import fixture, mark
@@ -24,6 +24,9 @@ overlay_layer_name = "overlay"
 child_layer_name = "rocks"
 
 grid_count_on_each_axis = 7
+
+###
+# Note: there are two possible ways to handle
 
 
 @fixture(scope="class")
