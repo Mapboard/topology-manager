@@ -35,6 +35,10 @@ BEGIN
       RAISE EXCEPTION 'Composite layers cannot be editable';
     END IF;
 
+    IF cardinality(NEW.composited_from) < 2 THEN
+      RAISE EXCEPTION 'Composite layers must reference at least two other layers';
+    END IF;
+
     -- Check if all referenced layers exist
     IF EXISTS (
       SELECT *

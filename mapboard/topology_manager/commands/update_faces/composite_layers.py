@@ -4,7 +4,20 @@ from ...database import sql
 from psycopg2.sql import Identifier
 
 
-def update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
+def update_composite_layer(db, map_layer: int) -> FaceUpdateResult:
+    layers = db.run_query(
+        "SELECT composited_from FROM {data_schema}.map_layer WHERE id = :map_layer",
+        dict(map_layer=map_layer),
+    ).scalar()
+    if layers is None:
+        raise ValueError(
+            f"Layer {map_layer} is not a composite layer or does not exist."
+        )
+
+    return _update_composite_layer(db, map_layer, layers)
+
+
+def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdateResult:
     """Update a composite layer by merging faces from the specified layers."""
 
     # Ensure that the composite layer has all the necessary linework/polygon types

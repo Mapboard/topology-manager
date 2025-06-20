@@ -171,7 +171,7 @@ class TestCompositeLayers:
         # but is its own special type of layer.
 
         # Solve the topology
-        update_composite_layer(db, layers.composite, [layers.child, layers.overlay])
+        update_composite_layer(db, layers.composite)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
         assert n_faces(db, map_layer=layers.child) == _bedrock_count
@@ -187,11 +187,7 @@ class TestCompositeLayers:
             dict(lyr=layers.overlay),
         )
 
-        update_composite_layer(
-            db,
-            map_layer=layers.composite,
-            layers=[layers.child, layers.overlay],
-        )
+        update_composite_layer(db, layers.composite)
 
         _bedrock_count = grid_count_on_each_axis**2 - 4 + 1 + 1
 
@@ -210,8 +206,7 @@ class TestCompositeLayers:
 
         update_composite_layer(
             db,
-            map_layer=layers.composite,
-            layers=[layers.child, layers.overlay],
+            layers.composite,
         )
 
         assert n_dirty_faces(db) == 0
@@ -231,8 +226,7 @@ def test_add_surficial_face_standalone(db, layers):
 
     update_composite_layer(
         db,
-        map_layer=layers.composite,
-        layers=[layers.child, layers.overlay],
+        layers.composite,
     )
 
     assert n_faces(db, map_layer=layers.overlay) == 1
