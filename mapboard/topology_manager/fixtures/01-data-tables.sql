@@ -12,8 +12,13 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
     name text NOT NULL,
     description text,
     parent integer CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
-    topological boolean DEFAULT false
+    topological boolean DEFAULT false,
+    editable boolean DEFAULT true,
+    composite boolean DEFAULT false,
+    derived_from integer[],
+    CHECK (NOT (composite AND (editable OR derived_from IS NULL OR array_length(derived_from, 1) = 0))) -- composite layers cannot be editable
 );
+
 
 CREATE TABLE IF NOT EXISTS {data_schema}.linework_type (
     id text PRIMARY KEY,
