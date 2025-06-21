@@ -104,10 +104,10 @@ def update_faces(
     # Update faces for composite layers if requested
     if composite_layers:
         log.info("Updating composite layers")
-        composite_layers = db.run_query(
+        layers = db.run_query(
             "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
         ).scalars()
-        for layer in composite_layers:
+        for layer in layers:
             log.info("Updating composite layer %s", layer)
             update_composite_layer(db, layer)
 

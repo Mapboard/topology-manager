@@ -51,17 +51,21 @@ def _update(
     console.print("Updating contacts", style="header")
     timer = Timer()
     with timer.context():
-        # _clean_topology(db)
         _update_contacts(db, fix_failed=fix_failed)
         print_step(timer, "Update contacts")
         _clean_topology(db)
 
         t0 = perf_counter()
         console.print("Updating faces", style="header")
-        update_faces(db, reset=reset, fill_holes=fill_holes, incremental=incremental, composite_layers=composite_layers)
+        update_faces(
+            db,
+            reset=reset,
+            fill_holes=fill_holes,
+            incremental=incremental,
+            composite_layers=composite_layers,
+        )
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
-        # print_step(timer, "Update faces")
 
         console.print("Cleaning topology", style="header")
         _clean_topology(db)

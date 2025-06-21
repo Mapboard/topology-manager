@@ -47,15 +47,17 @@ feature_summary AS (
   FROM layer_features f
   GROUP BY f.id, f.unit_id
 ),
-p1 AS (SELECT f.id,
-              f.unit_id,
-              topology.createTopoGeom(
-                :topo_name, 3, (SELECT layer_id FROM layer_info), (
-                  SELECT array_agg(ARRAY[e.element_id, 3]) FROM layer_features e
-                  WHERE e.id = f.id AND NOT e.has_overlay
-                )) AS topo
-       FROM feature_summary f
-       WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count > 0 AND overlay_count < all_count)
+p1 AS (
+  SELECT
+    f.id,
+    f.unit_id,
+    topology.createTopoGeom(
+      :topo_name, 3, (SELECT layer_id FROM layer_info), (
+        SELECT array_agg(ARRAY[e.element_id, 3]) FROM layer_features e
+        WHERE e.id = f.id AND NOT e.has_overlay
+      )) AS topo
+  FROM feature_summary f
+  WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count > 0 AND overlay_count < all_count)
 )
 INSERT INTO {topo_schema}.map_face (
   source_id,
