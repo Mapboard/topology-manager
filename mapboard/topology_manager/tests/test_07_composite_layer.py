@@ -285,4 +285,4 @@ def test_complex_operations(db, layers):
 
     _update(db)
 
-
+    assert n_faces(db, map_layer=layers.paleozoic) == 2
