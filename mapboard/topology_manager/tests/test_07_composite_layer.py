@@ -33,10 +33,6 @@ from ..commands.update_faces import n_dirty_faces
 
 log = get_logger(__name__)
 
-parent_layer_name = "tectonic-block"
-overlay_layer_name = "overlay"
-child_layer_name = "rocks"
-
 grid_count_on_each_axis = 7
 
 
@@ -45,33 +41,30 @@ def layers(db):
     """Fixture to create a composite layer for testing."""
     # Create a parent layer
     grandparent_lyr = create_map_layer(db, "map-area")
-    parent_lyr = create_map_layer(db, parent_layer_name)
-    child_lyr = create_map_layer(db, child_layer_name, parent=parent_lyr)
+    parent_lyr = create_map_layer(db, "tectonic-block", parent=grandparent_lyr)
 
-    # Create an overlay layer
-    surficial_lyr = create_map_layer(db, overlay_layer_name)
+    _layers = Dict(
+        {
+            "map-area": grandparent_lyr,
+            "tectonic-block": parent_lyr,
+            "paleozoic": create_map_layer(db, "paleozoic", parent=parent_lyr),
+            "surficial": create_map_layer(db, "surficial"),
+        }
+    )
 
     # Add a linework type to the child layer
-    for lyr in [parent_lyr, child_lyr, surficial_lyr]:
+    for lyr in [_layers["tectonic-block"], _layers.paleozoic, _layers.surficial]:
         add_linework_type_to_layer(db, lyr, "bedrock")
 
     # Create a composite layer placeholder
-    composite_lyr = create_composite_layer(
+    _layers["composite"] = create_composite_layer(
         db,
         "composite",
-        [child_lyr, surficial_lyr],
-        parent=grandparent_lyr,
+        [_layers.paleozoic, _layers.surficial],
+        parent=_layers["map-area"],
     )
 
-    return Dict(
-        {
-            "grandparent": grandparent_lyr,
-            "parent": parent_lyr,
-            "child": child_lyr,
-            "overlay": surficial_lyr,
-            "composite": composite_lyr,
-        }
-    )
+    return _layers
 
 
 class TestCompositeLayers:
@@ -85,7 +78,7 @@ class TestCompositeLayers:
         assert n_faces(db) == 0
         assert n_face_primitives(db) == 0
 
-        create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
+        create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
 
         # Solve the faces
         _update(db, composite_layers=False)
@@ -95,9 +88,6 @@ class TestCompositeLayers:
         assert n_face_primitives(db) == grid_count_on_each_axis**2
 
     def test_add_parent_layer(self, db, layers):
-        # Add a parent layer with encompassing faces
-        parent_lyr = map_layer_id(db, parent_layer_name)
-        add_linework_type_to_layer(db, parent_lyr, "bedrock")
 
         # Insert a line outside of the child layer that encompasses all child faces
         _max = grid_count_on_each_axis + 1
@@ -109,7 +99,7 @@ class TestCompositeLayers:
             (-1, _max),
             (-1, -1),
         ]
-        insert_line(db, coords, type="bedrock", map_layer=layers.parent)
+        insert_line(db, coords, type="bedrock", map_layer=layers["tectonic-block"])
 
         # Solve the topology
         _update(db, composite_layers=False)
@@ -134,15 +124,15 @@ class TestCompositeLayers:
             WHERE TYPE = 'bedrock'
               AND map_layer = :child_lyr
             """,
-            dict(child_lyr=layers.child),
+            dict(child_lyr=layers.paleozoic),
         )
 
         _update(db, composite_layers=False)
 
         n_child_faces = grid_count_on_each_axis**2 + 1 - 4 + 1
 
-        assert n_faces(db, map_layer=layers.child) == n_child_faces
-        assert n_faces(db, map_layer=layers.parent) == 1
+        assert n_faces(db, map_layer=layers.paleozoic) == n_child_faces
+        assert n_faces(db, map_layer=layers["tectonic-block"]) == 1
 
         assert n_faces(db) == grid_count_on_each_axis**2 + 2 - 4 + 1
 
@@ -155,12 +145,14 @@ class TestCompositeLayers:
         _update(db)
         # Check that the composite layer has been updated correctly
         assert n_face_primitives(db) == expected_n_primitives
-        assert n_faces(db, map_layer=layers.child) == n_child_faces
+        assert n_faces(db, map_layer=layers.paleozoic) == n_child_faces
         assert n_faces(db, map_layer=layers.composite) == n_child_faces
 
     def test_create_surficial_face(self, db, layers):
         """Create a surficial face that overlaps with the bedrock layer."""
-        insert_line(db, square(4, (4.5, 4.5)), type="bedrock", map_layer=layers.overlay)
+        insert_line(
+            db, square(4, (4.5, 4.5)), type="bedrock", map_layer=layers.surficial
+        )
         # This square will overlap the bedrock layer. It should cover nine entire faces in the bedrock layer,
         # as well as part of 14 other faces.
 
@@ -172,8 +164,8 @@ class TestCompositeLayers:
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
 
         # Check that we have created a new face in the surficial layer
-        assert n_faces(db, map_layer=layers.overlay) == 1
-        assert n_faces(db, map_layer=layers.child) == _bedrock_count
+        assert n_faces(db, map_layer=layers.surficial) == 1
+        assert n_faces(db, map_layer=layers.paleozoic) == _bedrock_count
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
     def test_remove_surficial_face_and_add_smaller_one(self, db, layers):
@@ -183,7 +175,7 @@ class TestCompositeLayers:
             DELETE FROM {data_schema}.linework
             WHERE map_layer = :lyr
             """,
-            dict(lyr=layers.overlay),
+            dict(lyr=layers.surficial),
         )
 
         _update(db)
@@ -191,35 +183,43 @@ class TestCompositeLayers:
         _bedrock_count = grid_count_on_each_axis**2 - 4 + 1 + 1
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count
-        assert n_faces(db, map_layer=layers.overlay) == 0
+        assert n_faces(db, map_layer=layers.surficial) == 0
 
         assert n_dirty_faces(db) == 0
 
         # Add a smaller surficial face
-        insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.overlay)
+        insert_line(
+            db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.surficial
+        )
 
         _update_contacts(db)
 
-        assert n_dirty_faces(db, map_layer=layers.overlay) > 0
-        assert n_faces(db, map_layer=layers.overlay) == 0
+        assert n_dirty_faces(db, map_layer=layers.surficial) > 0
+        assert n_faces(db, map_layer=layers.surficial) == 0
 
         _update(db)
 
         assert n_dirty_faces(db) == 0
-        assert n_faces(db, map_layer=layers.overlay) == 1
+        assert n_faces(db, map_layer=layers.surficial) == 1
 
         # Check that the composite layer has been updated correctly
-        assert n_faces(db, map_layer=layers.child) == _bedrock_count
-        assert n_faces(db, map_layer=layers.overlay) == 1
+        assert n_faces(db, map_layer=layers.paleozoic) == _bedrock_count
+        assert n_faces(db, map_layer=layers.surficial) == 1
 
 
 def test_add_surficial_face_standalone(db, layers):
     """Remove the surficial face and add a smaller one."""
-    assert n_faces(db, map_layer=layers.overlay) == 0
+    assert n_faces(db, map_layer=layers.surficial) == 0
 
     # Add a smaller surficial face
-    insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.overlay)
+    insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.surficial)
 
     _update(db)
 
-    assert n_faces(db, map_layer=layers.overlay) == 1
+    assert n_faces(db, map_layer=layers.surficial) == 1
+
+
+# def test_complex_composite_layer_operations(db, layers):
+#     """Test complex operations on composite layers."""
+#     # Create a more complex grid
+#     create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis + 2)
