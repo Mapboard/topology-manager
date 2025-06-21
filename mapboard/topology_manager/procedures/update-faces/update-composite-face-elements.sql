@@ -22,7 +22,29 @@ overlay_primitives AS (
     -- However, it might be a bit slower for multiple overlapping layers.
     AND f.map_layer = ANY(:overlay_layers)
 ),
+composite_primitives AS (
+  /*
+  Primitives that are already in the composite layer.
+  These are not considered for insertion, but we may want to update them
+  if they are in the targeted map layer and have no overlay.
+  */
+  SELECT
+    r.element_id
+  FROM {topo_schema}.map_face f
+  JOIN {topo_schema}.relation r
+    ON r.topogeo_id = (f.topo).id
+   AND r.layer_id = (f.topo).layer_id
+  WHERE r.element_type = 3
+    AND f.map_layer = :composite_layer
+    AND f.source_layer = :map_layer
+),
 layer_features AS (
+  /*
+  Faces that are are in the targeted map layer and may be overlapped by an overlay layer.
+
+  This doesn't account for features that might already be captured in the composite layer.
+  We may want to filter those out.
+  */
   SELECT
     f.id,
     f.unit_id,
@@ -34,8 +56,12 @@ layer_features AS (
    AND r.layer_id = (f.topo).layer_id
   LEFT JOIN overlay_primitives op
     ON r.element_id = op.element_id
+  LEFT JOIN composite_primitives cp
+    ON r.element_id = cp.element_id
   WHERE r.element_type = 3
     AND f.map_layer = :map_layer
+    -- Only consider features that aren't already in the composite layer.
+    AND cp.element_id IS NULL
 ),
 feature_summary AS (
   SELECT f.id,
@@ -46,6 +72,20 @@ feature_summary AS (
                   null) AS no_overlay_elements
   FROM layer_features f
   GROUP BY f.id, f.unit_id
+),
+overlapping_features AS (
+  -- Find all existing features in the composite layer that overlap the features
+  SELECT
+    f.id
+  FROM {topo_schema}.map_face f
+  JOIN {topo_schema}.relation r
+    ON (f.topo).id = r.topogeo_id
+   AND r.layer_id = (f.topo).layer_id
+  WHERE r.element_type = 3
+    -- Looking at all overlay layers, rather than the accumulating composite layer,
+    -- prevents us from having to consider ordering issues in composite feature insertion.
+    -- However, it might be a bit slower for multiple overlapping layers.
+    AND f.map_layer = :composite_layer
 ),
 p1 AS (
   SELECT

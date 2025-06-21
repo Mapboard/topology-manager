@@ -56,10 +56,11 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
     return res
 
 
-def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
+def persist_map_face_updates(
+    db: Database, updates: list[FaceUpdateResult], *, unmark_dirty: bool = True
+):
     """Persist updates to map faces to the database."""
     map_faces_to_delete: set[int] = set()
-    dissolved_faces_index = defaultdict(list)
 
     for res in updates:
         map_faces_to_delete.update(set(res.existing_map_faces))
@@ -80,7 +81,6 @@ def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
         if 0 not in res.dissolved_faces:
             create_map_face(db, res.map_layer, res.dissolved_faces)
             creation_stats[res.map_layer] += 1
-        dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
 
     log.info(
         "Created %s new map faces in layers: %s",
@@ -88,8 +88,16 @@ def persist_map_face_updates(db: Database, updates: list[FaceUpdateResult]):
         "\n".join(f"{lyr}: {count}" for lyr, count in creation_stats.items()),
     )
 
+    if unmark_dirty:
+        unmark_dirty_faces(db, updates)
+
+
+def unmark_dirty_faces(db: Database, updates: list[FaceUpdateResult]):
+    dissolved_faces_index = defaultdict(list)
+    for res in updates:
+        dissolved_faces_index[res.map_layer].extend(res.dissolved_faces)
     for lyr, faces in dissolved_faces_index.items():
-        unmark_dirty_faces(db, lyr, list(set(faces)))
+        _unmark_dirty_faces_for_layer(db, lyr, list(set(faces)))
 
 
 def persist_map_face_updates_simple(db: Database, updates: list[FaceUpdateResult]):
@@ -105,7 +113,7 @@ def persist_map_face_updates_simple(db: Database, updates: list[FaceUpdateResult
         if 0 not in res.dissolved_faces:
             create_map_face(db, res.map_layer, res.dissolved_faces)
 
-        unmark_dirty_faces(db, res.map_layer, res.dissolved_faces)
+        _unmark_dirty_faces_for_layer(db, res.map_layer, res.dissolved_faces)
 
 
 def delete_map_faces(db: Database, faces: list[int]):
@@ -150,7 +158,7 @@ def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
     return faces
 
 
-def unmark_dirty_faces(db, map_layer, faces):
+def _unmark_dirty_faces_for_layer(db, map_layer, faces):
     db.run_sql(
         """DELETE
            FROM {topo_schema}.__dirty_face df

@@ -18,11 +18,6 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
     # We can now trust that the composite layer is populated for each constituent layer.
     # For now we set all faces as dirty...
 
-    db.run_sql(
-        "DELETE FROM {topo_schema}.map_face WHERE map_layer = :map_layer",
-        dict(map_layer=map_layer),
-    )
-
     # We may need to add the entire geometry of any dirty face to the dirty faces for the composite layer.
 
     # Insert the topmost layer's faces into the composite layer
