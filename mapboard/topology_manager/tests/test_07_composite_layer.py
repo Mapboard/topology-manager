@@ -247,6 +247,8 @@ class TestCompositeLayers:
 
     def test_remove_surficial_face_and_add_smaller_one(self, db, layers):
         """Remove the surficial face and add a smaller one."""
+
+        # Delete the surficial face
         db.run_sql(
             """
                 DELETE FROM {data_schema}.linework
@@ -258,9 +260,20 @@ class TestCompositeLayers:
             dict(lyr=layers.surficial),
         )
 
+        # Delete bedrock lines (the grid has gotten hard to parse)
+        db.run_sql(
+            """
+            DELETE FROM {data_schema}.linework
+            WHERE map_layer = :lyr;
+            """,
+            dict(lyr=layers.paleozoic),
+        )
+        ## Reform the grid
+        create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
+
         _update(db)
 
-        _bedrock_count = grid_count_on_each_axis**2 - 4 + 1 + 1
+        _bedrock_count = grid_count_on_each_axis**2 + 1
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count
         assert n_faces(db, map_layer=layers.surficial) == 0
@@ -287,10 +300,13 @@ class TestCompositeLayers:
         # Assign a unit_id to the surficial face
 
         insert_polygon(
-            db, square(4, (3.1, 3.1)), type="unit0", map_layer=layers.surficial
+            db, square(1, (4.1, 4.1)), type="unit0", map_layer=layers.surficial
         )
 
         _update(db)
+
+        # We should essentially add the surficial face to the composite layer, removing the sixteen
+        # bedrock faces by 16 (the number of faces that are fully covered by the surficial face)
 
         # Check that the type of the surficial face has been updated
         uid = db.run_query(
@@ -304,13 +320,22 @@ class TestCompositeLayers:
         assert uid == "unit0"
 
         assert n_faces(db, map_layer=layers.surficial) == 1
+        assert n_faces(db, map_layer=layers.cenozoic) == 0
         assert n_faces(db, map_layer=layers["tectonic-block"]) == 1
-        assert (
-            n_faces(db, map_layer=layers.composite) == _bedrock_count - 16 + 2
-        )  # There's one extra face here – can't figure out why...
-
         # Check that the composite layer has been updated correctly
         assert n_faces(db, map_layer=layers.paleozoic) == _bedrock_count
+
+        layers_counts = {
+            layers.paleozoic: _bedrock_count - 16,
+            layers.surficial: 1,
+            layers.cenozoic: 0,
+            layers["tectonic-block"]: 0,
+        }
+
+        for layer, count in layers_counts.items():
+            assert n_faces(db, map_layer=layers.composite, source_layer=layer) == count
+
+        assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 16 + 1
 
 
 def identify_faces(db, *layers, unit_id="unit0"):
