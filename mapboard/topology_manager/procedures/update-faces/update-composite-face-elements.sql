@@ -37,6 +37,7 @@ composite_primitives AS (
   WHERE r.element_type = 3
     AND f.map_layer = :composite_layer
     AND f.source_layer = :map_layer
+     OR f.source_layer = ANY(:overlay_layers)
 ),
 layer_features AS (
   /*
@@ -82,10 +83,17 @@ overlapping_features AS (
     ON (f.topo).id = r.topogeo_id
    AND r.layer_id = (f.topo).layer_id
   WHERE r.element_type = 3
+    AND r.element_id IN (SELECT r.element_id FROM layer_features r WHERE NOT has_overlay)
     -- Looking at all overlay layers, rather than the accumulating composite layer,
     -- prevents us from having to consider ordering issues in composite feature insertion.
     -- However, it might be a bit slower for multiple overlapping layers.
     AND f.map_layer = :composite_layer
+),
+delete_overlapping_features AS (
+  -- Delete existing features in the composite layer that overlap the features
+  DELETE FROM {topo_schema}.map_face f
+    WHERE f.id IN (SELECT id FROM overlapping_features)
+      AND f.map_layer = :composite_layer
 ),
 p1 AS (
   SELECT
@@ -127,4 +135,4 @@ SELECT
   p1.topo,
   st_setsrid(p1.topo::geometry, :srid)
 FROM p1
-RETURNING id
+RETURNING id;
