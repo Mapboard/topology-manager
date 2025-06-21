@@ -21,6 +21,8 @@ overlay_primitives AS (
     -- prevents us from having to consider ordering issues in composite feature insertion.
     -- However, it might be a bit slower for multiple overlapping layers.
     AND f.map_layer = ANY(:overlay_layers)
+    AND f.unit_id IS NOT NULL
+    AND f.unit_id != 'none'
 ),
 composite_primitives AS (
   /*
@@ -37,6 +39,8 @@ composite_primitives AS (
   WHERE r.element_type = 3
     AND f.map_layer = :composite_layer
     AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
+    AND f.unit_id IS NOT NULL
+    AND f.unit_id != 'none'
 ),
 layer_features AS (
   /*
@@ -62,6 +66,9 @@ layer_features AS (
     AND f.map_layer = :map_layer
     -- Only consider features that aren't already in the composite layer.
     AND cp.element_id IS NULL
+    -- Only consider identified features.
+    AND f.unit_id IS NOT NULL
+    AND f.unit_id != 'none'
 ),
 feature_summary AS (
   SELECT f.id,
