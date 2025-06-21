@@ -224,7 +224,6 @@ class TestCompositeLayers:
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
-    @mark.xfail(reason="This test is not working as expected.")
     def test_remove_surficial_face(self, db, layers):
 
         # Remove the identifier from the surficial face to ensure it is not included in the composite layer
@@ -242,7 +241,7 @@ class TestCompositeLayers:
             "SELECT unit_id FROM {topo_schema}.map_face WHERE map_layer = :lyr",
             dict(lyr=layers.surficial),
         ).scalar()
-        assert uid is "none"
+        assert uid == "none"
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count
 

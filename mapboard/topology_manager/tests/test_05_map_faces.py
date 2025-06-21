@@ -3,7 +3,16 @@
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import insert_line, map_layer_id, add_linework_type_to_layer, n_faces, n_face_primitives, create_map_layer
+from .helpers import (
+    insert_line,
+    map_layer_id,
+    add_linework_type_to_layer,
+    n_faces,
+    n_face_primitives,
+    create_map_layer,
+    square,
+    insert_polygon,
+)
 from ..commands.update import _update
 from pytest import mark
 
@@ -59,8 +68,8 @@ class TestMapFaces:
             Timer.add_step("update")
 
             # Check that we have 100 map faces
-            assert n_faces(db) == count_on_each_axis ** 2
-            assert n_face_primitives(db) == count_on_each_axis ** 2
+            assert n_faces(db) == count_on_each_axis**2
+            assert n_face_primitives(db) == count_on_each_axis**2
 
         log.info(timer.server_timings())
 
@@ -118,3 +127,54 @@ class TestMapFaces:
 
         assert n_faces(db) == 99
         assert n_face_primitives(db) == 98
+
+
+def test_change_map_face_type(db):
+    """Test changing the type of a map face."""
+
+    # Create a face in the 'bedrock' layer
+    bedrock_layer = map_layer_id(db, "bedrock")
+
+    insert_line(
+        db,
+        square(2, center=(0, 0)),
+        type="bedrock",
+        map_layer=bedrock_layer,
+    )
+    _update(db)
+
+    # Check that we have one face in the bedrock layer
+    assert n_faces(db, map_layer=bedrock_layer) == 1
+
+    # Change the type of the face to 'sedimentary'
+    insert_polygon(
+        db,
+        square(1, center=(0, 0)),
+        type="sedimentary",
+        map_layer=bedrock_layer,
+    )
+
+    _update(db)
+
+    # Check that the face type has changed
+    assert n_faces(db, map_layer=bedrock_layer) == 1
+
+    _check_face_type(db, "sedimentary")
+
+    # Change to a different type
+    db.run_sql(
+        "UPDATE {data_schema}.polygon SET type = 'basement' WHERE map_layer = :layer RETURNING type",
+        {"layer": bedrock_layer},
+    )
+    _update(db)
+    _check_face_type(db, "basement")
+
+
+def _check_face_type(db, expected_type):
+    """Check that the face type has changed to the expected type."""
+    bedrock_layer = map_layer_id(db, "bedrock")
+    res = db.run_query(
+        "SELECT unit_id FROM {topo_schema}.map_face WHERE map_layer = :layer",
+        {"layer": bedrock_layer},
+    ).scalar()
+    assert res == expected_type

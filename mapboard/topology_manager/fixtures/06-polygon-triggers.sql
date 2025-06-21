@@ -20,29 +20,44 @@ DECLARE
   __topology integer;
 BEGIN
 
+affected_area := OLD.geometry;
 IF (TG_OP = 'DELETE') THEN
-  affected_area := OLD.geometry;
   __topology := {topo_schema}.get_topological_map_layer(OLD);
-ELSIF (TG_OP = 'INSERT') THEN
-  affected_area := NEW.geometry;
-  __topology := {topo_schema}.get_topological_map_layer(NEW);
-ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
-  affected_area := ST_Union(OLD.geometry, NEW.geometry);
+ELSE
   __topology := {topo_schema}.get_topological_map_layer(NEW);
 END IF;
 
+-- Handle cases where we are removing the polygon from a topological map layer
+IF __topology IS NULL AND (TG_OP = 'UPDATE') THEN
+  __topology := {topo_schema}.get_topological_map_layer(OLD);
+END IF;
+
+-- This polygon is not part of a topological map layer
 IF __topology IS NULL THEN
   RETURN null;
 END IF;
 
+IF (TG_OP = 'INSERT') THEN
+  affected_area := NEW.geometry;
+ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
+  affected_area := ST_Union(OLD.geometry, NEW.geometry);
+END IF;
+
+/** Now we have the affected area, we can update map faces predictively based on it...  */
+
 /** TODO: there might be an issue here because we
 seem to be filtering faces to update only based
 on the affected area, not also the map_layer being
-updated. */
+updated.
+
+Using source_layer also handles composite layers.
+*/
 UPDATE {topo_schema}.map_face mf
 SET unit_id = {topo_schema}.unitForArea(geometry, mf.map_layer)
 WHERE ST_Intersects(affected_area, geometry)
-  AND mf.map_layer = __topology;
+  AND mf.map_layer = __topology OR
+      mf.source_layer = __topology;
+
 RETURN null;
 END;
 $$ LANGUAGE plpgsql;
