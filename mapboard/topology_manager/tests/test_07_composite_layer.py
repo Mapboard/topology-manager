@@ -48,19 +48,25 @@ def layers(db):
             "map-area": grandparent_lyr,
             "tectonic-block": parent_lyr,
             "paleozoic": create_map_layer(db, "paleozoic", parent=parent_lyr),
+            "cenozoic": create_map_layer(db, "cenozoic"),
             "surficial": create_map_layer(db, "surficial"),
         }
     )
 
     # Add a linework type to the child layer
-    for lyr in [_layers["tectonic-block"], _layers.paleozoic, _layers.surficial]:
+    for lyr in [
+        _layers["tectonic-block"],
+        _layers.paleozoic,
+        _layers.cenozoic,
+        _layers.surficial,
+    ]:
         add_linework_type_to_layer(db, lyr, "bedrock")
 
     # Create a composite layer placeholder
     _layers["composite"] = create_composite_layer(
         db,
         "composite",
-        [_layers.paleozoic, _layers.surficial],
+        [_layers.paleozoic, _layers.cenozoic, _layers.surficial],
         parent=_layers["map-area"],
     )
 
@@ -219,7 +225,64 @@ def test_add_surficial_face_standalone(db, layers):
     assert n_faces(db, map_layer=layers.surficial) == 1
 
 
-# def test_complex_composite_layer_operations(db, layers):
-#     """Test complex operations on composite layers."""
-#     # Create a more complex grid
-#     create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis + 2)
+def test_complex_operations(db, layers):
+    """Test complex operations with composite layers."""
+
+    insert_line(
+        db, square(10, (5, 5)), type="bedrock", map_layer=layers["tectonic-block"]
+    )
+
+    _update(db)
+
+    assert n_face_primitives(db) == 1
+    assert n_faces(db, map_layer=layers.paleozoic) == 1
+    assert n_faces(db, map_layer=layers.cenozoic) == 0
+    assert n_faces(db, map_layer=layers.composite) == 1
+
+    # Create a new cenozoic face that overlaps with the existing bedrock face
+    insert_line(db, square(2, (2, 2)), type="bedrock", map_layer=layers.cenozoic)
+
+    _update(db)
+
+    assert n_face_primitives(db) == 2
+    assert n_faces(db, map_layer=layers.cenozoic) == 1
+    assert n_faces(db, map_layer=layers.paleozoic) == 1
+    assert n_faces(db, map_layer=layers.composite) == 2
+
+    sq_ = insert_line(db, square(2, (3, 3)), type="bedrock", map_layer=layers.paleozoic)
+
+    _update(db)
+    assert n_faces(db, map_layer=layers.paleozoic) == 2
+    assert n_faces(db, map_layer=layers.cenozoic) == 1
+    assert n_faces(db, map_layer=layers.composite) == 3
+    assert n_face_primitives(db) == 4
+
+    # Divide the paleozoic face into two parts by adding a line that overlaps with the existing face
+    insert_line(db, ((0, 5), (10, 5)), type="bedrock", map_layer=layers.paleozoic)
+
+    _update(db)
+    assert n_faces(db, map_layer=layers.paleozoic) == 3
+    assert n_faces(db, map_layer=layers.cenozoic) == 1
+    assert n_faces(db, map_layer=layers.composite) == 4
+
+    # Create a surfcial face that overlaps with the existing faces
+    insert_line(db, square(2, (4, 4)), type="bedrock", map_layer=layers.surficial)
+    _update(db)
+
+    assert n_faces(db, map_layer=layers.surficial) == 1
+    assert n_faces(db, map_layer=layers.cenozoic) == 1
+    assert n_faces(db, map_layer=layers.composite) == 5
+
+    # Delete the square in the paleozoic layer
+    db.run_sql(
+        """
+        DELETE FROM {data_schema}.linework
+        WHERE map_layer = :lyr
+          AND id = :id
+        """,
+        dict(lyr=layers.paleozoic, id=sq_),
+    )
+
+    _update(db)
+
+
