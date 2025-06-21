@@ -7,6 +7,7 @@ log = get_logger(__name__)
 
 
 def clean_topology():
+    """Clean the topology"""
     db = get_database()
     _clean_topology(db)
 

@@ -44,6 +44,7 @@ def update_faces(
     composite_layers: bool = Option(True, help="Update composite layers"),
     incremental: bool = Option(False, help="Incremental update of faces, vs. batch"),
 ):
+    """Update faces"""
     log.info("Updating faces with engine %s", engine)
 
     if fill_holes:

@@ -18,4 +18,17 @@ def add_all_commands(app):
     app.add_command(create_tables_cmd, name="create-tables")
     app.add_command(update)
     app.add_command(update_contacts)
-    app.add_command(update_faces)
+
+    def _update_faces_cmd(**kwargs):
+        db = get_database()
+        update_faces(db, **kwargs)
+
+    _update_faces_cmd.__doc__ = update_faces.__doc__
+    _update_faces_cmd.__name__ = update_faces.__name__
+
+    # The "Database" annotation cannot be used with Typer so we create a new set of annotations
+    _update_faces_cmd.__annotations__ = {
+        k: v for k, v in update_faces.__annotations__.items() if k != "db"
+    }
+
+    app.add_command(_update_faces_cmd)
