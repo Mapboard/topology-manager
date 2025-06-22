@@ -9,6 +9,11 @@ WITH layer_info AS (
     AND feature_column = 'topo'
 
 ),
+delete_elements AS (
+  DELETE FROM {topo_schema}.map_face f
+  WHERE map_layer = :composite_layer
+    AND source_id IS NULL
+),
 overlay_primitives AS (
   SELECT
     r.element_id
@@ -73,10 +78,9 @@ layer_features AS (
 feature_summary AS (
   SELECT f.id,
     f.unit_id,
-    count(element_id)         all_count,
+    count(element_id) all_count,
     sum(has_overlay::integer) overlay_count,
-    array_remove(array_agg(case when not has_overlay then element_id end),
-                  null) AS no_overlay_elements
+    (SELECT array_agg(ARRAY[element_id, 3])  FROM layer_features lf WHERE lf.id = f.id AND NOT has_overlay) AS topo_elements
   FROM layer_features f
   GROUP BY f.id, f.unit_id
 ),
@@ -96,13 +100,16 @@ p1 AS (
   SELECT
     f.id,
     f.unit_id,
-    topology.createTopoGeom(
-      :topo_name, 3, (SELECT layer_id FROM layer_info), (
-        SELECT array_agg(ARRAY[e.element_id, 3]) FROM layer_features e
-        WHERE e.id = f.id AND NOT e.has_overlay
-      )) AS topo
+    CASE WHEN f.overlay_count = 0 THEN
+      mf.topo
+    ELSE
+      topology.createTopoGeom(:topo_name, 3, (SELECT layer_id FROM layer_info), topo_elements)
+    END AS topo
   FROM feature_summary f
-  WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count > 0 AND overlay_count < all_count)
+  JOIN {topo_schema}.map_face mf
+    ON f.id = mf.id
+  --WHERE f.overlay_count = 0
+  --WHERE overlay_count > 0 AND overlay_count < all_count
 )
 INSERT INTO {topo_schema}.map_face (
   source_id,
@@ -113,16 +120,16 @@ INSERT INTO {topo_schema}.map_face (
   geometry
 )
 -- Features to be inserted as is
-SELECT
-  f.id,
-  f.unit_id,
-  :map_layer,
-  :composite_layer,
-  f.topo,
-  f.geometry
-FROM {topo_schema}.map_face f
-WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count = 0)
-UNION ALL
+-- SELECT
+--   f.id,
+--   f.unit_id,
+--   :map_layer,
+--   :composite_layer,
+--   f.topo,
+--   f.geometry
+-- FROM {topo_schema}.map_face f
+-- WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count = 0)
+-- UNION ALL
 -- Features that need to be updated with a new topogeometry
 SELECT
   p1.id,
