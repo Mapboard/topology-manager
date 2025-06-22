@@ -59,7 +59,8 @@ layer_features AS (
     f.id,
     f.unit_id,
     r.element_id,
-    op.element_id IS NOT NULL AS has_overlay
+    op.element_id IS NOT NULL AS has_overlay,
+    f.topo
   FROM {topo_schema}.map_face f
   JOIN {topo_schema}.relation r
     ON (f.topo).id = r.topogeo_id
@@ -75,13 +76,25 @@ layer_features AS (
     AND f.unit_id != 'none'
 ),
 feature_summary AS (
-  SELECT f.id,
+  SELECT
+    f.id,
     f.unit_id,
     count(element_id) all_count,
-    sum(has_overlay::integer) overlay_count,
-    (SELECT array_agg(ARRAY[element_id, 3])  FROM layer_features lf WHERE lf.id = f.id AND NOT has_overlay) AS topo_elements
+    CASE
+    WHEN sum(has_overlay::integer) = 0 THEN
+      f.topo
+    ELSE
+      topology.createTopoGeom(
+        :topo_name, 3,
+        (SELECT layer_id FROM layer_info),
+        (SELECT array_agg(ARRAY [element_id, 3])
+        FROM layer_features lf
+        WHERE lf.id = f.id AND NOT has_overlay)
+      )
+    END AS topo
   FROM layer_features f
-  GROUP BY f.id, f.unit_id
+  GROUP BY f.id, f.unit_id, f.topo
+    HAVING sum(has_overlay::integer) < count(element_id)
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features
@@ -94,20 +107,6 @@ delete_overlapping_features AS (
     AND r.element_type = 3
     AND r.element_id = lf.element_id
     AND NOT lf.has_overlay
-),
-p1 AS (
-  SELECT
-    f.id,
-    f.unit_id,
-    CASE WHEN f.overlay_count = 0 THEN
-      mf.topo
-    ELSE
-      topology.createTopoGeom(:topo_name, 3, (SELECT layer_id FROM layer_info), topo_elements)
-    END AS topo
-  FROM feature_summary f
-  JOIN {topo_schema}.map_face mf
-    ON f.id = mf.id
-  WHERE f.overlay_count < all_count
 )
 INSERT INTO {topo_schema}.map_face (
   source_id,
@@ -136,5 +135,5 @@ SELECT
   :composite_layer,
   p1.topo,
   st_setsrid(p1.topo::geometry, :srid)
-FROM p1
+FROM feature_summary p1
 RETURNING id;
