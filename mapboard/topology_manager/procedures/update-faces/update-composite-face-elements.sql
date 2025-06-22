@@ -83,12 +83,14 @@ feature_summary AS (
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features
   DELETE FROM {topo_schema}.map_face f
-  USING {topo_schema}.relation r, feature_summary fs
+  USING {topo_schema}.relation r,
+    layer_features lf
   WHERE f.map_layer = :composite_layer
     AND r.topogeo_id = (f.topo).id
     AND r.layer_id = (f.topo).layer_id
     AND r.element_type = 3
-    AND r.element_id = ANY(fs.no_overlay_elements)
+    AND r.element_id = lf.element_id
+    AND NOT lf.has_overlay
 ),
 p1 AS (
   SELECT
