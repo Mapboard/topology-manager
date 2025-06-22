@@ -243,6 +243,17 @@ class TestCompositeLayers:
         ).scalar()
         assert uid == "none"
 
+        assert n_faces(db, map_layer=layers.paleozoic) == _bedrock_count
+        assert n_faces(db, map_layer=layers.surficial) == 1
+
+        # The surficial face should not be included in the composite layer
+        assert (
+            n_faces(db, map_layer=layers.composite, source_layer=layers.surficial) == 0
+        )
+        assert (
+            n_faces(db, map_layer=layers.composite, source_layer=layers.paleozoic)
+            == _bedrock_count
+        )
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count
 
     def test_remove_surficial_face_and_add_smaller_one(self, db, layers):
@@ -268,6 +279,11 @@ class TestCompositeLayers:
             """,
             dict(lyr=layers.paleozoic),
         )
+
+        _update(db)
+        assert n_faces(db, map_layer=layers.paleozoic) == 1
+        assert n_faces(db, map_layer=layers.composite) == 1
+
         ## Reform the grid
         create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
 
@@ -444,3 +460,34 @@ def test_complex_operations(db, layers):
     _update(db)
 
     assert n_faces(db, map_layer=layers.paleozoic) == 2
+
+
+def test_composite_face_area(db, layers):
+    """Test that composite faces have the correct areas"""
+
+    # Create a simple square face in the paleozoic layer
+    _insert_identified(db, 2, (0, 0), map_layer=layers.paleozoic)
+
+    # Create an offset square face in the cenozoic layer
+    _insert_identified(db, 2, (1, 1), map_layer=layers.cenozoic)
+
+    _update(db)
+
+    # Check that the composite layer has the correct number of faces
+    assert n_faces(db, map_layer=layers.composite) == 2
+
+    # Check that the composite face areas are calculated correctly
+    assert get_area(db, map_layer=layers.composite, source_layer=layers.paleozoic) == 3
+    assert get_area(db, map_layer=layers.composite, source_layer=layers.cenozoic) == 4
+
+
+def get_area(db, *, map_layer=None, source_layer=None):
+    return db.run_query(
+        """
+        SELECT sum(ST_Area(geometry)) AS area
+        FROM {topo_schema}.map_face
+        WHERE map_layer = :lyr
+          AND source_layer = :source_layer
+        """,
+        dict(lyr=map_layer, source_layer=source_layer),
+    ).scalar()
