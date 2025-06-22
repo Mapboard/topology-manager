@@ -9,11 +9,6 @@ WITH layer_info AS (
     AND feature_column = 'topo'
 
 ),
-delete_elements AS (
-  DELETE FROM {topo_schema}.map_face f
-  WHERE map_layer = :composite_layer
-    AND source_id IS NULL
-),
 overlay_primitives AS (
   SELECT
     r.element_id
@@ -57,10 +52,8 @@ layer_features AS (
   */
   SELECT
     f.id,
-    f.unit_id,
     r.element_id,
-    op.element_id IS NOT NULL AS has_overlay,
-    f.topo
+    op.element_id IS NOT NULL AS has_overlay
   FROM {topo_schema}.map_face f
   JOIN {topo_schema}.relation r
     ON (f.topo).id = r.topogeo_id
@@ -75,14 +68,21 @@ layer_features AS (
     AND f.unit_id IS NOT NULL
     AND f.unit_id != 'none'
 ),
+feature_summary0 AS (
+ SELECT
+   f.id,
+   sum(has_overlay::integer) > 0 AS any_overlay
+ FROM layer_features f
+ GROUP BY f.id
+ HAVING sum(f.has_overlay::integer) < count(f.element_id) -- face is not entirely covered
+),
 feature_summary AS (
   SELECT
     f.id,
-    f.unit_id,
-    count(element_id) all_count,
+    mf.unit_id,
     CASE
-    WHEN sum(has_overlay::integer) = 0 THEN
-      f.topo
+    WHEN NOT any_overlay THEN
+      mf.topo
     ELSE
       topology.createTopoGeom(
         :topo_name, 3,
@@ -91,10 +91,18 @@ feature_summary AS (
         FROM layer_features lf
         WHERE lf.id = f.id AND NOT has_overlay)
       )
-    END AS topo
-  FROM layer_features f
-  GROUP BY f.id, f.unit_id, f.topo
-    HAVING sum(has_overlay::integer) < count(element_id)
+    END AS topo,
+    CASE WHEN NOT any_overlay THEN
+      mf.geometry
+    END AS geometry
+  FROM feature_summary0 f
+  JOIN {topo_schema}.map_face mf
+    ON f.id = mf.id
+),
+delete_dereferenced_elements AS (
+ DELETE FROM {topo_schema}.map_face f
+   WHERE map_layer = :composite_layer
+     AND source_id IS NULL
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features
@@ -116,24 +124,12 @@ INSERT INTO {topo_schema}.map_face (
   topo,
   geometry
 )
--- Features to be inserted as is
--- SELECT
---   f.id,
---   f.unit_id,
---   :map_layer,
---   :composite_layer,
---   f.topo,
---   f.geometry
--- FROM {topo_schema}.map_face f
--- WHERE f.id IN (SELECT id FROM feature_summary WHERE overlay_count = 0)
--- UNION ALL
--- Features that need to be updated with a new topogeometry
 SELECT
   p1.id,
   p1.unit_id,
   :map_layer,
   :composite_layer,
   p1.topo,
-  st_setsrid(p1.topo::geometry, :srid)
+  coalesce(p1.geometry, st_setsrid(p1.topo::geometry, :srid))
 FROM feature_summary p1
 RETURNING id;
