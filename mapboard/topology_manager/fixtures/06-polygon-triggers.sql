@@ -55,17 +55,16 @@ Using source_layer also handles composite layers.
 UPDATE {topo_schema}.map_face mf
 SET unit_id = {topo_schema}.unitForArea(geometry, mf.map_layer)
 WHERE ST_Intersects(affected_area, geometry)
-  AND mf.map_layer = __topology OR
-      mf.source_layer = __topology;
+  AND (mf.map_layer = __topology OR mf.source_layer = __topology);
 
 RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 
 /* Create the actual trigger */
-DROP TRIGGER IF EXISTS topo_polygon_update_trigger
+DROP TRIGGER IF EXISTS polygon_update_trigger
   ON {data_schema}.polygon;
-CREATE TRIGGER topo_polygon_update_trigger
+CREATE TRIGGER polygon_update_trigger
 AFTER INSERT OR UPDATE OR DELETE ON {data_schema}.polygon
 FOR EACH ROW
 EXECUTE PROCEDURE {topo_schema}.polygon_update_trigger();

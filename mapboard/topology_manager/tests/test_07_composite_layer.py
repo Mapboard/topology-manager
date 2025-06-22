@@ -158,7 +158,7 @@ class TestCompositeLayers:
 
         # Now, update the composite layer to reflect the changes
 
-        _update(db)
+        _update(db, composite_layers=True)
         # Check that the composite layer has been updated correctly
         assert n_face_primitives(db) == expected_n_primitives
         assert n_faces(db, map_layer=layers.paleozoic) == n_child_faces
@@ -183,7 +183,7 @@ class TestCompositeLayers:
             map_layer=layers.paleozoic,
         )
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         # identify_faces(
         #     db,
@@ -206,7 +206,7 @@ class TestCompositeLayers:
         # The composite layer should have eight bedrock faces that have areas < 1.0
 
         # Solve the topology
-        _update(db)
+        _update(db, composite_layers=True)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
 
@@ -220,7 +220,7 @@ class TestCompositeLayers:
             db, square(1, (4.5, 4.5)), type="unit0", map_layer=layers.surficial
         )
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
@@ -232,7 +232,7 @@ class TestCompositeLayers:
             dict(lyr=layers.surficial),
         )
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
 
@@ -280,14 +280,14 @@ class TestCompositeLayers:
             dict(lyr=layers.paleozoic),
         )
 
-        _update(db)
+        _update(db, composite_layers=True)
         assert n_faces(db, map_layer=layers.paleozoic) == 1
         assert n_faces(db, map_layer=layers.composite) == 1
 
         ## Reform the grid
         create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1
 
@@ -306,7 +306,7 @@ class TestCompositeLayers:
         assert n_dirty_faces(db, map_layer=layers.surficial) > 0
         assert n_faces(db, map_layer=layers.surficial) == 0
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         assert n_dirty_faces(db) == 0
         assert n_faces(db, map_layer=layers.surficial) == 1
@@ -319,7 +319,7 @@ class TestCompositeLayers:
             db, square(1, (4.1, 4.1)), type="unit0", map_layer=layers.surficial
         )
 
-        _update(db)
+        _update(db, composite_layers=True)
 
         # We should essentially add the surficial face to the composite layer, removing the sixteen
         # bedrock faces by 16 (the number of faces that are fully covered by the surficial face)
@@ -356,7 +356,7 @@ class TestCompositeLayers:
 
 def identify_faces(db, *layers, unit_id="unit0"):
     """Identify all faces in the composite layer."""
-    _update(db)
+    _update(db, composite_layers=True)
     db.run_sql(
         """
         UPDATE {topo_schema}.map_face
@@ -368,7 +368,7 @@ def identify_faces(db, *layers, unit_id="unit0"):
             unit_id=unit_id,
         ),
     )
-    _update(db)
+    _update(db, composite_layers=True)
 
 
 def test_add_surficial_face_standalone(db, layers):
@@ -378,7 +378,7 @@ def test_add_surficial_face_standalone(db, layers):
     # Add a smaller surficial face
     insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.surficial)
 
-    _update(db)
+    _update(db, composite_layers=True)
 
     assert n_faces(db, map_layer=layers.surficial) == 1
 
@@ -404,7 +404,7 @@ def test_complex_operations(db, layers):
     )
     insert_polygon(db, square(0.2, (5, 4)), type="unit0", map_layer=layers.paleozoic)
 
-    _update(db)
+    _update(db, composite_layers=True)
 
     assert n_face_primitives(db) == 1
     assert n_faces(db, map_layer=layers.paleozoic) == 1
@@ -414,7 +414,7 @@ def test_complex_operations(db, layers):
     # Create a new cenozoic face that overlaps with the existing bedrock face
     _insert_identified(db, 2, (2, 2), map_layer=layers.cenozoic)
 
-    _update(db)
+    _update(db, composite_layers=True)
 
     assert n_face_primitives(db) == 2
     assert n_faces(db, map_layer=layers.cenozoic) == 1
@@ -423,7 +423,7 @@ def test_complex_operations(db, layers):
 
     sq_ = _insert_identified(db, 2, (3, 3), map_layer=layers.paleozoic)
 
-    _update(db)
+    _update(db, composite_layers=True)
     assert n_faces(db, map_layer=layers.paleozoic) == 2
     assert n_faces(db, map_layer=layers.cenozoic) == 1
     assert n_faces(db, map_layer=layers.composite) == 3
@@ -434,14 +434,14 @@ def test_complex_operations(db, layers):
     # Identify the other paleozoic face
     insert_polygon(db, square(0.2, (5, 7)), type="unit0", map_layer=layers.paleozoic)
 
-    _update(db)
+    _update(db, composite_layers=True)
     assert n_faces(db, map_layer=layers.paleozoic) == 3
     assert n_faces(db, map_layer=layers.cenozoic) == 1
     assert n_faces(db, map_layer=layers.composite) == 4
 
     # Create a surfcial face that overlaps with the existing faces
     _insert_identified(db, 2, (4, 4), map_layer=layers.surficial)
-    _update(db)
+    _update(db, composite_layers=True)
 
     assert n_faces(db, map_layer=layers.surficial) == 1
     assert n_faces(db, map_layer=layers.cenozoic) == 1
@@ -457,7 +457,7 @@ def test_complex_operations(db, layers):
         dict(lyr=layers.paleozoic, id=sq_),
     )
 
-    _update(db)
+    _update(db, composite_layers=True)
 
     assert n_faces(db, map_layer=layers.paleozoic) == 2
 
@@ -471,7 +471,7 @@ def test_composite_face_area(db, layers):
     # Create an offset square face in the cenozoic layer
     _insert_identified(db, 2, (1, 1), map_layer=layers.cenozoic)
 
-    _update(db)
+    _update(db, composite_layers=True)
 
     # Check that the composite layer has the correct number of faces
     assert n_faces(db, map_layer=layers.composite) == 2

@@ -1,23 +1,23 @@
-WITH overlay_primitives AS (
-  SELECT
-    r.element_id
-  FROM {topo_schema}.map_face f
-  JOIN {topo_schema}.relation r
-    ON (f.topo).id = r.topogeo_id
-  AND r.layer_id = (f.topo).layer_id
-  WHERE r.element_type = 3
-    -- Looking at all overlay layers, rather than the accumulating composite layer,
-    -- prevents us from having to consider ordering issues in composite feature insertion.
-    -- However, it might be a bit slower for multiple overlapping layers.
-    AND f.map_layer = ANY(:overlay_layers)
-    AND f.unit_id IS NOT NULL
-    AND f.unit_id != 'none'
-),
-delete_dereferenced_elements AS (
+WITH delete_dereferenced_elements AS (
  DELETE FROM {topo_schema}.map_face f
    WHERE map_layer = :composite_layer
      AND source_id IS NULL
 ),
+ overlay_primitives AS (
+   SELECT
+     r.element_id
+   FROM {topo_schema}.map_face f
+          JOIN {topo_schema}.relation r
+               ON (f.topo).id = r.topogeo_id
+                 AND r.layer_id = (f.topo).layer_id
+   WHERE r.element_type = 3
+     -- Looking at all overlay layers, rather than the accumulating composite layer,
+     -- prevents us from having to consider ordering issues in composite feature insertion.
+     -- However, it might be a bit slower for multiple overlapping layers.
+     AND f.map_layer = ANY(:overlay_layers)
+     AND f.unit_id IS NOT NULL
+     AND f.unit_id != 'none'
+ ),
 composite_faces AS (
   /*
   Primitives that are already in the composite layer.
