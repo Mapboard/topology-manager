@@ -1,15 +1,4 @@
-WITH layer_info AS (
-  SELECT
-    layer_id
-  FROM
-    topology.layer
-  WHERE
-    schema_name = :topo_name
-    AND table_name = 'map_face'
-    AND feature_column = 'topo'
-
-),
-overlay_primitives AS (
+WITH overlay_primitives AS (
   SELECT
     r.element_id
   FROM {topo_schema}.map_face f
@@ -71,7 +60,13 @@ layer_features AS (
 feature_summary0 AS (
  SELECT
    f.id,
-   sum(has_overlay::integer) > 0 AS any_overlay
+   sum(has_overlay::integer) > 0 AS any_overlay,
+   CASE WHEN sum(has_overlay::integer) > 0 THEN
+     topology.createTopoGeom(:topo_name, 3,
+                             {topo_schema}.__map_face_layer_id(),
+                             array_agg(ARRAY [element_id, 3]) FILTER (WHERE NOT has_overlay)
+     )
+   END AS topo
  FROM layer_features f
  GROUP BY f.id
  HAVING sum(f.has_overlay::integer) < count(f.element_id) -- face is not entirely covered
@@ -80,21 +75,8 @@ feature_summary AS (
   SELECT
     f.id,
     mf.unit_id,
-    CASE
-    WHEN NOT any_overlay THEN
-      mf.topo
-    ELSE
-      topology.createTopoGeom(
-        :topo_name, 3,
-        (SELECT layer_id FROM layer_info),
-        (SELECT array_agg(ARRAY [element_id, 3])
-        FROM layer_features lf
-        WHERE lf.id = f.id AND NOT has_overlay)
-      )
-    END AS topo,
-    CASE WHEN NOT any_overlay THEN
-      mf.geometry
-    END AS geometry
+    coalesce(f.topo, mf.topo) AS topo,
+    coalesce(f.topo::geometry, mf.geometry) AS geometry
   FROM feature_summary0 f
   JOIN {topo_schema}.map_face mf
     ON f.id = mf.id
@@ -130,6 +112,6 @@ SELECT
   :map_layer,
   :composite_layer,
   p1.topo,
-  coalesce(p1.geometry, st_setsrid(p1.topo::geometry, :srid))
+  p1.geometry
 FROM feature_summary p1
 RETURNING id;
