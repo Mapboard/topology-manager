@@ -13,24 +13,25 @@ WITH overlay_primitives AS (
     AND f.unit_id IS NOT NULL
     AND f.unit_id != 'none'
 ),
-composite_primitives AS (
+composite_faces AS (
   /*
   Primitives that are already in the composite layer.
   These are not considered for insertion, but we may want to update them
   if they are in the targeted map layer and have no overlay.
   */
-  SELECT
-    r.element_id,
-    f.id
+  SELECT f.id
   FROM {topo_schema}.map_face f
-  JOIN {topo_schema}.relation r
-    ON r.topogeo_id = (f.topo).id
-   AND r.layer_id = (f.topo).layer_id
-  WHERE r.element_type = 3
-    AND f.map_layer = :composite_layer
-    AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
+  WHERE f.map_layer = :map_layer
     AND f.unit_id IS NOT NULL
     AND f.unit_id != 'none'
+  EXCEPT
+  SELECT -- Omit faces that are already in the composite layer.
+    f.id
+  FROM {topo_schema}.map_face f
+  WHERE f.map_layer = :composite_layer
+    AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
+  -- Only consider features that aren't already in the composite layer.
+  -- Only consider identified features.
 ),
 layer_features AS (
   /*
@@ -43,19 +44,15 @@ layer_features AS (
     f.id,
     r.element_id,
     op.element_id IS NOT NULL AS has_overlay
-  FROM {topo_schema}.map_face f
+  FROM composite_faces f
+  JOIN {topo_schema}.map_face mf
+    ON f.id = mf.id
   JOIN {topo_schema}.relation r
-    ON (f.topo).id = r.topogeo_id
-   AND r.layer_id = (f.topo).layer_id
+    ON (mf.topo).id = r.topogeo_id
+   AND r.layer_id = (mf.topo).layer_id
   LEFT JOIN overlay_primitives op
     ON r.element_id = op.element_id
   WHERE r.element_type = 3
-    AND f.map_layer = :map_layer
-    -- Only consider features that aren't already in the composite layer.
-    AND f.id NOT IN (SELECT id FROM composite_primitives)
-    -- Only consider identified features.
-    AND f.unit_id IS NOT NULL
-    AND f.unit_id != 'none'
 ),
 feature_summary0 AS (
  SELECT
