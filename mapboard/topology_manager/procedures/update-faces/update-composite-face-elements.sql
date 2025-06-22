@@ -13,6 +13,11 @@ WITH overlay_primitives AS (
     AND f.unit_id IS NOT NULL
     AND f.unit_id != 'none'
 ),
+delete_dereferenced_elements AS (
+ DELETE FROM {topo_schema}.map_face f
+   WHERE map_layer = :composite_layer
+     AND source_id IS NULL
+),
 composite_faces AS (
   /*
   Primitives that are already in the composite layer.
@@ -29,7 +34,7 @@ composite_faces AS (
     f.id
   FROM {topo_schema}.map_face f
   WHERE f.map_layer = :composite_layer
-    AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
+  --  AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
   -- Only consider features that aren't already in the composite layer.
   -- Only consider identified features.
 ),
@@ -77,11 +82,6 @@ feature_summary AS (
   FROM feature_summary0 f
   JOIN {topo_schema}.map_face mf
     ON f.id = mf.id
-),
-delete_dereferenced_elements AS (
- DELETE FROM {topo_schema}.map_face f
-   WHERE map_layer = :composite_layer
-     AND source_id IS NULL
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features

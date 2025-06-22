@@ -20,7 +20,7 @@ def update(
     fill_holes: bool = Option(False, help="Try to fill all holes"),
     watch: bool = Option(False, help="Watch for changes"),
     fix_failed: bool = Option(False, help="Fix failed contacts"),
-    composite_layers: bool = Option(True, help="Update composite layers"),
+    composite_layers: bool = Option(False, help="Update composite layers"),
 ):
     """Update the topology"""
 

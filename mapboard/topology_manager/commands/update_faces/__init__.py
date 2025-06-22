@@ -41,7 +41,7 @@ def update_faces(
         help="Use Python or PL/pgSQL (not yet implemented)",
         envvar="TOPO_ENGINE",
     ),
-    composite_layers: bool = Option(True, help="Update composite layers"),
+    composite_layers: bool = Option(False, help="Update composite layers"),
     incremental: bool = Option(False, help="Incremental update of faces, vs. batch"),
 ):
     """Update faces"""
