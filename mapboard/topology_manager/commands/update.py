@@ -45,7 +45,7 @@ def _update(
     fill_holes: bool = False,
     fix_failed: bool = False,
     incremental: bool = False,
-    composite_layers: bool = True,
+    composite_layers: bool = False,
 ):
     """Update the topology"""
     console.print("Updating contacts", style="header")

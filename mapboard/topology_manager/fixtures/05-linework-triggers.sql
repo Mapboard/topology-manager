@@ -61,7 +61,8 @@ BEGIN
   ),
   faces AS (
   SELECT
-    left_face, right_face
+    left_face,
+    right_face
   FROM edges e
   JOIN {topo_schema}.edge_data e1
     ON e.edge_id = e1.edge_id
