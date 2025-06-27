@@ -26,7 +26,7 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
     # Get intersecting with dirty map faces...
     overlay_layers = []
     for layer in reversed_layers:
-        log.info("Updating composite layer with faces from layer %s", layer)
+        log.info("Updating composite layer from layer %s", layer)
         ids = db.run_query(
             sql("procedures/update-faces/update-composite-face-elements"),
             dict(
@@ -38,6 +38,18 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
         _n_faces = len(list(ids))
         overlay_layers.append(layer)
         log.info("Inserted %s map faces from layer %s", _n_faces, layer)
+
+        ids = db.run_query(
+            sql("procedures/update-faces/update-composite-line-elements"),
+            dict(
+                map_layer=layer,
+                overlay_layers=overlay_layers,
+                composite_layer=map_layer,
+            ),
+        ).scalars()
+        _n_faces = len(list(ids))
+        overlay_layers.append(layer)
+        log.info("Inserted %s contacts from layer %s", _n_faces, layer)
 
 
 def add_composite_layer_types(db, map_layer: int, layers: list[int]):

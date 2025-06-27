@@ -106,6 +106,10 @@ CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
   name          text,
+  -- Source layer for composite layers
+  source_id     integer REFERENCES {data_schema}.linework(id) ON DELETE CASCADE,
+  source_layer  integer REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
+  covered       boolean DEFAULT false,
   FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_linework_type(type, map_layer) ON UPDATE CASCADE
 );
 
