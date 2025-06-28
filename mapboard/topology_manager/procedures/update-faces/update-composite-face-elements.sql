@@ -31,10 +31,10 @@ composite_faces AS (
     AND f.unit_id != 'none'
     AND f.id NOT IN (
     SELECT -- Omit faces that are already in the composite layer.
-      f1.source_id
+      source_id
     FROM {topo_schema}.map_face f1
       WHERE f1.map_layer = :composite_layer
-      AND f1.source_layer = :map_layer
+        AND f1.source_layer = :map_layer
   )
   --  AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
   -- Only consider features that aren't already in the composite layer.
