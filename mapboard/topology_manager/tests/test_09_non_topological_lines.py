@@ -89,11 +89,10 @@ def test_non_topological_polygons(db):
     insert_polygon(
         db,
         square(0.5, (1, 1)),
-        type="bedrock",
+        type="basement",
         map_layer=lyr,
     )
 
     _update(db)
 
     assert n_faces(db, identified=True) == 1
-

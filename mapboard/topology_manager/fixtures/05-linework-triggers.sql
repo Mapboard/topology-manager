@@ -8,10 +8,12 @@ to `map_topology.map_face`
 /** Get the topology for a line */
 CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
 RETURNS integer AS $$
-SELECT id
-FROM {data_schema}.map_layer l
-WHERE l.id = $1.map_layer
-  AND l.topological;
+SELECT ml.id
+FROM {data_schema}.map_layer ml,
+     {data_schema}.linework_type lt
+WHERE ml.id = $1.map_layer
+  AND lt.id = $1.type
+  AND coalesce(lt.topological, true);
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
