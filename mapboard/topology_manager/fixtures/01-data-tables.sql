@@ -62,7 +62,15 @@ CREATE TRIGGER check_composited_from_trigger
 CREATE TABLE IF NOT EXISTS {data_schema}.linework_type (
     id text PRIMARY KEY,
     name text,
-    color text
+    color text,
+    /** Whether this linework type is topological
+    * If true, this linework type _must_ be used in a topological map layer.
+    * If false, this linework type will not participate in topological operations,
+    * even if the map layer is topological.
+    * If null, the linework type will participate in topology only when used in
+    * a topological map layer.
+    */
+    topological boolean
 );
 
 /*
@@ -80,7 +88,8 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon_type (
     color text,
     -- Optional, for display...
     symbol text,
-    symbol_color text
+    symbol_color text,
+    topological boolean
 );
 
 /**
