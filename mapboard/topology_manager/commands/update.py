@@ -10,6 +10,7 @@ from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import update_faces
+from .update_composite_layers import update_composite_layers
 from macrostrat.utils.timer import Timer
 
 verbose = True
@@ -69,7 +70,15 @@ def _update(
 
         console.print("Cleaning topology", style="header")
         _clean_topology(db)
-        print_step(timer, "Clean topology")
+
+        t2 = perf_counter()
+        _print_step("Clean topology", t2 - t1)
+
+        if composite_layers:
+            console.print("Updating composite layers", style="header")
+            update_composite_layers(db)
+            t3 = perf_counter()
+            _print_step("Update composite layers", t3 - t2)
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)

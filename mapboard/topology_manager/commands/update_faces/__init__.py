@@ -11,7 +11,6 @@ from typing import Optional
 
 from ...database import get_database, sql
 from .helpers import update_map_face_python, persist_map_face_updates, log
-from .composite_layers import update_composite_layer
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
 
@@ -101,16 +100,6 @@ def update_faces(
     )
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
-
-    # Update faces for composite layers if requested
-    if composite_layers:
-        log.info("Updating composite layers")
-        layers = db.run_query(
-            "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
-        ).scalars()
-        for layer in layers:
-            log.info("Updating composite layer %s", layer)
-            update_composite_layer(db, layer)
 
 
 def _update_faces(*args, **kwargs):

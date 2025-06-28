@@ -1,7 +1,18 @@
-from .helpers import FaceUpdateResult, log
-from ...database import sql
+from .update_faces.helpers import FaceUpdateResult, log
+from ..database import sql
 from psycopg2.sql import Identifier
 from functools import lru_cache
+
+
+# Update faces for composite layers if requested
+def update_composite_layers(db):
+    log.info("Updating composite layers")
+    layers = db.run_query(
+        "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
+    ).scalars()
+    for layer in layers:
+        log.info("Updating composite layer %s", layer)
+        update_composite_layer(db, layer)
 
 
 def update_composite_layer(db, map_layer: int) -> FaceUpdateResult:
