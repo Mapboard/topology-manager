@@ -6,6 +6,7 @@ from .helpers import (
     insert_polygon,
 )
 from ..commands.update import _update
+from pytest import mark
 
 
 def test_non_topological_lines(db):
@@ -98,7 +99,8 @@ def test_non_topological_polygons(db):
     assert n_faces(db, identified=True) == 1
 
 
-def test_non_topological_layer(db):
+@mark.parametrize("line_type", ["watercourse", "bedrock"])
+def test_non_topological_layer(db, line_type):
     """Test that layers are correctly identified as non-topological"""
 
     # Create a non-topological layer
@@ -114,32 +116,29 @@ def test_non_topological_layer(db):
 
     #
     # Insert a line in the non-topological layer, for both a topological and non-topological type
-    for line_type in ["watercourse", "bedrock"]:
-        db.run_sql(
-            """
-            INSERT INTO {data_schema}.map_layer_linework_type ("type", map_layer)
-            VALUES (:type, :map_layer);
-            """,
-            dict(type=line_type, map_layer=lyr),
-        )
+    db.run_sql(
+        """
+        INSERT INTO {data_schema}.map_layer_linework_type ("type", map_layer)
+        VALUES (:type, :map_layer);
+        """,
+        dict(type=line_type, map_layer=lyr),
+    )
 
-        line_id = insert_line(
-            db,
-            square(2, center=(1, 1)),
-            type=line_type,
-            map_layer=lyr,
-        )
+    line_id = insert_line(
+        db,
+        square(2, center=(1, 1)),
+        type=line_type,
+        map_layer=lyr,
+    )
 
-        # Check that the get_topological_map_layers function returns null for this line
-        layer = db.run_query(
-            """
-            SELECT {topo_schema}.get_topological_map_layer(l)
-            FROM {data_schema}.linework l
-            WHERE l.id = :line_id;
-            """,
-            {"line_id": line_id},
-        ).scalar()
+    # Check that the get_topological_map_layers function returns null for this line
+    layer = db.run_query(
+        """
+        SELECT {topo_schema}.get_topological_map_layer(l)
+        FROM {data_schema}.linework l
+        WHERE l.id = :line_id;
+        """,
+        {"line_id": line_id},
+    ).scalar()
 
-        assert (
-            layer is None
-        ), "Non-topological layer should not be returned as topological"
+    assert layer is None, "Non-topological layer should not be returned as topological"

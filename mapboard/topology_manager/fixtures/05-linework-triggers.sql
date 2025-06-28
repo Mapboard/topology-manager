@@ -14,7 +14,8 @@ FROM {data_schema}.map_layer ml,
 WHERE ml.id = $1.map_layer
   AND ml.composited_from IS NULL
   AND lt.id = $1.type
-  AND coalesce(lt.topological, true);
+  AND coalesce(lt.topological, true)
+  AND ml.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
