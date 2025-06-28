@@ -1,16 +1,15 @@
 WITH delete_changed_lines AS (
   DELETE FROM {data_schema}.linework l
   USING {data_schema}.linework l2
-  WHERE l.map_layer = :composite_layer
-    AND l2.map_layer = l.source_layer
-    AND l2.id = l.source_id
-    AND (
-      -- Compare topological properties
-      l.geometry_hash != l2.geometry_hash
-      OR
-      -- Compare geometries
-      NOT ST_Equals(l.geometry, l2.geometry)
-    )
+    WHERE l.map_layer = :composite_layer
+      --AND l2.map_layer = l.source_layer
+      AND l.source_id = l2.source_id
+      AND CASE WHEN l2.geometry_hash IS NULL
+        -- Non-topological lines may not have a geometry hash
+      THEN NOT ST_Equals(l.geometry, l2.geometry)
+        -- Topological lines are compared based on their geometry hash
+      ELSE l.geometry_hash != l2.geometry_hash
+      END
 ),
 overlay_faces AS (
   SELECT ST_Union(f.geometry) AS geometry
@@ -21,7 +20,8 @@ overlay_faces AS (
 ),
 lines AS (
   SELECT l.*,
-      ST_Intersects(l.geometry, f.geometry) AS intersects
+      ST_Intersects(l.geometry, f.geometry) AS intersects,
+      {topo_schema}.get_topological_map_layer(l) IS NOT NULL AS topological
   FROM {data_schema}.linework l,
        overlay_faces f
   WHERE l.map_layer IN (SELECT * FROM {topo_schema}.parent_map_layers(:map_layer))
@@ -32,15 +32,21 @@ lines AS (
   )
 ),
 all_lines AS (
-  SELECT l.id     source_id,
+  SELECT l.id source_id,
          l.type type,
          l.geometry_hash geometry_hash,
-  CASE
-   WHEN l.intersects THEN
-     ST_Difference(l.geometry, f.geometry)
-   ELSE l.geometry
-   END AS geometry,
-  false AS covered
+    -- Split lines that are not topological on their intersection with the overlay faces
+    -- Non-topological lines are carried through as is (we may change this later)
+    CASE
+    WHEN l.intersects AND l.topological THEN
+      ST_Difference(l.geometry, f.geometry)
+    ELSE l.geometry
+    END AS geometry,
+    CASE WHEN l.topological THEN
+      false
+    ELSE
+      null
+    END AS covered
   FROM lines l, overlay_faces f
   UNION ALL
   SELECT l.id,
@@ -50,7 +56,7 @@ all_lines AS (
   true AS                                  covered
   FROM lines l,
        overlay_faces f
-  WHERE l.intersects
+  WHERE l.intersects AND l.topological
 )
 INSERT INTO {data_schema}.linework (
   map_layer,
