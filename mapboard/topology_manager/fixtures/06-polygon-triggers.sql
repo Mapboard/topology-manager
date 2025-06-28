@@ -5,6 +5,7 @@ SELECT ml.id
 FROM {data_schema}.map_layer ml,
      {data_schema}.polygon_type pt
   WHERE ml.id = $1.map_layer
+    AND ml.composited_from IS NULL
     AND pt.id = $1.type
     AND coalesce(pt.topological, true);
 $$ LANGUAGE SQL;
