@@ -3,9 +3,11 @@ Test that the topology manager correctly notifies the 'events' channel when line
 """
 
 import asyncio
+from json import loads
+
 import pytest
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from .helpers import square, insert_line
+from .helpers import square, insert_line, map_layer_id
 from ..database import get_database
 from contextvars import ContextVar
 from macrostrat.utils import get_logger
@@ -70,7 +72,7 @@ def test_listen_notify_psycopg2(db):
     assert notification.payload == message
 
 
-def _perform_linework_update(db):
+def _perform_linework_update(db, lyr):
     # Wait a moment to ensure the listener is ready
     time.sleep(0.5)
     log.info("Performing linework update in a separate thread")
@@ -78,13 +80,10 @@ def _perform_linework_update(db):
         db,
         square(2, (0, 0)),
         type="bedrock",
-        map_layer="surficial",
+        map_layer=lyr,
     )
     db.session.commit()
     log.info("Linework update completed, sending notification")
-
-
-_did_notify = ContextVar("_did_notify", default=False)
 
 
 @pytest.fixture(scope="function")
@@ -99,46 +98,25 @@ def db_no_transaction(base_db):
 def test_linework_notify(db_no_transaction):
     db = db_no_transaction
     # Set up the polling mechanism to listen for notifications
-    conn = db.engine.connect().connection
 
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    cursor = conn.cursor()
-
-    cursor.execute("LISTEN events;")
-
-    def handle_notify():
-        conn.poll()
-        for notify in conn.notifies:
-            data = notify.payload
-            assert (
-                data == "linework_updated"
-            ), f"Expected 'linework_updated', got {data}"
-            _did_notify.set(True)
-            # Close the connection to stop listening
-        conn.notifies.clear()
-
-    # Set up a loop to poll for notifications
-    # loop = asyncio.get_event_loop()
-    # loop.add_reader(conn, handle_notify)
+    lyr = map_layer_id(db, "surficial")
 
     # Perform an operation that should trigger a notification,
     # on a different thread
     # Wait a tick to ensure the listener is ready
-    notifier = threading.Thread(target=_perform_linework_update, args=(db,))
-    # notifier = threading.Thread(target=send_notify, args=(db.engine, "events", "hello"))
+    notifier = threading.Thread(target=_perform_linework_update, args=(db, lyr))
 
     notifier.start()
 
     notification = listen_notify(db, "events", timeout=2.0)
 
     notifier.join()
-    did_notify = notification is not None
 
-    # loop.run_in_executor(None, _perform_linework_update)
+    data = loads(notification.payload)
+    log.info("Received notification data: %s", data)
 
-    # Wait for a short time to allow the notification to be processed
-    # loop.run_until_complete(asyncio.sleep(2))
-
-    # Check if the notification was received
-    # did_notify = _did_notify.get()
-    assert did_notify, "Did not receive notification for linework update"
+    assert data["operation"] == "INSERT"
+    assert lyr in data["map_layers"]
+    assert lyr in data["affected_layers"]
+    assert data["editable"]
+    assert not data["composite"]

@@ -25,9 +25,7 @@ BEGIN
     FOR _rec IN SELECT * FROM old_table LOOP
         raise notice 'linework_notify: old table: %', _rec;
         envelope := ST_Union(envelope, ST_Envelope(_rec.geometry));
-        IF _rec.map_layer != any(__map_layers) THEN
-          __map_layers := array_append(__map_layers, _rec.map_layer);
-        END IF;
+        __map_layers := array_append(__map_layers, _rec.map_layer);
     END loop;
   END IF;
 
@@ -35,23 +33,17 @@ BEGIN
     FOR _rec IN SELECT * FROM new_table LOOP
         raise notice 'linework_notify: new table: %', _rec;
         envelope := ST_Union(envelope, ST_Envelope(_rec.geometry));
-        IF _rec.map_layer != any(__map_layers) THEN
-          __map_layers := array_append(__map_layers, _rec.map_layer);
-        END IF;
+        __map_layers := array_append(__map_layers, _rec.map_layer);
     END loop;
   END IF;
 
   -- Get the child map layers for each map layer
   WITH ml AS (
     SELECT {topo_schema}.child_map_layers(unnest(__map_layers), true) AS id
-  ),
-  distinct_layers AS (
-   SELECT DISTINCT id FROM ml
   )
-  SELECT array_agg(id)
+  SELECT array_agg(DISTINCT id)
   INTO __affected_layers
-  FROM distinct_layers
-  WHERE id IS NOT NULL;
+  FROM ml;
 
   -- If any of map layers are editable, set the editable flag
   SELECT bool_or(coalesce(editable, true))
@@ -66,9 +58,9 @@ BEGIN
   WHERE id = ANY(__map_layers);
 
 --   -- Bail out until we can figure this out
---   if __composite THEN
---     return null;
---   end if;
+  if __composite THEN
+    return null;
+  end if;
 
   envelope := ST_Envelope(envelope);
 
