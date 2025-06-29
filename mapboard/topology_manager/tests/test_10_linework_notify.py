@@ -3,6 +3,7 @@ Test that the topology manager correctly notifies the 'events' channel when line
 """
 
 import asyncio
+import pytest
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from .helpers import square, insert_line
 from ..database import get_database
@@ -69,41 +70,34 @@ def test_listen_notify_psycopg2(db):
     assert notification.payload == message
 
 
-# def _perform_linework_update(db):
-#     # Wait a moment to ensure the listener is ready
-#     time.sleep(0.5)
-#     log.info("Performing linework update in a separate thread")
-#     insert_line(
-#         db,
-#         square(2, (0, 0)),
-#         type="bedrock",
-#         map_layer="surficial",
-#     )
-#     db.session.commit()
-#     log.info("Linework update completed, sending notification")
+def _perform_linework_update(db):
+    # Wait a moment to ensure the listener is ready
+    time.sleep(0.5)
+    log.info("Performing linework update in a separate thread")
+    insert_line(
+        db,
+        square(2, (0, 0)),
+        type="bedrock",
+        map_layer="surficial",
+    )
+    db.session.commit()
+    log.info("Linework update completed, sending notification")
 
 
 _did_notify = ContextVar("_did_notify", default=False)
 
 
-def _test_notify(db):
-    time.sleep(0.5)  # Give listener time to start
-    log.info("Performing linework update in a separate thread")
-    conn = db.engine.connect().connection
-    channel = "events"
-    message = "linework_updated"
-    data_schema_name = db.instance_params["data_schema_name"]
-    with conn.cursor() as cur:
-        cur.execute(f"SELECT {data_schema_name}.test_notify();")
-        # cur.execute(f"NOTIFY {channel}, %s;", (message,))
-        log.info("Sent notification on channel: %s with message: %s", channel, message)
-        conn.commit()
-
-    # db.run_sql("SELECT {data_schema}.test_notify()")
+@pytest.fixture(scope="function")
+def db_no_transaction(base_db):
+    """Fixture to set up the database for testing."""
+    db = base_db
+    yield db
+    # Remove the test data after the test
+    db.run_sql("""TRUNCATE TABLE {data_schema}.linework CASCADE;""")
 
 
-def test_linework_notify(db):
-
+def test_linework_notify(db_no_transaction):
+    db = db_no_transaction
     # Set up the polling mechanism to listen for notifications
     conn = db.engine.connect().connection
 
@@ -130,7 +124,7 @@ def test_linework_notify(db):
     # Perform an operation that should trigger a notification,
     # on a different thread
     # Wait a tick to ensure the listener is ready
-    notifier = threading.Thread(target=_test_notify, args=(db,))
+    notifier = threading.Thread(target=_perform_linework_update, args=(db,))
     # notifier = threading.Thread(target=send_notify, args=(db.engine, "events", "hello"))
 
     notifier.start()
