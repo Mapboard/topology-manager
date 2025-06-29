@@ -30,8 +30,6 @@ from .helpers import (
     square,
 )
 from ..commands.update import _update
-from ..commands.update_contacts import _update_contacts
-from ..commands.update_faces import n_dirty_faces
 
 log = get_logger(__name__)
 
@@ -95,6 +93,25 @@ def test_lines_in_composite_layer(layers, db):
     assert n_face_primitives(db) == 3
     assert n_faces(db, map_layer=layers.basement) == 1
 
+    def check_layer(layer, area=None, length=None, covered=False):
+        """Helper function to check the number of faces and area/length."""
+        assert n_faces(db, map_layer=layer) == 1
+        args = dict(
+            map_layer=layers.composite,
+            source_layer=layer,
+            covered=covered,
+        )
+        if area is not None:
+            _area = _get_area(db, **args)
+            assert _area == area, f"Expected area {area}, got {_area}"
+        if length is not None:
+            _len = _get_length(db, **args)
+            assert _len == length, f"Expected length {length}, got {_len}"
+
+    check_layer(layers.surficial, area=4.0, length=8.0)
+    check_layer(layers.basement, area=3.0, length=6.0)
+    check_layer(layers.basement, area=1.0, length=2.0, covered=True)
+
     assert (
         _get_area(db, map_layer=layers.composite, source_layer=layers.surficial) == 4.0
     )
@@ -140,14 +157,28 @@ def _get_length(db, *, map_layer=None, source_layer=None, covered=False):
     ).scalar()
 
 
-def _get_area(db, *, map_layer, source_layer):
+def _get_area(db, *, map_layer, source_layer, covered=False):
     """Get the total area of polygons in a composite layer."""
-    return db.run_query(
+    sql = """
+          SELECT sum(ST_Area(geometry))
+          FROM {topo_schema}.map_face
+          WHERE map_layer = :map_layer
+            AND source_layer = :source_layer
+          """
+    if covered:
+        sql = """
+            WITH base_area AS (
+                SELECT sum(ST_Area(geometry)) AS area
+                FROM {topo_schema}.map_face
+                WHERE map_layer = :source_layer
+            )
+            SELECT (SELECT area FROM base_area) - sum(ST_Area(geometry))
+            FROM {topo_schema}.map_face
+            WHERE map_layer = :map_layer
+              AND source_layer = :source_layer
         """
-        SELECT sum(ST_Area(geometry))
-        FROM {topo_schema}.map_face
-        WHERE map_layer = :map_layer
-          AND source_layer = :source_layer;
-        """,
+
+    return db.run_query(
+        sql,
         dict(map_layer=map_layer, source_layer=source_layer),
     ).scalar()

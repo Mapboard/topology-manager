@@ -1,6 +1,8 @@
 import asyncio
+import json
 from contextvars import ContextVar
 from time import perf_counter
+from json import loads
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from typer import Option
@@ -27,16 +29,20 @@ def update(
 
     db = get_database()
 
+    kwargs = dict(
+        composite_layers=composite_layers,
+    )
+
     _update(
         db,
         reset=reset,
         fill_holes=fill_holes,
         fix_failed=fix_failed,
-        composite_layers=composite_layers,
+        **kwargs,
     )
 
     if watch:
-        _start_watcher()
+        _start_watcher(**kwargs)
 
 
 def _update(
@@ -63,7 +69,6 @@ def _update(
             reset=reset,
             fill_holes=fill_holes,
             incremental=incremental,
-            composite_layers=composite_layers,
         )
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
@@ -85,7 +90,7 @@ update_in_progress = ContextVar("update_in_progress", default=False)
 needs_update = ContextVar("needs_update", default=True)
 
 
-def _start_watcher():
+def _start_watcher(**kwargs):
     db = get_database()
 
     def _update_topology():
@@ -98,7 +103,7 @@ def _start_watcher():
         update_in_progress.set(True)
         needs_update.set(False)
         # Do the update
-        _update(db)
+        _update(db, **kwargs)
         db.session.close()
         update_in_progress.set(False)
 
@@ -114,8 +119,15 @@ def _start_watcher():
         conn.poll()
         for notify in conn.notifies:
             print(notify.payload)
-            needs_update.set(True)
-            _update_topology()
+            data = loads(notify.payload)
+            if data.get("composite", False):
+                # We don't need to upload the topology on a
+                # composite layer update.
+                continue
+            else:
+                # Parse the payload and see if it indicates a change
+                needs_update.set(True)
+                _update_topology()
             if needs_update.get():
                 _update_topology()
         conn.notifies.clear()
