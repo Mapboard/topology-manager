@@ -2,14 +2,10 @@
 Test that the topology manager correctly notifies the 'events' channel when linework is updated.
 """
 
-import asyncio
 from json import loads
 
 import pytest
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from .helpers import square, insert_line, map_layer_id
-from ..database import get_database
-from contextvars import ContextVar
 from macrostrat.utils import get_logger
 
 
@@ -32,10 +28,10 @@ def send_notify(engine, channel: str, message: str):
         conn.commit()
 
 
-def listen_notify(db, channel: str, timeout: float = 2.0):
+def listen_notify(engine, channel: str, timeout: float = 2.0):
     """Listens for a NOTIFY on the given channel."""
     # Connect to the database and set isolation level to autocommit
-    conn = db.engine.connect().connection
+    conn = engine.connect().connection
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     with conn.cursor() as cur:
         cur.execute(f"LISTEN {channel};")
@@ -56,13 +52,12 @@ def listen_notify(db, channel: str, timeout: float = 2.0):
 def test_listen_notify_psycopg2(db):
     channel = "test_channel"
     message = "hello_world"
-
     # Start the notifier in a background thread
     notifier = threading.Thread(target=send_notify, args=(db.engine, channel, message))
     notifier.start()
 
     # Listen for notification
-    notification = listen_notify(db, channel)
+    notification = listen_notify(db.engine, channel)
 
     notifier.join()
 
@@ -108,7 +103,7 @@ def test_linework_notify(db_no_transaction):
 
     notifier.start()
 
-    notification = listen_notify(db, "events", timeout=2.0)
+    notification = listen_notify(db.engine, "events", timeout=2.0)
 
     notifier.join()
 
