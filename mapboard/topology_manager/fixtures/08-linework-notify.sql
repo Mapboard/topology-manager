@@ -6,52 +6,103 @@ to incrementally build views on each update.
 CREATE OR REPLACE FUNCTION {topo_schema}.linework_notify()
 RETURNS TRIGGER AS $$
 DECLARE
-  row_id integer;
-  editable boolean;
-  composite boolean;
+  _rec RECORD;
   envelope geometry;
-  map_layer integer;
+  __affected_layers integer[];
+  __map_layers integer[];
+  __composite boolean;
+  __editable boolean;
+  __payload jsonb;
 BEGIN
-  -- Get the row ID
-  -- TODO: use the old row for UPDATE operations as well.
-  -- We could make this fancier using the approach used in map tables,
-  -- but that's not necessary for now.
-  IF (TG_OP = 'DELETE') THEN
-    row_id := OLD.id;
-    map_layer := OLD.map_layer;
-    envelope := ST_Envelope(OLD.geometry);
-  ELSE
-    row_id := NEW.id;
-    map_layer := NEW.map_layer;
-    envelope := ST_Envelope(NEW.geometry);
+
+  raise notice 'linework_notify: TG_OP = %', TG_OP;
+
+  -- Initialize an empty envelope
+  envelope := null;
+  __map_layers := ARRAY[]::integer[];
+
+  IF (TG_OP = 'UPDATE' OR TG_OP = 'DELETE') THEN
+    FOR _rec IN SELECT * FROM old_table LOOP
+        raise notice 'linework_notify: old table: %', _rec;
+        envelope := ST_Union(envelope, ST_Envelope(_rec.geometry));
+        IF _rec.map_layer != any(__map_layers) THEN
+          __map_layers := array_append(__map_layers, _rec.map_layer);
+        END IF;
+    END loop;
   END IF;
 
-  SELECT
-    ml.editable
-  INTO editable
-  FROM {data_schema}.map_layer ml
-  WHERE ml.id = map_layer;
+  IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+    FOR _rec IN SELECT * FROM new_table LOOP
+        raise notice 'linework_notify: new table: %', _rec;
+        envelope := ST_Union(envelope, ST_Envelope(_rec.geometry));
+        IF _rec.map_layer != any(__map_layers) THEN
+          __map_layers := array_append(__map_layers, _rec.map_layer);
+        END IF;
+    END loop;
+  END IF;
 
-  SELECT ml.composited_from IS NOT NULL
-  INTO composite
-  FROM {data_schema}.map_layer ml
-  WHERE ml.id = map_layer;
+  -- Get the child map layers for each map layer
+  WITH ml AS (
+    SELECT {topo_schema}.child_map_layers(unnest(__map_layers), true) AS id
+  ),
+  distinct_layers AS (
+   SELECT DISTINCT id FROM ml
+  )
+  SELECT array_agg(id)
+  INTO __affected_layers
+  FROM distinct_layers
+  WHERE id IS NOT NULL;
+
+  -- If any of map layers are editable, set the editable flag
+  SELECT bool_or(coalesce(editable, true))
+  INTO __editable
+  FROM {data_schema}.map_layer
+  WHERE id = ANY(__map_layers);
+
+  -- If all of the map layers are composite, set the composite flag
+  SELECT bool_and(composited_from IS NOT NULL)
+  INTO __composite
+  FROM {data_schema}.map_layer
+  WHERE id = ANY(__map_layers);
+
+--   -- Bail out until we can figure this out
+--   if __composite THEN
+--     return null;
+--   end if;
+
+  envelope := ST_Envelope(envelope);
+
+  __payload := jsonb_build_object(
+    'schema', TG_TABLE_SCHEMA,
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
+    'envelope', ST_AsGeoJSON(envelope)::jsonb,
+    'map_layers', __map_layers,
+    'affected_layers', __affected_layers,
+    'editable', __editable,
+    'composite', __composite
+  );
+
+  RAISE NOTICE 'linework_notify: payload: %', __payload;
 
   PERFORM pg_notify(
     'events',
-    json_build_object(
-      'schema', TG_TABLE_SCHEMA,
-      'table', TG_TABLE_NAME,
-      'operation', TG_OP,
-      'row_id', row_id,
-      'map_layers', ARRAY[map_layer],
-      'affected_layers', {topo_schema}.child_map_layers(map_layer, true),
-      'editable', editable,
-      'composite', composite,
-      'envelope', ST_AsGeoJSON(envelope, 6)::jsonb
-    )::text
+    __payload::text
   );
   RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE FUNCTION {data_schema}.test_notify()
+RETURNS void AS $$
+BEGIN
+  PERFORM pg_notify(
+    'events',
+    jsonb_build_object(
+      'message', 'Test notification'
+    )::text
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -59,11 +110,20 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS map_topology_linework_notify_trigger
 ON {data_schema}.linework;
 
-CREATE TRIGGER map_topology_linework_notify_trigger
-BEFORE INSERT
-    OR UPDATE OF geometry, type, map_layer
-    OR DELETE
-    ON {data_schema}.linework
-FOR EACH STATEMENT
+CREATE OR REPLACE TRIGGER map_topology_linework_insert_notify_trigger
+  AFTER INSERT ON {data_schema}.linework
+  REFERENCING NEW TABLE AS new_table
+  FOR EACH STATEMENT
 EXECUTE PROCEDURE {topo_schema}.linework_notify();
 
+CREATE OR REPLACE TRIGGER map_topology_linework_update_notify_trigger
+  AFTER UPDATE ON {data_schema}.linework
+  REFERENCING NEW TABLE AS new_table OLD TABLE AS old_table
+  FOR EACH STATEMENT
+EXECUTE PROCEDURE {topo_schema}.linework_notify();
+
+CREATE OR REPLACE TRIGGER map_topology_linework_delete_notify_trigger
+  AFTER DELETE ON {data_schema}.linework
+  REFERENCING OLD TABLE AS old_table
+  FOR EACH STATEMENT
+EXECUTE PROCEDURE {topo_schema}.linework_notify();

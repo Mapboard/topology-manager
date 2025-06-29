@@ -2,7 +2,7 @@ import asyncio
 import json
 from contextvars import ContextVar
 from time import perf_counter
-from json import loads
+from json import loads, JSONDecodeError
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from typer import Option
@@ -103,9 +103,13 @@ def _start_watcher(**kwargs):
         update_in_progress.set(True)
         needs_update.set(False)
         # Do the update
+        console.print("Updating topology", style="header")
         _update(db, **kwargs)
         db.session.close()
         update_in_progress.set(False)
+        print("Done updating topology")
+
+    console.print("Watching for changes", style="header")
 
     conn = db.engine.connect()
     # Get a raw connection to listen for notifications
@@ -118,22 +122,28 @@ def _start_watcher(**kwargs):
     def handle_notify():
         conn.poll()
         for notify in conn.notifies:
-            print(notify.payload)
-            data = loads(notify.payload)
-            if data.get("composite", False):
-                # We don't need to upload the topology on a
-                # composite layer update.
-                continue
-            else:
-                # Parse the payload and see if it indicates a change
+            try:
+                data = loads(notify.payload)
+                print(data)
+                # if not data.get("composite", False):
+                #     # We don't need to upload the topology on a
+                #     # composite layer update.
                 needs_update.set(True)
-                _update_topology()
-            if needs_update.get():
-                _update_topology()
+            except JSONDecodeError:
+                print("Failed to decode JSON from notify payload")
         conn.notifies.clear()
+
+    async def update_topology_task():
+        while True:
+            if not needs_update.get():
+                await asyncio.sleep(1)
+                continue
+            _update_topology()
+            await asyncio.sleep(1)
 
     loop = asyncio.get_event_loop()
     loop.add_reader(conn, handle_notify)
+    loop.create_task(update_topology_task())
     loop.run_forever()
 
 
