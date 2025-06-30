@@ -122,17 +122,18 @@ def _start_watcher(**kwargs):
     def handle_notify():
         conn.poll()
         for notify in conn.notifies:
+            should_update = False
             try:
                 data = loads(notify.payload)
+                print(data)
                 if not data.get("composite", True) and len(data["map_layers"]) > 0:
-                    print(data)
-                    # We don't need to upload the topology on a
-                    # composite layer update.
-                    needs_update.set(True)
-                    _update_topology()
+                    should_update = True
             except JSONDecodeError:
                 print("Failed to decode JSON from notify payload")
-        conn.notifies.clear()
+            if should_update:
+                needs_update.set(True)
+                _update_topology()
+            conn.notifies.clear()
 
     loop = asyncio.get_event_loop()
     loop.add_reader(conn, handle_notify)
