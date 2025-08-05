@@ -12,13 +12,65 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer (
     name text NOT NULL,
     description text,
     parent integer CHECK (id != parent) REFERENCES {data_schema}.map_layer(id),
-    topological boolean DEFAULT false
+    topological boolean DEFAULT false,
+    editable boolean DEFAULT true,
+    composited_from integer[]
+    -- Ideas for future functionality:
+    -- simplified boolean DEFAULT false,
+    -- derived_from integer[],
 );
+
+/** Trigger for composite layer constraints */
+-- Check that all layers in composited_from exist.
+-- This is in lieu of having a foreign key constraint on map_layer.composited_from
+CREATE OR REPLACE FUNCTION {data_schema}.check_composited_from()
+  RETURNS trigger AS $$
+BEGIN
+  IF NEW.composited_from IS NOT NULL THEN
+    IF NOT NEW.topological THEN
+      RAISE EXCEPTION 'Composite layers must be topological';
+    END IF;
+
+    IF NEW.editable THEN
+      RAISE EXCEPTION 'Composite layers cannot be editable';
+    END IF;
+
+    IF cardinality(NEW.composited_from) < 2 THEN
+      RAISE EXCEPTION 'Composite layers must reference at least two other layers';
+    END IF;
+
+    -- Check if all referenced layers exist
+    IF EXISTS (
+      SELECT *
+      FROM unnest(NEW.composited_from)
+      EXCEPT
+      SELECT id
+      FROM {data_schema}.map_layer
+    ) THEN
+      RAISE EXCEPTION 'All layers in composited_from must exist';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_composited_from_trigger
+  BEFORE INSERT OR UPDATE ON {data_schema}.map_layer
+  FOR EACH ROW EXECUTE FUNCTION {data_schema}.check_composited_from();
+
 
 CREATE TABLE IF NOT EXISTS {data_schema}.linework_type (
     id text PRIMARY KEY,
     name text,
-    color text
+    color text,
+    /** Whether this linework type is topological
+    * If true, this linework type _must_ be used in a topological map layer.
+    * If false, this linework type will not participate in topological operations,
+    * even if the map layer is topological.
+    * If null, the linework type will participate in topology only when used in
+    * a topological map layer.
+    */
+    topological boolean
 );
 
 /*
@@ -36,7 +88,8 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon_type (
     color text,
     -- Optional, for display...
     symbol text,
-    symbol_color text
+    symbol_color text,
+    topological boolean
 );
 
 /**
@@ -62,10 +115,14 @@ CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
   name          text,
+  -- Source layer for composite layers
+  source_id     integer REFERENCES {data_schema}.linework(id) ON DELETE CASCADE,
+  source_layer  integer REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
+  covered       boolean DEFAULT false,
   FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_linework_type(type, map_layer) ON UPDATE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS "{index_prefix}_linework_geometry_idx"
+CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
   ON {data_schema}.linework USING gist (geometry);
 
 /* Skeletal table structure needed to support polygon for the map */
@@ -79,7 +136,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   FOREIGN KEY (type, map_layer) REFERENCES {data_schema}.map_layer_polygon_type(type, map_layer) ON UPDATE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS "{index_prefix}_polygon_geometry_idx"
+CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
   ON {data_schema}.polygon USING gist (geometry);
 
 /** A view to summarize the tree of map layers */
@@ -135,3 +192,4 @@ SELECT
 FROM p1
 JOIN c1
   ON p1.map_layer = c1.map_layer
+;

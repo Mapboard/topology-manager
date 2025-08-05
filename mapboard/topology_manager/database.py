@@ -1,14 +1,16 @@
 import os
-from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 
 from dotenv import load_dotenv
 from macrostrat.database import Database as _Database
 from psycopg2.sql import SQL, Identifier
-from sqlalchemy import event
-from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import TextClause, text
+
+from sqlalchemy.dialects.postgresql import base as pg
+
+# This quiets a warning about an unknown topogeometry type
+pg.ischema_names["topogeometry"] = pg.ischema_names["geometry"]
 
 load_dotenv()
 

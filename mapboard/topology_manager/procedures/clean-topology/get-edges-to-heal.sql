@@ -11,14 +11,11 @@ SELECT
   node_id,
   array_agg(line_id) contacts,
   array_agg(ec.edge_id) edges,
-  count(r.topogeo_id) n_geom
+  count(ec.line_id) n_geom
 FROM node_edge ne
 JOIN {topo_schema}.__edge_relation ec
   ON ne.edge_id = ec.edge_id
  AND NOT ec.is_child
-JOIN {topo_schema}.relation r
-  ON ne.edge_id = r.element_id
- AND r.element_type = 2
 GROUP BY node_id
 )
 SELECT

@@ -2,6 +2,7 @@ import os
 
 from macrostrat.database.utils import temp_database
 from pytest import fixture
+from macrostrat.utils import get_logger
 
 from ...commands.create_tables import _create_tables
 from ...database import Database
@@ -10,6 +11,8 @@ from .demo_units import create_demo_units
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
 if not testing_db:
     raise RuntimeError("TOPO_TESTING_DATABASE_URL is not set")
+
+log = get_logger(__name__)
 
 
 @fixture(scope="session")
@@ -36,13 +39,22 @@ def base_db(empty_db):
 
 
 @fixture(scope="class")
-def db(base_db):
+def db(base_db, pytestconfig):
     """Create a database session that is rolled back after each test
 
     This is based on the Sparrow's implementation:
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
 
+    # Create a new database session for each test
     base_db.automap(schemas=["test_map_data"])
-    with base_db.transaction(rollback="always"):
+
+    commit = pytestconfig.getoption("--commit")
+    if commit:
+        # Enable auto-commit mode
         yield base_db
+    else:
+        with base_db.transaction(rollback="always"):
+            log.info("Starting database transaction")
+            yield base_db
+        log.info("Rolling back database transaction")

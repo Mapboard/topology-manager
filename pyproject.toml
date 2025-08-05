@@ -9,12 +9,13 @@ packages = [{ include = "mapboard" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-"macrostrat.database" = "^3.4.1"
+"macrostrat.database" = "^3.5.0"
 "macrostrat.utils" = "^1.2.1"
 typer = "^0.12.0"
 rich = "^13.7.1"
 python-dotenv = "^1.0.1"
 pytest-profiling = "^1.7.0"
+addict = "^2.4.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=:topo_name 
+WHERE schema_name=:topo_name
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -22,7 +22,7 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name=:topo_name 
+      WHERE schema_name=:topo_name
       AND table_name='contact';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -46,7 +46,7 @@ BEGIN
   SELECT l.layer_id
       INTO layer_id
       FROM topology.layer l
-      WHERE schema_name=  :topo_name 
+      WHERE schema_name=  :topo_name
       AND table_name='map_face';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -118,12 +118,15 @@ SELECT
   p.type,
   p.geometry
 FROM {data_schema}.polygon p
-JOIN {data_schema}.polygon_type t
-  ON p.type = t.id
-JOIN {data_schema}.map_layer l
-  ON p.map_layer = l.id
-WHERE l.id = _map_layer
-  AND l.topological
+JOIN {data_schema}.map_layer ml
+  ON p.map_layer = ml.id
+JOIN {data_schema}.map_layer_polygon_type mlpt
+  ON mlpt.type = p.type
+ AND mlpt.map_layer = ml.id
+JOIN {data_schema}.polygon_type pt
+  ON pt.id = mlpt.type
+WHERE ml.id = _map_layer
+  AND coalesce(pt.topological, ml.topological)
   AND ST_Contains(face, p.geometry)
 )
 -- Assign face that has the greatest area of polygons

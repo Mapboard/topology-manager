@@ -8,7 +8,7 @@ DELETE FROM {data_schema}.linework_type WHERE id = 'default';
 DELETE FROM {data_schema}.polygon_type WHERE id = 'default';
 
 INSERT INTO {data_schema}.linework_type
-SELECT id, name, color
+SELECT id, name, color, layer IS NOT NULL AS topological
 FROM tmp_linework_type
 ON CONFLICT (id)
 DO UPDATE
@@ -17,7 +17,7 @@ name = EXCLUDED.name,
 color = EXCLUDED.color;
 
 INSERT INTO {data_schema}.polygon_type
-SELECT id, name, color
+SELECT id, name, color, layer IS NOT NULL AS topological
 FROM tmp_polygon_type
 ON CONFLICT (id)
 DO UPDATE

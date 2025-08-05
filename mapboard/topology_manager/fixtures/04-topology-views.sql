@@ -50,7 +50,7 @@ WHERE face_id <> 0
 SELECT * FROM fg
 WHERE NOT ST_IsEmpty(geometry);
 
-
+/** TODO: move this into the platform repository */
 -- Can be reworked with create table and triggers
 -- http://lists.osgeo.org/pipermail/postgis-users/2015-June/040551.html
 -- https://hashrocket.com/blog/posts/materialized-view-strategies-using-postgresql
@@ -62,7 +62,9 @@ SELECT
   f.geometry,
   l.id map_layer,
   t.color,
-  t.name
+  t.name,
+  'fgdc:' || replace(t.symbol, '-K', '') symbol,
+  t.symbol_color
 FROM {topo_schema}.map_face f
 LEFT JOIN {data_schema}.polygon_type t
   ON f.unit_id = t.id

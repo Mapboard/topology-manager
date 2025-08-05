@@ -1,8 +1,3 @@
-/* Register units for faces that don't have units */
-SELECT {topo_schema}.register_face_unit(id) FROM {topo_schema}.map_face
-WHERE topo IS NOT null
-  AND id NOT IN (SELECT DISTINCT map_face FROM {topo_schema}.face_type);
-
 WITH e AS (
 -- Get faces related to map_faces
 SELECT
@@ -42,22 +37,3 @@ SELECT unnest(ids) id FROM v1 WHERE count > 1
 DELETE FROM {topo_schema}.map_face f
 USING v3
 WHERE f.id = v3.id;
-
-/*
-Delete map faces that have no edges corresponding to map linework
-These should have been caught earlier by trigger process, but weren't
-*/
-WITH v1 AS (
-SELECT DISTINCT ON (ef.face_id) *
-FROM {topo_schema}.edge_face ef
-JOIN {topo_schema}.face_type ft ON ef.face_id = ft.face_id
-WHERE ef.edge_id NOT IN (
-    SELECT edge_id
-    FROM {topo_schema}.__edge_relation er
-    WHERE NOT er.is_child
-  )
-  AND ef.face_id != 0
-)
-DELETE FROM {topo_schema}.map_face f
-USING v1
-WHERE v1.map_face = f.id;

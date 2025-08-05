@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.map_face (
   -- TODO: rename unit_id to type
   unit_id   text    REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE,
   map_layer integer REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE,
-  geometry  geometry(MultiPolygon, :srid)
+  geometry  geometry(MultiPolygon, :srid),
+  -- Extensions for composite layer
+  source_id integer REFERENCES {topo_schema}.map_face (id) ON DELETE CASCADE,
+  source_layer integer REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS {topo_schema}.face_type (
@@ -57,17 +60,5 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.__dirty_face (
   id        integer REFERENCES {topo_schema}.face(face_id) ON DELETE CASCADE,
   map_layer integer REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
   PRIMARY KEY (id, map_layer)
-);
-
-/** EDGE INFRASTRUCTURE
-This table exists to hold all the edges that are relevant to a particular map
-layer.
-*/
-CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
-  edge_id   integer NOT NULL REFERENCES {topo_schema}.edge_data(edge_id) ON DELETE CASCADE,
-  map_layer integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
-  line_id   integer NOT NULL REFERENCES {data_schema}.linework(id) ON DELETE CASCADE,
-  is_child  boolean NOT NULL,
-  PRIMARY KEY (edge_id, map_layer)
 );
 

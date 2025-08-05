@@ -11,7 +11,9 @@ from .helpers import (
     map_layer_id,
     point,
     square,
+    n_edge_relations,
 )
+from ..database import sql
 
 
 class TestNestedLayers:
@@ -130,10 +132,13 @@ class TestNestedLayers:
         assert n_edges == 1
 
         # Check that the proper record has been added to the __edge_relation table
+        res = n_edge_relations(db)
+        assert res == 1
+
         res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation",
+            "SELECT * FROM {topo_schema}.__edge_relation"
         ).fetchall()
-        assert len(res) == 2
+
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
         assert len([r for r in res if r.map_layer == lyr_id]) == 1
@@ -170,8 +175,10 @@ class TestNestedLayers:
         ).fetchall()
         # The bedrock layer should have:
         # - Two edges inherited from the parent layer
-        # - One edge from the bisecting line
-        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 3
+        # - One edge from the bisecting line (in the child layer)
+        # We don't keep separate records for the parent layer (this has been changed)
+        assert len(res) == 3
+        assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 1
 
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
@@ -204,7 +211,7 @@ class TestNestedLayers:
         for r0 in res:
             assert r0.face_id != 0
             assert r0.face_id in v1
-            assert r0.adjacent is None
+            assert len(r0.adjacent) == 1 and r0.adjacent[0] == r0.face_id
 
         # Get all faces
         res = db.run_query(
@@ -311,13 +318,6 @@ def test_layer_with_child(
     # )
     # Solve the topology
     _update(db)
-
-    # Check that the proper record has been added to the __edge_relation table
-    res = db.run_query(
-        "SELECT * FROM {topo_schema}.__edge_relation WHERE map_layer = :parent",
-        dict(parent=map_layer_id(db, "Layer with child")),
-    ).fetchall()
-    assert len(res) == 1
 
     # Get all faces
     res = db.run_query(
