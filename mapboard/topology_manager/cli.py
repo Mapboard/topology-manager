@@ -31,21 +31,30 @@ def main(
 add_all_commands(app)
 
 
-def _operation_command(name):
+def operation_command(db, name: str, ask: bool = True):
     # Prompt user for confirmation
-    res = Confirm.ask(f"Do you really want to {name} the topology?")
-    if not res:
-        return
-    db = get_database()
+    if ask:
+        res = Confirm.ask(f"Do you really want to {name} the topology?")
+        if not res:
+            return
     db.run_sql(sql(f"procedures/{name}-topology"))
 
 
-for op in ["delete", "reset"]:
+def delete_topology(confirm=True):
+    """Delete the topology"""
+    db = get_database()
+    operation_command(db, "delete", ask=confirm)
 
-    def command():
-        _operation_command(op)
 
-    app.add_command(command, name=op, short_help=f"{op.capitalize()} the topology")
+def reset_topology(confirm: bool = True):
+    """Reset the topology"""
+    db = get_database()
+    operation_command(db, "reset", ask=confirm)
+
+
+# Add commands for delete and reset operations
+app.add_command(delete_topology, name="delete", short_help="Delete the topology")
+app.add_command(reset_topology, name="reset", short_help="Reset the topology")
 
 
 @app.command(name="show-errors")
