@@ -1,12 +1,11 @@
 import os
-
 from macrostrat.database.utils import temp_database
-from pytest import fixture
 from macrostrat.utils import get_logger
+from pytest import fixture
 
+from .demo_units import create_demo_units
 from ...commands.create_tables import _create_tables
 from ...database import Database
-from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
 if not testing_db:
