@@ -1,13 +1,12 @@
-from collections import defaultdict
-
 import warnings
+from collections import defaultdict
 from enum import Enum
+from typing import Optional
+
 from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
-from threading import Timer
 from time import perf_counter
 from typer import Option, Argument
-from typing import Optional
 
 from .helpers import update_map_face_python, persist_map_face_updates, log
 from ...database import get_database, sql
