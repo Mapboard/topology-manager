@@ -28,6 +28,7 @@ from .helpers import (
     add_polygon_type_to_layer,
     insert_polygon,
     square,
+    n_lines,
 )
 from ..commands.update import _update
 
@@ -49,6 +50,7 @@ def layers(db):
         {
             "basement": create_map_layer(db, "basement"),
             "surficial": create_map_layer(db, "surficial"),
+            "external": create_map_layer(db, "external"),
         }
     )
 
@@ -56,6 +58,7 @@ def layers(db):
     for lyr in [
         _layers.basement,
         _layers.surficial,
+        _layers.external,
     ]:
         add_linework_type_to_layer(db, lyr, "bedrock")
         add_polygon_type_to_layer(db, lyr, "none")
@@ -135,6 +138,47 @@ def test_lines_in_composite_layer(layers, db):
     assert (
         _get_area(db, map_layer=layers.composite, source_layer=layers.basement) == 3.0
     )
+
+
+def test_lines_removed_from_composite_layer(layers, db):
+    """Test that lines in composite layer are updated correctly"""
+    _id = insert_line(
+        db,
+        square(2, (0, 0)),
+        type="bedrock",
+        map_layer=layers.surficial,
+    )
+    _update(db, composite_layers=True)
+    # Check that we have a single face primitive
+    assert n_face_primitives(db) == 1
+
+    insert_line(db, square(2, (1, 1)), map_layer=layers.basement, type="bedrock")
+
+    # Update faces
+    _update(db, composite_layers=True)
+
+    # Check that the composite layer has two faces
+    assert n_face_primitives(db) == 3
+    assert n_faces(db, map_layer=layers.basement) == 1
+    assert n_faces(db, map_layer=layers.surficial) == 1
+
+    assert n_lines(db, map_layer=layers.composite) == 2
+
+    # Now move the line from the basement layer to the external layer, which is not part of the composite
+    db.run_query(
+        """
+        UPDATE {data_schema}.linework
+        SET map_layer = :new_layer
+        WHERE id = :id
+        """,
+        dict(new_layer=layers.external, id=_id),
+    )
+
+    assert n_lines(db, map_layer=layers.external) == 1
+
+    _update(db, composite_layers=True)
+
+    assert n_lines(db, map_layer=layers.composite) == 1
 
 
 def _get_length(db, *, map_layer=None, source_layer=None, covered=False):
