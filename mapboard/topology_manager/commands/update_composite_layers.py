@@ -48,20 +48,24 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
         ).scalars()
         _n_faces = len(list(ids))
         db.session.commit()
-        log.info("Inserted %s map faces from layer %s", _n_faces, layer)
+        log.info("Inserted %d map faces from layer %s", _n_faces, layer)
 
-        ids = db.run_query(
-            sql("procedures/update-faces/update-composite-line-elements"),
-            dict(
-                map_layer=layer,
-                overlay_layers=overlay_layers,
-                composite_layer=map_layer,
-            ),
-        ).scalars()
-        _n_lines = len(list(ids))
-        overlay_layers.append(layer)
-        log.info("Inserted %s lines from layer %s", _n_lines, layer)
+        ids = (
+            db.run_query(
+                sql("procedures/update-faces/update-composite-line-elements"),
+                dict(
+                    map_layer=layer,
+                    overlay_layers=overlay_layers,
+                    composite_layer=map_layer,
+                ),
+            )
+            .scalars()
+            .all()
+        )
+        _n_lines = len(ids)
+        log.info(f"Inserted %d lines from layer %s", _n_lines, layer)
         db.session.commit()
+        overlay_layers.append(layer)
 
 
 def add_composite_layer_types(db, map_layer: int, layers: list[int]):

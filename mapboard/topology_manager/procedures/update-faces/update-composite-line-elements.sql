@@ -1,18 +1,21 @@
 WITH delete_changed_lines AS (
   DELETE FROM {data_schema}.linework l
   USING {data_schema}.linework l2
-    WHERE l.map_layer = :composite_layer
-      AND l.source_id = l2.id
-      AND (
-            CASE
-              WHEN l2.geometry_hash IS NULL
-                -- Non-topological lines may not have a geometry hash
-                THEN NOT ST_Equals(l.geometry, l2.geometry)
-              -- Topological lines are compared based on their geometry hash
-              ELSE l.geometry_hash != l2.geometry_hash
-            END
-            OR l.source_layer != l2.map_layer -- catch lines that have been shuffled to new layers
-            )
+  WHERE l.map_layer = :composite_layer
+    AND l.source_id = l2.id
+    AND (
+      l.geometry_hash != l2.geometry_hash -- Topological lines are compared based on their geometry hash
+      OR l.source_layer != l2.map_layer -- catch lines that have been shuffled to new layers
+      OR (
+      -- Special case for non-topological lines that may not have a geometry hash
+      l2.geometry_hash IS NULL AND l2.topology_error IS NULL
+      AND NOT (
+        ST_Equals(l.geometry, l2.geometry)
+          OR
+        ST_Contains(l2.geometry, l.geometry)
+        )
+      )
+    )
 ),
 overlay_faces AS (
   SELECT ST_Union(f.geometry) AS geometry
@@ -77,7 +80,7 @@ SELECT
   source_id,
   map_layer source_layer,
   type,
-  ST_Multi(geometry),
+  geometry,
   geometry_hash,
   covered
 FROM all_lines
