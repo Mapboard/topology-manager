@@ -181,6 +181,38 @@ def test_lines_removed_from_composite_layer(layers, db):
     assert n_lines(db, map_layer=layers.composite) == 1
 
 
+def test_non_topological_lines_in_composite_layer(layers, db):
+    """Non-topological lines should be carried into composite layers"""
+    # Create a non-topological line type
+    db.run_sql(
+        """
+        INSERT INTO {data_schema}.linework_type (id, topological)
+        VALUES ('non-topological', false);
+        """
+    )
+    db.session.commit()
+
+    for lyr in [layers.basement, layers.composite]:
+        add_linework_type_to_layer(db, lyr, "non-topological")
+    # Insert a non-topological line in the basement layer
+
+    line_id = insert_line(
+        db,
+        ((0, 0), (2, 2)),
+        type="non-topological",
+        map_layer=layers.basement,
+    )
+
+    _update(db, composite_layers=True)
+    # Check that the line is in the composite layer
+    assert n_lines(db, map_layer=layers.composite) == 1
+    _count = db.run_query(
+        "SELECT count(*) FROM {data_schema}.linework WHERE source_id = :id AND map_layer = :layer",
+        dict(id=line_id, layer=layers.composite),
+    ).scalar()
+    assert _count == 1
+
+
 def _get_length(db, *, map_layer=None, source_layer=None, covered=False):
     """Get the total length of lines in a composite layer."""
     sql = """
