@@ -38,6 +38,7 @@ all_lines AS (
   SELECT l.id source_id,
          l.type type,
          l.geometry_hash geometry_hash,
+         l.map_layer,
     -- Split lines that are not topological on their intersection with the overlay faces
     -- Non-topological lines are carried through as is (we may change this later)
     CASE
@@ -55,8 +56,9 @@ all_lines AS (
   SELECT l.id,
   l.type,
   l.geometry_hash,
-  ST_Intersection(l.geometry, f.geometry) geometry,
-  true AS                                  covered
+  l.map_layer,
+    ST_Intersection(l.geometry, f.geometry) geometry,
+  true AS covered
   FROM lines l,
        overlay_faces f
   WHERE l.intersects AND l.topological
@@ -73,7 +75,7 @@ INSERT INTO {data_schema}.linework (
 SELECT
   :composite_layer AS map_layer,
   source_id,
-  :map_layer source_layer,
+  map_layer source_layer,
   type,
   ST_Multi(geometry),
   geometry_hash,

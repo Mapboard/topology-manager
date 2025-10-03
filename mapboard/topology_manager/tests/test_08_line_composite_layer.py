@@ -190,7 +190,6 @@ def test_non_topological_lines_in_composite_layer(layers, db):
         VALUES ('non-topological', false);
         """
     )
-    db.session.commit()
 
     for lyr in [layers.basement, layers.composite]:
         add_linework_type_to_layer(db, lyr, "non-topological")
