@@ -95,6 +95,7 @@ def _start_watcher(**kwargs):
 
     def _update_topology():
         if update_in_progress.get():
+            print("Update already in progress, skipping for now")
             needs_update.set(True)
             return
         if not needs_update.get():
@@ -105,8 +106,8 @@ def _start_watcher(**kwargs):
         # Do the update
         console.print("Updating topology", style="header")
         _update(db, **kwargs)
-        db.session.close()
         update_in_progress.set(False)
+        db.session.close()
         print("Done updating topology")
 
     console.print("Watching for changes", style="header")
@@ -126,10 +127,12 @@ def _start_watcher(**kwargs):
             try:
                 data = loads(notify.payload)
                 print(data)
+                # Ignore changes to the composite layers
                 if not data.get("composite", True) and len(data["map_layers"]) > 0:
                     should_update = True
             except JSONDecodeError:
                 print("Failed to decode JSON from notify payload")
+                should_update = True
             if should_update:
                 needs_update.set(True)
                 _update_topology()
