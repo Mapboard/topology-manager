@@ -3,6 +3,7 @@ WITH delete_dereferenced_elements AS (
    WHERE map_layer = :composite_layer
      AND source_id IS NULL
 ),
+
  overlay_primitives AS (
    SELECT
      r.element_id
@@ -42,7 +43,7 @@ composite_faces AS (
 ),
 layer_features AS (
   /*
-  Faces that are are in the targeted map layer and may be overlapped by an overlay layer.
+  Faces that are in the targeted map layer and may be overlapped by an overlay layer.
 
   This doesn't account for features that might already be captured in the composite layer.
   We may want to filter those out.
@@ -84,6 +85,15 @@ feature_summary AS (
   FROM feature_summary0 f
   JOIN {topo_schema}.map_face mf
     ON f.id = mf.id
+),
+update_faces_with_changed_identity AS (
+  UPDATE {topo_schema}.map_face mfc
+  SET unit_id = mf.unit_id
+  FROM {topo_schema}.map_face mf
+  WHERE mfc.source_id = mf.id
+    AND  mfc.map_layer = :composite_layer
+    AND mf.unit_id != mfc.unit_id
+     OR (mfc.unit_id IS NULL and mf.unit_id IS NOT NULL)
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features

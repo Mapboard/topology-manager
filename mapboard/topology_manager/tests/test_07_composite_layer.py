@@ -481,6 +481,75 @@ def test_composite_face_area(db, layers):
     assert get_area(db, map_layer=layers.composite, source_layer=layers.cenozoic) == 4
 
 
+def test_change_face_type_propagates_to_composite(db, layers):
+    """Test that changing the type of a face in a source layer propagates to the composite layer."""
+
+    # Create a simple square face in the paleozoic layer
+    _insert_identified(db, 2, (0, 0), map_layer=layers.paleozoic)
+
+    _update(db, composite_layers=True)
+
+    assert n_faces(db, map_layer=layers.composite) == 1
+
+    # Change the type of the face in the paleozoic layer
+    db.run_sql(
+        """
+        UPDATE {data_schema}.polygon
+        SET type = 'unit0'
+        WHERE map_layer = :lyr
+        """,
+        dict(lyr=layers.paleozoic),
+    )
+
+    _update(db, composite_layers=True)
+
+    assert n_faces(db, map_layer=layers.paleozoic) == 1
+    assert n_faces(db, map_layer=layers.composite) == 1
+
+    # Check that the type change has propagated to the composite layer
+    uid = db.run_query(
+        """
+        SELECT unit_id
+        FROM {topo_schema}.map_face
+        WHERE map_layer = :lyr
+        """,
+        dict(lyr=layers.composite),
+    ).scalar()
+    assert uid == "unit0"
+
+
+def test_change_face_layer_propagates_to_composite(db, layers):
+    """Test that changing the layer of a face to a child layer propagates to the composite layer."""
+
+    # Create a simple square face in the tectonic-block layer
+    insert_line(
+        db, square(10, (5, 5)), type="bedrock", map_layer=layers["tectonic-block"]
+    )
+    insert_polygon(db, square(0.2, (5, 4)), type="unit0", map_layer=layers.paleozoic)
+
+    _update(db, composite_layers=True)
+
+    assert n_faces(db, map_layer=layers.composite) == 1
+
+    # Change the layer of the face to the paleozoic layer
+    db.run_sql(
+        """
+        UPDATE {data_schema}.linework
+        SET map_layer = :new_lyr
+        WHERE map_layer = :old_lyr
+        """,
+        dict(new_lyr=layers.paleozoic, old_lyr=layers["tectonic-block"]),
+    )
+
+    _update(db, composite_layers=True)
+
+    assert n_faces(db, map_layer=layers.paleozoic) == 1
+    assert n_faces(db, map_layer=layers["tectonic-block"]) == 0
+
+    # Check that the layer change has propagated to the composite layer
+    assert n_faces(db, map_layer=layers.composite) == 1
+
+
 def get_area(db, *, map_layer=None, source_layer=None):
     return db.run_query(
         """
