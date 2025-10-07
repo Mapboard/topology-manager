@@ -24,7 +24,7 @@ BEGIN
   IF (TG_OP = 'DELETE') THEN
     __geometry := (SELECT ST_Union(ST_Envelope(geometry)) FROM old_table);
     __deleted := (SELECT count(*) FROM old_table);
-    __map_layers := (SELECT array_agg(map_layer) FROM old_table);
+    __map_layers := (SELECT array_agg(DISTINCT map_layer) FROM old_table);
 
   ELSIF (TG_OP = 'UPDATE') THEN
     SELECT ST_Union(ST_Envelope(a.geometry)) INTO __geometry
@@ -34,7 +34,7 @@ BEGIN
       SELECT geometry FROM new_table
     ) AS a;
 
-    __map_layers := (SELECT array_agg(a.map_layer) FROM (
+    __map_layers := (SELECT array_agg(DISTINCT a.map_layer) FROM (
       SELECT map_layer FROM old_table
       UNION
       SELECT map_layer FROM new_table
@@ -42,7 +42,7 @@ BEGIN
     __deleted := (SELECT count(*) FROM old_table);
     __added := (SELECT count(*) FROM new_table);
   ELSIF (TG_OP = 'INSERT') THEN
-    __map_layers := (SELECT array_agg(map_layer) FROM new_table);
+    __map_layers := (SELECT array_agg(DISTINCT map_layer) FROM new_table);
     __geometry := (SELECT ST_Union(ST_Envelope(geometry)) FROM new_table);
     __added := (SELECT count(*) FROM new_table);
   END IF;

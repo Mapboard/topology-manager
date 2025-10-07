@@ -91,10 +91,12 @@ update_faces_with_changed_identity AS (
   SET unit_id = mf.unit_id
   FROM {topo_schema}.map_face mf
   WHERE mfc.source_id = mf.id
-    AND  mfc.map_layer = :composite_layer
+    AND mfc.source_layer = :map_layer
+    AND mfc.map_layer = :composite_layer
     AND mf.map_layer = :map_layer
-    AND mf.unit_id != mfc.unit_id
-     OR (mfc.unit_id IS NULL and mf.unit_id IS NOT NULL)
+    AND mf.unit_id IS NOT NULL
+    AND mf.unit_id != 'none'
+    AND (mf.unit_id != mfc.unit_id OR mfc.unit_id IS NULL)
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features
