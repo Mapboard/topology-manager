@@ -3,7 +3,24 @@ WITH delete_dereferenced_elements AS (
    WHERE map_layer = :composite_layer
      AND source_id IS NULL
 ),
-
+ delete_faces_with_no_identity AS (
+   -- Delete existing features in the composite layer that no longer have an identity
+   DELETE FROM {topo_schema}.map_face f
+     USING {topo_schema}.map_face mf
+     WHERE f.map_layer = :composite_layer
+       AND mf.map_layer = :map_layer
+       AND f.source_id = mf.id
+       AND (mf.unit_id IS NULL OR mf.unit_id = 'none')
+ ),
+ update_faces_with_changed_identity AS (
+   UPDATE {topo_schema}.map_face mfc
+     SET unit_id = mf.unit_id
+     FROM {topo_schema}.map_face mf
+     WHERE mfc.source_id = mf.id
+       AND mfc.map_layer = :composite_layer
+       AND mf.map_layer = :map_layer
+       AND coalesce(mf.unit_id, 'none') != coalesce(mfc.unit_id, 'none')
+ ),
  overlay_primitives AS (
    SELECT
      r.element_id
@@ -85,18 +102,6 @@ feature_summary AS (
   FROM feature_summary0 f
   JOIN {topo_schema}.map_face mf
     ON f.id = mf.id
-),
-update_faces_with_changed_identity AS (
-  UPDATE {topo_schema}.map_face mfc
-  SET unit_id = mf.unit_id
-  FROM {topo_schema}.map_face mf
-  WHERE mfc.source_id = mf.id
-    AND mfc.source_layer = :map_layer
-    AND mfc.map_layer = :composite_layer
-    AND mf.map_layer = :map_layer
-    AND mf.unit_id IS NOT NULL
-    AND mf.unit_id != 'none'
-    AND (mf.unit_id != mfc.unit_id OR mfc.unit_id IS NULL)
 ),
 delete_overlapping_features AS (
   -- Delete existing features in the composite layer that overlap the features
