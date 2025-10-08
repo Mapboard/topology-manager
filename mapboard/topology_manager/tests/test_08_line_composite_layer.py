@@ -140,6 +140,48 @@ def test_lines_in_composite_layer(layers, db):
     )
 
 
+def test_non_topological_lines_in_composite_layer(layers, db):
+    """Test that non topological lines in the composite layer are updated correctly"""
+    # Create a non-topological line type
+    db.run_sql(
+        """
+        INSERT INTO {data_schema}.linework_type (id, topological)
+        VALUES ('non-topological', false);
+        """
+    )
+
+    for lyr in [layers.basement, layers.composite]:
+        add_linework_type_to_layer(db, lyr, "non-topological")
+    # Insert a non-topological line in the basement layer
+
+    insert_line(
+        db,
+        square(2, (0, 0)),
+        type="non-topological",
+        map_layer=layers.basement,
+    )
+
+    _update(db, composite_layers=True)
+    # Check that the line is in the composite layer
+    assert n_lines(db, map_layer=layers.composite) == 1
+    assert n_lines(db, map_layer=layers.basement) == 1
+
+    # Remove the line from the basement layer
+    db.run_query(
+        """
+        DELETE FROM {data_schema}.linework
+        WHERE map_layer = :layer
+        """,
+        dict(layer=layers.basement),
+    )
+
+    _update(db, composite_layers=True)
+
+    # Check that the line is removed from the composite layer
+    assert n_lines(db, map_layer=layers.composite) == 0
+    assert n_lines(db, map_layer=layers.basement) == 0
+
+
 def test_lines_removed_from_composite_layer(layers, db):
     """Test that lines in composite layer are updated correctly"""
     _id = insert_line(
