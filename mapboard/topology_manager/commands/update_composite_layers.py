@@ -34,6 +34,27 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
     # Insert the topmost layer's faces into the composite layer
     reversed_layers = list(reversed(layers))
 
+    # Delete stray lines that have been dereferenced for some reason
+    # Note: this is a slow way of doing things. It would be better solved with composite
+    # lines/faces being stored in a separate table with added constraints.
+    res = (
+        db.run_query(
+            """
+        DELETE FROM {data_schema}.linework l
+        WHERE l.map_layer = :composite_layer
+        AND l.source_id IS null
+        RETURNING l.id;
+        """,
+            dict(composite_layer=map_layer),
+        )
+        .scalars()
+        .all()
+    )
+    log.info(
+        "Deleted %d stray lines from composite layer %d", len(list(res)), map_layer
+    )
+    db.session.commit()
+
     # Get intersecting with dirty map faces...
     overlay_layers = []
     for layer in reversed_layers:
@@ -64,8 +85,23 @@ def _update_composite_layer(db, map_layer: int, layers: list[int]) -> FaceUpdate
         )
         _n_lines = len(ids)
         log.info(f"Inserted %d lines from layer %s", _n_lines, layer)
+
         db.session.commit()
         overlay_layers.append(layer)
+
+    ids = (
+        db.run_query(
+            sql("procedures/update-faces/update-type-change-elements"),
+            dict(
+                composite_layer=map_layer,
+            ),
+        )
+        .scalars()
+        .all()
+    )
+    _n_lines = len(list(ids))
+    log.info(f"Updated %d lines that changed type", _n_lines)
+    db.session.commit()
 
 
 def add_composite_layer_types(db, map_layer: int, layers: list[int]):
