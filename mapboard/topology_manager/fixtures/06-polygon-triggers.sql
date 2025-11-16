@@ -1,10 +1,14 @@
 /** Get the topology for a polygon */
 CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_poly {data_schema}.polygon)
 RETURNS integer AS $$
-SELECT id
-FROM {data_schema}.map_layer l
-WHERE l.id = $1.map_layer
-  AND l.topological;
+SELECT ml.id
+FROM {data_schema}.map_layer ml,
+     {data_schema}.polygon_type pt
+  WHERE ml.id = $1.map_layer
+    AND ml.composited_from IS NULL
+    AND pt.id = $1.type
+    AND coalesce(pt.topological, true)
+    AND ml.topological;
 $$ LANGUAGE SQL;
 
 /*

@@ -3,6 +3,24 @@ WITH delete_dereferenced_elements AS (
    WHERE map_layer = :composite_layer
      AND source_id IS NULL
 ),
+ delete_faces_with_no_identity AS (
+   -- Delete existing features in the composite layer that no longer have an identity
+   DELETE FROM {topo_schema}.map_face f
+     USING {topo_schema}.map_face mf
+     WHERE f.map_layer = :composite_layer
+       AND mf.map_layer = :map_layer
+       AND f.source_id = mf.id
+       AND (mf.unit_id IS NULL OR mf.unit_id = 'none')
+ ),
+ update_faces_with_changed_identity AS (
+   UPDATE {topo_schema}.map_face mfc
+     SET unit_id = mf.unit_id
+     FROM {topo_schema}.map_face mf
+     WHERE mfc.source_id = mf.id
+       AND mfc.map_layer = :composite_layer
+       AND mf.map_layer = :map_layer
+       AND coalesce(mf.unit_id, 'none') != coalesce(mfc.unit_id, 'none')
+ ),
  overlay_primitives AS (
    SELECT
      r.element_id
@@ -29,18 +47,20 @@ composite_faces AS (
   WHERE f.map_layer = :map_layer
     AND f.unit_id IS NOT NULL
     AND f.unit_id != 'none'
-  EXCEPT
-  SELECT -- Omit faces that are already in the composite layer.
-    f.id
-  FROM {topo_schema}.map_face f
-  WHERE f.map_layer = :composite_layer
+    AND f.id NOT IN (
+    SELECT -- Omit faces that are already in the composite layer.
+      source_id
+    FROM {topo_schema}.map_face f1
+      WHERE f1.map_layer = :composite_layer
+        AND f1.source_layer = :map_layer
+  )
   --  AND f.source_layer = ANY(:overlay_layers || ARRAY[:map_layer])
   -- Only consider features that aren't already in the composite layer.
   -- Only consider identified features.
 ),
 layer_features AS (
   /*
-  Faces that are are in the targeted map layer and may be overlapped by an overlay layer.
+  Faces that are in the targeted map layer and may be overlapped by an overlay layer.
 
   This doesn't account for features that might already be captured in the composite layer.
   We may want to filter those out.

@@ -135,7 +135,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_edge_relation_map_layer
+CREATE OR REPLACE TRIGGER update_edge_relation_map_layer
 BEFORE UPDATE
 ON {data_schema}.linework
 FOR EACH ROW
@@ -178,7 +178,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_line_edge_relation
+CREATE OR REPLACE TRIGGER update_line_edge_relation
 BEFORE INSERT OR UPDATE ON {data_schema}.linework
 FOR EACH ROW
 WHEN (NEW.topo IS NOT NULL)

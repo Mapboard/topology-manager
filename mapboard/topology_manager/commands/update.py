@@ -1,6 +1,8 @@
 import asyncio
+import json
 from contextvars import ContextVar
 from time import perf_counter
+from json import loads, JSONDecodeError
 
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from typer import Option
@@ -10,6 +12,7 @@ from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import update_faces
+from .update_composite_layers import update_composite_layers
 from macrostrat.utils.timer import Timer
 
 verbose = True
@@ -26,16 +29,20 @@ def update(
 
     db = get_database()
 
+    kwargs = dict(
+        composite_layers=composite_layers,
+    )
+
     _update(
         db,
         reset=reset,
         fill_holes=fill_holes,
         fix_failed=fix_failed,
-        composite_layers=composite_layers,
+        **kwargs,
     )
 
     if watch:
-        _start_watcher()
+        _start_watcher(**kwargs)
 
 
 def _update(
@@ -62,25 +69,33 @@ def _update(
             reset=reset,
             fill_holes=fill_holes,
             incremental=incremental,
-            composite_layers=composite_layers,
         )
         t1 = perf_counter()
         _print_step("Update faces", t1 - t0)
 
         console.print("Cleaning topology", style="header")
         _clean_topology(db)
-        print_step(timer, "Clean topology")
+
+        t2 = perf_counter()
+        _print_step("Clean topology", t2 - t1)
+
+        if composite_layers:
+            console.print("Updating composite layers", style="header")
+            update_composite_layers(db)
+            t3 = perf_counter()
+            _print_step("Update composite layers", t3 - t2)
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)
 needs_update = ContextVar("needs_update", default=True)
 
 
-def _start_watcher():
+def _start_watcher(**kwargs):
     db = get_database()
 
     def _update_topology():
         if update_in_progress.get():
+            print("Update already in progress, skipping for now")
             needs_update.set(True)
             return
         if not needs_update.get():
@@ -89,9 +104,13 @@ def _start_watcher():
         update_in_progress.set(True)
         needs_update.set(False)
         # Do the update
-        _update(db)
-        db.session.close()
+        console.print("Updating topology", style="header")
+        _update(db, **kwargs)
         update_in_progress.set(False)
+        db.session.close()
+        print("Done updating topology")
+
+    console.print("Watching for changes", style="header")
 
     conn = db.engine.connect()
     # Get a raw connection to listen for notifications
@@ -104,12 +123,20 @@ def _start_watcher():
     def handle_notify():
         conn.poll()
         for notify in conn.notifies:
-            print(notify.payload)
-            needs_update.set(True)
-            _update_topology()
-            if needs_update.get():
+            should_update = False
+            try:
+                data = loads(notify.payload)
+                print(data)
+                # Ignore changes to the composite layers
+                if not data.get("composite", True) and len(data["map_layers"]) > 0:
+                    should_update = True
+            except JSONDecodeError:
+                print("Failed to decode JSON from notify payload")
+                should_update = True
+            if should_update:
+                needs_update.set(True)
                 _update_topology()
-        conn.notifies.clear()
+            conn.notifies.clear()
 
     loop = asyncio.get_event_loop()
     loop.add_reader(conn, handle_notify)
