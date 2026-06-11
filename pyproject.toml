@@ -46,3 +46,8 @@ namespace = true
 [build-system]
 requires = ["uv_build>=0.11.1,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+# Ensure that tests only load from the local directory
+# (helps when this is included as a submodule)
+addopts = "--confcutdir=."
