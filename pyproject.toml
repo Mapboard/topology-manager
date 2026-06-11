@@ -1,32 +1,48 @@
-[tool.poetry]
+[project]
 name = "mapboard.topology-manager"
-version = "4.0.0"
+version = "5.0.0"
 description = "A PostGIS-based iterative system for building geologic maps"
-authors = ["Daven Quinn <code@davenquinn.com>"]
-license = "Apache"
+authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
+requires-python = ">=3.10,<4"
 readme = "README.md"
-packages = [{ include = "mapboard" }]
+license = "Apache-2.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "macrostrat.database>=3.5.0,<4",
+    "macrostrat.utils>=1.2.1,<2",
+    "typer>=0.9.0,<0.10",
+    "rich>=13.7.1,<14",
+    "python-dotenv>=1.0.1,<2",
+    "pytest-profiling>=1.7.0,<2",
+    "addict>=2.4.0,<3",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-"macrostrat.database" = "^3.5.0"
-"macrostrat.utils" = "^1.2.1"
-typer = "^0.9.0"
-rich = "^13.7.1"
-python-dotenv = "^1.0.1"
-pytest-profiling = "^1.7.0"
-addict = "^2.4.0"
-
-
-[tool.poetry.group.dev.dependencies]
-isort = "^5.13.2"
-black = "^24.3.0"
-pytest = "^8.1.1"
-shapely = "^2.0.3"
-
-[tool.poetry.scripts]
+[project.scripts]
 topo = "mapboard.topology_manager.cli:app"
 
+[dependency-groups]
+dev = [
+    "isort>=5.13.2,<6",
+    "black>=24.3.0,<25",
+    "pytest>=8.1.1,<9",
+    "shapely>=2.0.3,<3",
+]
+
+[tool.uv]
+default-groups = "all"
+
+[tool.uv.build-backend]
+module-name = ["mapboard"]
+module-root = ""
+namespace = true
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.11.1,<0.12.0"]
+build-backend = "uv_build"
