@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 
 root = Path(__file__).parent
 
@@ -31,8 +31,9 @@ def import_csv(db, csv_path: Path, tablename, schema=None):
     )
     stmt = SQL(stmt).format(tablename=tablename)
 
-    with open(csv_path, "r") as f:
-        conn = db.engine.raw_connection()
-        cursor = conn.cursor()
-        cursor.copy_expert(stmt, f)
-        conn.commit()
+    conn = db.engine.raw_connection()
+    with conn.cursor() as cursor:
+        with cursor.copy(stmt) as copy:
+            with open(csv_path, "r") as f:
+                for line in f:
+                    copy.write(line)

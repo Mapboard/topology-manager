@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from macrostrat.database import Database as _Database
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 from sqlalchemy.sql.expression import TextClause, text
 
 from sqlalchemy.dialects.postgresql import base as pg
