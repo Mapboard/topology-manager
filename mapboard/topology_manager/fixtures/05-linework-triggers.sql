@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=:data_schema_name
+WHERE schema_name={data_schema_name_literal}
   AND table_name='linework'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -41,7 +41,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__topo_precision()
 RETURNS numeric AS $$
 SELECT precision::numeric
   FROM topology.topology
-  WHERE name=  :topo_name ;
+  WHERE name={topo_name_literal} ;
 $$ LANGUAGE SQL IMMUTABLE;
 
 /*
@@ -184,7 +184,7 @@ BEGIN
     SET
       topo = topology.toTopoGeom(
         line.geometry,
-        :topo_name,
+        {topo_name_literal},
         {topo_schema}.__linework_layer_id(),
         {topo_schema}.__topo_precision()
       ),

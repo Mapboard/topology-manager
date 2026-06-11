@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=:topo_name
+WHERE schema_name={topo_name_literal}
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -22,10 +22,10 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name=:topo_name
+      WHERE schema_name={topo_name_literal}
       AND table_name='contact';
 
-  topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom, {topo_name_literal} , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added geometry';
   RETURN topo;
 EXCEPTION WHEN others THEN
@@ -35,6 +35,8 @@ EXCEPTION WHEN others THEN
 END;
 $$
 LANGUAGE 'plpgsql' IMMUTABLE;
+
+
 
 CREATE OR REPLACE FUNCTION {topo_schema}.addMapFace(geom geometry, tolerance numeric = 1)
 RETURNS topology.topogeometry AS
@@ -46,10 +48,10 @@ BEGIN
   SELECT l.layer_id
       INTO layer_id
       FROM topology.layer l
-      WHERE schema_name=  :topo_name
+      WHERE schema_name={topo_name_literal}
       AND table_name='map_face';
 
-  topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
+  topo := topology.toTopoGeom(geom, {topo_name_literal} , layer_id, tolerance); -- 10 cm tolerance
   RAISE NOTICE 'Added map face';
   RETURN topo;
 EXCEPTION WHEN others THEN
@@ -69,17 +71,17 @@ len int;
 outnode int;
 BEGIN
   SELECT
-    abs((GetNodeEdges(  :topo_name , node_id)).edge) edge_id
+    abs((GetNodeEdges({topo_name_literal} , node_id)).edge) edge_id
   INTO edge_id
   FROM {topo_schema}.edge;
 
   len := array_length(edge_id);
 
   IF len = 2 THEN
-    outnode := ST_ModEdgeHeal(:topo_name ,edge_id[1], edge_id[2]);
+    outnode := ST_ModEdgeHeal({topo_name_literal},edge_id[1], edge_id[2]);
     RETURN true;
   ELSIF len = 0 THEN
-    outnode := ST_RemIsoNode(:topo_name , node_id);
+    outnode := ST_RemIsoNode({topo_name_literal} , node_id);
     RETURN true;
   END IF;
   RETURN false;
@@ -95,7 +97,7 @@ $$
 DECLARE
 fid integer;
 BEGIN
-  RETURN ST_RemEdgeModFace(:topo_name , eid);
+  RETURN ST_RemEdgeModFace({topo_name_literal} , eid);
 EXCEPTION WHEN others THEN
   RAISE NOTICE 'Error code: %', SQLSTATE;
   RAISE NOTICE 'Error message: %', SQLERRM;

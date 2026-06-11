@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW {topo_schema}.face_data AS
 WITH fg AS (
 SELECT
 face_id,
-topology.ST_GetFaceGeometry(:topo_name , face_id) geometry
+topology.ST_GetFaceGeometry({topo_name_literal} , face_id) geometry
 FROM {topo_schema}.face
 WHERE face_id <> 0
 )
@@ -74,8 +74,8 @@ LEFT JOIN {data_schema}.map_layer l
 WHERE l.topological;
 
 SELECT DISTINCT ON (mf.id) *
-FROM map_topology.map_face mf
-JOIN map_topology.relation r
+FROM {topo_schema}.map_face mf
+JOIN {topo_schema}.relation r
   ON (mf.topo).layer_id = r.layer_id
  AND (mf.topo).id = r.topogeo_id
  AND r.element_type = 3;

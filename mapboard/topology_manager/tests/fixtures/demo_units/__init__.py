@@ -15,10 +15,11 @@ def create_demo_units(db):
             f"tmp_{type}_type",
         )
 
+
     db.run_sql(root / "procedures" / "03-add-to-map.sql")
 
 
-def import_csv(db, csv_path: Path, tablename, schema=None):
+def import_csv(db, csv_path: Path, tablename, schema=None, check=True):
     """Import CSV data into the database"""
 
     if schema is None:
@@ -31,9 +32,15 @@ def import_csv(db, csv_path: Path, tablename, schema=None):
     )
     stmt = SQL(stmt).format(tablename=tablename)
 
-    conn = db.engine.raw_connection()
-    with conn.cursor() as cursor:
-        with cursor.copy(stmt) as copy:
+    # Use an explicit transaction so imported rows are committed.
+    with db.engine.begin() as conn:
+        _conn = conn.connection.dbapi_connection
+        with _conn.cursor() as cursor:
             with open(csv_path, "r") as f:
-                for line in f:
-                    copy.write(line)
+                with cursor.copy(stmt) as copy:
+                    copy.write(f.read())
+
+    if check:
+        # Verify that COPY inserted at least one row.
+        res = db.run_query("SELECT COUNT(*) FROM {tablename}", dict(tablename=tablename))
+        assert res.scalar() > 0

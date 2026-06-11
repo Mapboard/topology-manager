@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from macrostrat.database import Database as _Database
-from psycopg.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier, Literal
 from sqlalchemy.sql.expression import TextClause, text
 
 from sqlalchemy.dialects.postgresql import base as pg
@@ -42,8 +42,11 @@ class Database(_Database):
             "index_prefix": SQL(f"{data_schema}_"),
             "topo_prefix": SQL(f"{topo_schema}_"),
             "topo_name": topo_schema,
+            "topo_name_literal": Literal(topo_schema),
             "data_schema_name": data_schema,
+            "data_schema_name_literal": Literal(data_schema),
             "srid": srid,
+            "srid_literal": Literal(srid),
             "tolerance": tolerance,
         }
 

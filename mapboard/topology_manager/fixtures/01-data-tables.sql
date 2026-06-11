@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS {data_schema}.map_layer_polygon_type (
 /* Skeletal table structure needed to support linework for the map */
 CREATE TABLE IF NOT EXISTS {data_schema}.linework (
   id            serial PRIMARY KEY,
-  geometry      public.geometry(MultiLineString,:srid) NOT NULL,
+  geometry      public.geometry(MultiLineString, {srid_literal}) NOT NULL,
   type          text NOT NULL REFERENCES {data_schema}.linework_type(id) ON UPDATE CASCADE,
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
@@ -128,7 +128,7 @@ CREATE INDEX IF NOT EXISTS {index_prefix}_linework_geometry_idx
 /* Skeletal table structure needed to support polygon for the map */
 CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
   id            serial PRIMARY KEY,
-  geometry      public.geometry(MultiPolygon, :srid) NOT NULL,
+  geometry      public.geometry(MultiPolygon, {srid_literal}) NOT NULL,
   type          text NOT NULL REFERENCES {data_schema}.polygon_type(id) ON UPDATE CASCADE,
   map_layer     integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON UPDATE CASCADE,
   created       timestamp without time zone DEFAULT now(),
