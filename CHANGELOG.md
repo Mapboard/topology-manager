@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## `[5.0.0]` - 2026-06-11
+
+- Switch to UV
+- Incorporate composite map layers
+
 ## `[4.0.0]` - 2024-03
 
 This is a major rewrite of the application to refocus on the core task of

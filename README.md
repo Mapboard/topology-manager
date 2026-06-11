@@ -95,8 +95,8 @@ but the project is currently tested on PostgreSQL 14 and greater.
 
 ### Local installation
 
-1. Install Poetry with `pip install poetry`.
-2. Install Python dependencies with `poetry install`.
+1. [Install UV](https://docs.astral.sh/uv/getting-started/installation/) using the instructions for your platform.
+2. Install Python dependencies with `uv sync`.
 3. Create a new PostgreSQL database to hold the mapping data (or you can specify
    an existing one!).
 4. Create an `.env` file to configure the application using the
@@ -107,6 +107,12 @@ but the project is currently tested on PostgreSQL 14 and greater.
 6. Create tables: `topo create-tables`.
 <!-- 7. Optionally, create demo units and topologies:
    `geologic-map create-demo-units`. -->
+
+### Testing
+
+Using the `TOPO_TEST_DATABASE_URL` environment variable, you can run tests against a local database.
+
+Run `uv run pytest` to run the tests.
 
 ### Docker installation
 
