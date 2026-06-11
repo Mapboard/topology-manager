@@ -3,7 +3,8 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from ..commands.update import _update
-from .helpers import n_faces
+from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry, n_edge_relations
+from shapely.geometry import LineString
 
 proc = Path(__file__).parent / "fixtures" / "procedures"
 
@@ -27,20 +28,6 @@ def test_demo_units(db):
     assert "upper-omkyk" in ids
 
 
-def insert_line(db, geometry, type="bedrock"):
-    """Insert a line"""
-    sql = proc / "insert-feature.sql"
-    return db.run_query(
-        sql,
-        {
-            "type": "bedrock",
-            "table": Identifier("linework"),
-            "map_layer": "bedrock",
-            "geometry": geometry,
-        },
-    ).one()
-
-
 class TestTopology:
     def test_basic_insert(self, db):
         """Test that we can insert a record"""
@@ -50,13 +37,11 @@ class TestTopology:
 
     def test_linework_insert(self, db):
         """Test that we can insert a linework record"""
-        res = insert_line(db, "SRID=32612;LINESTRING(0 0, 5 0)")
-        assert res.type == "bedrock"
+        insert_line(db, ((0, 0), (5, 0)), type="bedrock", map_layer="bedrock")
 
     def test_insert_triangle(self, db):
         """Insert a connecting line, creating a triangle"""
-        res = insert_line(db, "SRID=32612;LINESTRING(5 0, 3 4, 0 0)")
-        assert res.type == "bedrock"
+        insert_line(db, ((5, 0), (3, 4), (0, 0)), type="bedrock", map_layer="bedrock")
 
     def test_insert_polygon(self, db):
         """Insert a polygon identifying unit within the triangle"""
@@ -76,6 +61,8 @@ class TestTopology:
         """Solve topology and check that we have a map face"""
         _update(db)
         assert n_faces(db) == 1
+
+        assert n_edge_relations(db) > 0
 
     def test_change_line_type(self, db):
         """Change a line type and check that the map face is NOT removed
@@ -134,3 +121,67 @@ def test_isolation(db):
 #     _update(db)
 #     res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
 #     assert len(res) == 0
+
+def test_create_and_delete_line(db):
+    """Test that the topology returns to a clean state after deleting a line"""
+    bedrock_id = map_layer_id(db, "bedrock")
+    line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
+
+    _update(db)
+
+    assert n_faces(db) == 1
+
+    # Delete the line
+    db.run_query(
+        "DELETE FROM {data_schema}.linework WHERE id = :id",
+        {"id": line_id},
+    )
+
+    assert db.run_query("SELECT count(*) FROM {data_schema}.linework").scalar() == 0
+
+    _update(db)
+    assert n_faces(db) == 0
+
+
+def test_update_line_geometry(db):
+    # We want to make sure that line changes are recorded automatically
+    bedrock_id = map_layer_id(db, "bedrock")
+    line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
+
+    _update(db)
+    assert n_faces(db) == 1
+
+    assert get_geometry_hash(db, line_id) is not None
+
+    _update(db)
+
+    # Update the geometry
+    db.run_query(
+        "UPDATE {data_schema}.linework SET geometry = :geom WHERE id = :id",
+        {"id": line_id, "geom": prepare_geometry(LineString(square(2, (0, 0), )), srid=32612)},
+    )
+
+    assert get_geometry_hash(db, line_id) is None
+
+    _update(db)
+
+    assert n_faces(db) == 1
+
+    assert get_geometry_hash(db, line_id) is not None
+
+    # Delete the line
+    db.run_query(
+        "DELETE FROM {data_schema}.linework WHERE id = :id",
+        {"id": line_id},
+    )
+
+    _update(db)
+    assert n_faces(db) == 0
+
+
+def get_geometry_hash(db, line_id):
+    # Check that the geometry_hash is updated
+    return db.run_query(
+        "SELECT geometry_hash FROM {data_schema}.linework WHERE id = :id",
+        {"id": line_id},
+    ).scalar()

@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
-WHERE schema_name=:topo_name 
+WHERE schema_name=:topo_name
   AND table_name='map_face'
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
@@ -22,7 +22,7 @@ BEGIN
   SELECT layer_id
       INTO layer_id
       FROM topology.layer
-      WHERE schema_name=:topo_name 
+      WHERE schema_name=:topo_name
       AND table_name='contact';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -46,7 +46,7 @@ BEGIN
   SELECT l.layer_id
       INTO layer_id
       FROM topology.layer l
-      WHERE schema_name=  :topo_name 
+      WHERE schema_name=  :topo_name
       AND table_name='map_face';
 
   topo := topology.toTopoGeom(geom, :topo_name , layer_id, tolerance); -- 10 cm tolerance
@@ -118,12 +118,15 @@ SELECT
   p.type,
   p.geometry
 FROM {data_schema}.polygon p
-JOIN {data_schema}.polygon_type t
-  ON p.type = t.id
-JOIN {data_schema}.map_layer l
-  ON p.map_layer = l.id
-WHERE l.id = _map_layer
-  AND l.topological
+JOIN {data_schema}.map_layer ml
+  ON p.map_layer = ml.id
+JOIN {data_schema}.map_layer_polygon_type mlpt
+  ON mlpt.type = p.type
+ AND mlpt.map_layer = ml.id
+JOIN {data_schema}.polygon_type pt
+  ON pt.id = mlpt.type
+WHERE ml.id = _map_layer
+  AND coalesce(pt.topological, ml.topological)
   AND ST_Contains(face, p.geometry)
 )
 -- Assign face that has the greatest area of polygons
@@ -163,4 +166,52 @@ WHERE element_id = $1
   AND element_type = 3
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
   AND f.map_layer = $2;
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION {topo_schema}.parent_map_layers(
+  _map_layer integer,
+  _topological boolean DEFAULT true
+)
+RETURNS setof integer AS $$
+WITH RECURSIVE r AS (
+SELECT
+  id,
+  parent
+FROM {data_schema}.map_layer
+WHERE id = _map_layer
+  AND CASE WHEN _topological THEN topological ELSE true END
+UNION
+SELECT
+  ml.id,
+  ml.parent
+FROM {data_schema}.map_layer ml
+JOIN r
+  ON ml.id = r.parent
+  AND CASE WHEN _topological THEN ml.topological ELSE true END
+)
+SELECT id FROM r;
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION {topo_schema}.child_map_layers(
+  _map_layer integer,
+  _topological boolean DEFAULT true
+)
+RETURNS setof integer AS $$
+WITH RECURSIVE r AS (
+SELECT
+  id,
+  parent
+FROM {data_schema}.map_layer
+WHERE id = _map_layer
+  AND CASE WHEN _topological THEN topological ELSE true END
+UNION
+SELECT
+  ml.id,
+  ml.parent
+FROM {data_schema}.map_layer ml
+JOIN r
+  ON ml.parent = r.id
+  AND CASE WHEN _topological THEN ml.topological ELSE true END
+)
+SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;

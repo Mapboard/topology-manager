@@ -6,17 +6,26 @@ to `map_topology.map_face`
 /* Util functions */
 
 /** Get the topology for a line */
-CREATE OR REPLACE FUNCTION {topo_schema}.line_topology(_line {data_schema}.linework)
+CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
 RETURNS integer AS $$
-SELECT id
-FROM {data_schema}.map_layer l
-WHERE l.id = $1.map_layer
-  AND l.topological;
+SELECT ml.id
+FROM {data_schema}.map_layer ml,
+     {data_schema}.linework_type lt
+WHERE ml.id = $1.map_layer
+  AND ml.composited_from IS NULL
+  AND lt.id = $1.type
+  AND coalesce(lt.topological, true)
+  AND ml.topological;
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
+RETURNS uuid AS $$
+SELECT md5(ST_AsBinary(geom))::uuid;
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(_line {data_schema}.linework)
 RETURNS uuid AS $$
-SELECT md5(ST_AsBinary(_line.geometry))::uuid;
+SELECT {topo_schema}.hash_geometry(_line.geometry);
 $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
@@ -45,11 +54,8 @@ CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
 RETURNS void AS $$
 DECLARE
   __faces integer[];
-  __topology integer;
 BEGIN
-  __topology := {topo_schema}.line_topology(line);
-
-  IF (line.topo IS null OR __topology IS null) THEN
+  IF (line.topo IS null) THEN
     RETURN;
   END IF;
 
@@ -59,7 +65,8 @@ BEGIN
   ),
   faces AS (
   SELECT
-    left_face, right_face
+    left_face,
+    right_face
   FROM edges e
   JOIN {topo_schema}.edge_data e1
     ON e.edge_id = e1.edge_id
@@ -73,10 +80,15 @@ BEGIN
   INTO __faces
   FROM faces1;
 
+  WITH ml AS (
+    SELECT {topo_schema}.child_map_layers(line.map_layer) id
+  )
   INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
-    __topology
+    ml.id
+  FROM ml
+  WHERE ml.id IS NOT NULL
   ON CONFLICT DO NOTHING;
 
   RAISE NOTICE 'Marking faces %', __faces;
@@ -98,12 +110,11 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__dest_topology := {topo_schema}.line_topology(NEW);
+__dest_topology := {topo_schema}.get_topological_map_layer(NEW);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
-  DELETE FROM {topo_schema}.__edge_relation
-  WHERE line_id = NEW.id;
+  PERFORM {topo_schema}.mark_surrounding_faces(OLD);
 
   RETURN NEW;
 END IF;
@@ -141,46 +152,13 @@ IF (
      if it doesn't we'll have to reset
   */
   (OLD.topo).id = (NEW.topo).id AND
-  {topo_schema}.line_topology(OLD) = __dest_topology
+  {topo_schema}.get_topological_map_layer(OLD) = __dest_topology
 ) THEN
   /* Discards cases where we aren't changing anything relevant */
   RETURN NEW;
 END IF;
-/* We are new working with only changed topogeometries */
+/* We are now working with only cases where the topogeometry was changed */
 
-SELECT array_agg(elem)
-INTO __edges
-FROM (SELECT (topology.GetTopoGeomElements(NEW.topo))[1] elem) AS a;
-
-/* Delete unreferenced elements from topo tracker */
-DELETE FROM {topo_schema}.__edge_relation
-WHERE line_id IN (OLD.id)
-  AND NOT(edge_id = ANY(__edges));
-
-/* Add new objects into linework tracker */
-INSERT INTO {topo_schema}.__edge_relation
-  (edge_id, map_layer, line_id, type)
-VALUES (
-  unnest(__edges),
-  __dest_topology,
-  NEW.id,
-  NEW.type
-)
-ON CONFLICT (edge_id, map_layer) DO UPDATE SET
-  line_id = NEW.id,
-  type = NEW.type;
-
-/* This is probably where we should update map faces for referential
-   integrity
-
-Envisioned series of steps:
-1. Find overlapping map faces
-2. Join all of the overlapping faces
-3. Split faces on this new
-
-*/
-
-/* We can fall back to this if we don't have a handled case for now */
 PERFORM {topo_schema}.mark_surrounding_faces(OLD);
 PERFORM {topo_schema}.mark_surrounding_faces(NEW);
 RETURN NEW;

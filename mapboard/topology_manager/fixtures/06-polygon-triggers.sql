@@ -1,10 +1,14 @@
 /** Get the topology for a polygon */
-CREATE OR REPLACE FUNCTION {topo_schema}.polygon_topology(_poly {data_schema}.polygon)
+CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_poly {data_schema}.polygon)
 RETURNS integer AS $$
-SELECT id
-FROM {data_schema}.map_layer l
-WHERE l.id = $1.map_layer
-  AND l.topological;
+SELECT ml.id
+FROM {data_schema}.map_layer ml,
+     {data_schema}.polygon_type pt
+  WHERE ml.id = $1.map_layer
+    AND ml.composited_from IS NULL
+    AND pt.id = $1.type
+    AND coalesce(pt.topological, true)
+    AND ml.topological;
 $$ LANGUAGE SQL;
 
 /*
@@ -20,29 +24,51 @@ DECLARE
   __topology integer;
 BEGIN
 
+affected_area := OLD.geometry;
 IF (TG_OP = 'DELETE') THEN
-  affected_area := OLD.geometry;
-  __topology := {topo_schema}.polygon_topology(OLD);
-ELSIF (TG_OP = 'INSERT') THEN
-  affected_area := NEW.geometry;
-  __topology := {topo_schema}.polygon_topology(NEW);
-ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
-  affected_area := ST_Union(OLD.geometry, NEW.geometry);
-  __topology := {topo_schema}.polygon_topology(NEW);
+  __topology := {topo_schema}.get_topological_map_layer(OLD);
+ELSE
+  __topology := {topo_schema}.get_topological_map_layer(NEW);
 END IF;
 
--- TODO: there might be an issue with topology here...
+-- Handle cases where we are removing the polygon from a topological map layer
+IF __topology IS NULL AND (TG_OP = 'UPDATE') THEN
+  __topology := {topo_schema}.get_topological_map_layer(OLD);
+END IF;
+
+-- This polygon is not part of a topological map layer
+IF __topology IS NULL THEN
+  RETURN null;
+END IF;
+
+IF (TG_OP = 'INSERT') THEN
+  affected_area := NEW.geometry;
+ELSIF (NOT ST_Equals(OLD.geometry, NEW.geometry)) THEN
+  affected_area := ST_Union(OLD.geometry, NEW.geometry);
+END IF;
+
+/** Now we have the affected area, we can update map faces predictively based on it...  */
+
+/** TODO: there might be an issue here because we
+seem to be filtering faces to update only based
+on the affected area, not also the map_layer being
+updated.
+
+Using source_layer also handles composite layers.
+*/
 UPDATE {topo_schema}.map_face mf
 SET unit_id = {topo_schema}.unitForArea(geometry, mf.map_layer)
-WHERE ST_Intersects(affected_area, geometry);
+WHERE ST_Intersects(affected_area, geometry)
+  AND (mf.map_layer = __topology OR mf.source_layer = __topology);
+
 RETURN null;
 END;
 $$ LANGUAGE plpgsql;
 
 /* Create the actual trigger */
-DROP TRIGGER IF EXISTS topo_polygon_update_trigger
+DROP TRIGGER IF EXISTS polygon_update_trigger
   ON {data_schema}.polygon;
-CREATE TRIGGER topo_polygon_update_trigger
+CREATE TRIGGER polygon_update_trigger
 AFTER INSERT OR UPDATE OR DELETE ON {data_schema}.polygon
 FOR EACH ROW
 EXECUTE PROCEDURE {topo_schema}.polygon_update_trigger();

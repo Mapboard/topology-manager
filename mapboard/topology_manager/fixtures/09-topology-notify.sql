@@ -12,35 +12,79 @@ __deleted integer;
 __added integer;
 __geometry geometry;
 __envelope geometry;
+__editable boolean;
+__composite boolean;
+__map_layers integer[];
+__affected_layers integer[];
 BEGIN
 
   __added := 0;
   __deleted := 0;
+  __affected_layers := ARRAY[]::integer[];
   IF (TG_OP = 'DELETE') THEN
-    __geometry := (SELECT ST_Union(geometry) FROM old_table);
+    __geometry := (SELECT ST_Union(ST_Envelope(geometry)) FROM old_table);
     __deleted := (SELECT count(*) FROM old_table);
+    __map_layers := (SELECT array_agg(DISTINCT map_layer) FROM old_table);
+
   ELSIF (TG_OP = 'UPDATE') THEN
-    SELECT ST_Union(a.geometry) INTO __geometry
+    SELECT ST_Union(ST_Envelope(a.geometry)) INTO __geometry
     FROM (
       SELECT geometry FROM old_table
       UNION
       SELECT geometry FROM new_table
     ) AS a;
+
+    __map_layers := (SELECT array_agg(DISTINCT a.map_layer) FROM (
+      SELECT map_layer FROM old_table
+      UNION
+      SELECT map_layer FROM new_table
+    ) AS a);
     __deleted := (SELECT count(*) FROM old_table);
     __added := (SELECT count(*) FROM new_table);
   ELSIF (TG_OP = 'INSERT') THEN
-    __geometry := (SELECT ST_Union(geometry) FROM new_table);
+    __map_layers := (SELECT array_agg(DISTINCT map_layer) FROM new_table);
+    __geometry := (SELECT ST_Union(ST_Envelope(geometry)) FROM new_table);
     __added := (SELECT count(*) FROM new_table);
   END IF;
+
+  -- Get the child map layers for each map layer
+  WITH ml AS (
+    SELECT {topo_schema}.child_map_layers(unnest(__map_layers), true) AS id
+  ),
+  distinct_layers AS (
+    SELECT DISTINCT id FROM ml
+  )
+  SELECT array_agg(id)
+  INTO __affected_layers
+  FROM distinct_layers
+  WHERE id IS NOT NULL;
+
+  -- If any of map layers are editable, set the editable flag
+  SELECT bool_or(editable)
+  INTO __editable
+  FROM {data_schema}.map_layer
+  WHERE id = ANY(__map_layers);
+
+  -- If all of the map layers are composite, set the composite flag
+  SELECT bool_and(composited_from IS NOT NULL)
+  INTO __composite
+  FROM {data_schema}.map_layer
+  WHERE id = ANY(__map_layers);
 
   __envelope := ST_Envelope(__geometry);
 
   __payload := json_build_object(
-    'table', 'map_face',
+    'schema', TG_TABLE_SCHEMA,
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
     'envelope', ST_AsGeoJSON(__envelope)::jsonb,
     'n_deleted', __deleted,
     'n_created', __added,
-    'n_faces', (SELECT count(*) FROM {topo_schema}.map_face)
+    'n_faces', (SELECT count(*) FROM {topo_schema}.map_face),
+    'map_layers', __map_layers,
+    'affected_layers', __affected_layers,
+    'editable', __editable,
+    'composite', __composite
   );
 
   PERFORM pg_notify('topology', __payload);
