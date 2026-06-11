@@ -1,7 +1,7 @@
 import warnings
 from threading import Timer
 
-from black.trans import defaultdict
+from collections import defaultdict
 from typer import Option, Argument
 from time import perf_counter
 from macrostrat.database import Database
