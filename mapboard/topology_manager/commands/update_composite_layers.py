@@ -1,6 +1,6 @@
 from .update_faces.helpers import FaceUpdateResult, log
 from ..database import sql
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from functools import lru_cache
 
 

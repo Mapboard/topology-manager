@@ -1,6 +1,6 @@
 from ..database import get_database, sql
 from ..utilities import console
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)

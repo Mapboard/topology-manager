@@ -1,10 +1,8 @@
 import asyncio
-import json
 from contextvars import ContextVar
 from time import perf_counter
 from json import loads, JSONDecodeError
 
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from typer import Option
 
 from ..database import Database, get_database
@@ -116,10 +114,7 @@ def _start_watcher(**kwargs):
     # Get a raw driver connection to listen for notifications
     pooled_conn = sa_conn.connection
     conn = getattr(pooled_conn, "driver_connection", pooled_conn)
-    if hasattr(conn, "autocommit"):
-        conn.autocommit = True
-    else:
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    conn.autocommit = True
 
     cursor = conn.cursor()
     cursor.execute("LISTEN events;")
