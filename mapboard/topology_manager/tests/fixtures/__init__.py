@@ -3,6 +3,7 @@ import os
 from macrostrat.database.utils import temp_database
 from pytest import fixture
 from macrostrat.utils import get_logger
+from psycopg.sql import Identifier
 
 from ...commands.create_tables import _create_tables
 from ...database import Database
@@ -18,7 +19,7 @@ def empty_db(pytestconfig):
     # Check if we are dropping the database after tests
     drop = not pytestconfig.getoption("--no-drop")
 
-    with temp_database(testing_db, drop=drop, ensure_empty=True) as engine:
+    with temp_database(testing_db, drop=False, ensure_empty=True) as engine:
         os.environ["MAPBOARD_DATABASE_URL"] = str(engine.url)
         os.environ["MAPBOARD_DATA_SCHEMA"] = "test_map_data"
         os.environ["MAPBOARD_TOPO_SCHEMA"] = "test_topology"
@@ -27,7 +28,13 @@ def empty_db(pytestconfig):
         database = Database(engine.url)
         database.set_active()
         yield database
-
+        if drop:
+            # Drop the database with force
+            url = engine.url
+            database_name = url.database
+            url.set(database=None)
+            user_db = Database(url)
+            user_db.run_sql("DROP DATABASE {database} WITH (FORCE)", dict(database=Identifier(database_name)))
 
 @fixture(scope="session")
 def base_db(empty_db):
@@ -54,4 +61,3 @@ def db(base_db, pytestconfig):
         yield base_db
         if rollback == "always":
             log.info("Rolling back database transaction")
-    base_db.session.close()
