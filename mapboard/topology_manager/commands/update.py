@@ -112,17 +112,33 @@ def _start_watcher(**kwargs):
 
     console.print("Watching for changes", style="header")
 
-    conn = db.engine.connect()
-    # Get a raw connection to listen for notifications
-    conn = conn.connection
-    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    sa_conn = db.engine.connect()
+    # Get a raw driver connection to listen for notifications
+    pooled_conn = sa_conn.connection
+    conn = getattr(pooled_conn, "driver_connection", pooled_conn)
+    if hasattr(conn, "autocommit"):
+        conn.autocommit = True
+    else:
+        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
 
     cursor = conn.cursor()
     cursor.execute("LISTEN events;")
 
-    def handle_notify():
+    def _drain_notifies():
+        notifies = getattr(conn, "notifies", [])
+        if callable(notifies):
+            while True:
+                notify = next(conn.notifies(timeout=0, stop_after=1), None)
+                if notify is None:
+                    break
+                yield notify
+            return
         conn.poll()
-        for notify in conn.notifies:
+        yield from notifies
+        conn.notifies.clear()
+
+    def handle_notify():
+        for notify in _drain_notifies():
             should_update = False
             try:
                 data = loads(notify.payload)
@@ -136,11 +152,13 @@ def _start_watcher(**kwargs):
             if should_update:
                 needs_update.set(True)
                 _update_topology()
-            conn.notifies.clear()
 
     loop = asyncio.get_event_loop()
     loop.add_reader(conn, handle_notify)
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    finally:
+        sa_conn.close()
 
 
 def print_step(timer, step_name=None):

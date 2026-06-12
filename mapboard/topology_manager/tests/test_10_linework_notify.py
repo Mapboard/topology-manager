@@ -41,7 +41,16 @@ def listen_notify(engine, channel: str, timeout: float = 2.0):
 
         log.info("Listening for notifications on channel: %s", channel)
 
-        return next(conn.notifies(timeout=timeout, stop_after=1), None)
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            notification = next(conn.notifies(timeout=remaining, stop_after=1), None)
+            if notification is None:
+                return None
+            if notification.channel == channel:
+                return notification
 
 def test_listen_notify_psycopg(empty_db):
     channel = "test_channel"
