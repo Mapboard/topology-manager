@@ -34,7 +34,6 @@ def base_db(empty_db):
     _create_tables(empty_db)
     create_demo_units(empty_db)
     yield empty_db
-    empty_db.engine.dispose()
 
 
 @fixture(scope="class")
