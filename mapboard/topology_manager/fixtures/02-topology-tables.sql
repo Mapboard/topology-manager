@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.map_face (
   -- TODO: rename unit_id to type
   unit_id   text    REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE,
   map_layer integer REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE,
-  geometry  geometry(MultiPolygon, :srid),
+  geometry  geometry(MultiPolygon, {srid_literal}),
   -- Extensions for composite layer
   source_id integer REFERENCES {topo_schema}.map_face (id) ON DELETE CASCADE,
   source_layer integer REFERENCES {data_schema}.map_layer (id) ON DELETE CASCADE

@@ -7,12 +7,12 @@ from json import loads
 import pytest
 from .helpers import square, insert_line, map_layer_id
 from macrostrat.utils import get_logger
+from sqlalchemy import text
 
 
 import threading
 import time
-import psycopg2
-import select
+from select import select
 
 log = get_logger(__name__)
 
@@ -21,43 +21,46 @@ def send_notify(engine, channel: str, message: str):
     """Sends a NOTIFY command after a short delay to ensure listener is ready."""
     time.sleep(0.5)  # Give listener time to start
     log.info("Started notifier thread for channel: %s", channel)
-    conn = engine.connect().connection
-    with conn.cursor() as cur:
-        cur.execute(f"NOTIFY {channel}, %s;", (message,))
-        log.info("Sent notification on channel: %s with message: %s", channel, message)
+    with engine.connect() as conn:
+        conn.execute(
+            text("SELECT pg_notify(:channel, :message)"),
+            {"channel": channel, "message": message},
+        )
         conn.commit()
 
 
 def listen_notify(engine, channel: str, timeout: float = 2.0):
     """Listens for a NOTIFY on the given channel."""
     # Connect to the database and set isolation level to autocommit
-    conn = engine.connect().connection
-    conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-    with conn.cursor() as cur:
-        cur.execute(f"LISTEN {channel};")
+    with engine.connect() as sa_conn:
+        pooled_conn = sa_conn.connection
+        conn = getattr(pooled_conn, "driver_connection", pooled_conn)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(f"LISTEN {channel};")
+
         log.info("Listening for notifications on channel: %s", channel)
 
-        # Wait for notify
-        start = time.time()
+        deadline = time.monotonic() + timeout
         while True:
-            if (time.time() - start) > timeout:
-                break
-            if select.select([conn], [], [], timeout)[0]:
-                conn.poll()
-                while conn.notifies:
-                    return conn.notifies.pop(0)
-    return None
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            notification = next(conn.notifies(timeout=remaining, stop_after=1), None)
+            if notification is None:
+                return None
+            if notification.channel == channel:
+                return notification
 
-
-def test_listen_notify_psycopg2(db):
+def test_listen_notify_psycopg(empty_db):
     channel = "test_channel"
     message = "hello_world"
     # Start the notifier in a background thread
-    notifier = threading.Thread(target=send_notify, args=(db.engine, channel, message))
+    notifier = threading.Thread(target=send_notify, args=(empty_db.engine, channel, message))
     notifier.start()
 
     # Listen for notification
-    notification = listen_notify(db.engine, channel)
+    notification = listen_notify(empty_db.engine, channel)
 
     notifier.join()
 

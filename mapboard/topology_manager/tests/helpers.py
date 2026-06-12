@@ -1,5 +1,5 @@
 from geoalchemy2.shape import from_shape
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
 from macrostrat.database import Database
 

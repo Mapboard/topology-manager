@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 
 from ..commands.update import _update
 from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry, n_edge_relations

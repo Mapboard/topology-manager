@@ -1,44 +1,40 @@
-"""Tests to ensure efficient calculations of map faces with overlays.
+"""Tests to ensure efficient calculations of map faces with overlays."""
 
-There are two efficient ways to handle this:
-1. Accumulate faces the 'naïve' way using overlay layers as barriers.
-2. Composite already-existing topogeometries from other layers using set operations.
-
-The second method is likely more efficient, but requires that constituent layers are
-already populated.
-
-We've not yet explored the 'naïve' approach but have integrated a _barrier_layers
-parameter into the `get_adjacent_faces_core` PostGIS function to allow for this
-in the future if desired.
-"""
-
-from macrostrat.utils import get_logger
 from pytest import fixture, mark
 from addict import Dict
 
 from .helpers import (
-    insert_line,
     add_linework_type_to_layer,
-    n_faces,
-    n_face_primitives,
-    create_map_layer,
     create_composite_layer,
     create_grid,
-    square,
     add_polygon_type_to_layer,
+    create_map_layer,
+    insert_line,
     insert_polygon,
-    square,
     n_lines,
+    n_face_primitives,
+    n_faces,
+    square,
 )
 from ..commands.update import _update
 
-log = get_logger(__name__)
+
+@fixture()
+def db(base_db, pytestconfig):
+    base_db.automap(schemas=["test_map_data"])
+
+    commit = pytestconfig.getoption("--commit")
+    if commit:
+        yield base_db
+        return
+
+    with base_db.transaction(rollback="always"):
+        yield base_db
 
 
-@fixture(scope="class")
+@fixture()
 def layers(db):
     """Fixture to create a composite layer for testing."""
-    # Create a parent layer
     db.run_sql(
         """
         INSERT INTO {data_schema}.polygon_type (id)
@@ -106,7 +102,7 @@ def test_lines_in_composite_layer(layers, db):
         )
         if area is not None:
             _area = _get_area(db, **args)
-            assert _area == area, f"Expected area {area}, got {_area}"
+        assert _area == area, f"Expected area {area}, got {_area}"
         if length is not None:
             _len = _get_length(db, **args)
             assert _len == length, f"Expected length {length}, got {_len}"
@@ -223,7 +219,7 @@ def test_lines_removed_from_composite_layer(layers, db):
     assert n_lines(db, map_layer=layers.composite) == 1
 
 
-def test_non_topological_lines_in_composite_layer(layers, db):
+def test_non_topological_lines_removed_from_composite_layer(layers, db):
     """Non-topological lines should be carried into composite layers"""
     # Create a non-topological line type
     db.run_sql(
