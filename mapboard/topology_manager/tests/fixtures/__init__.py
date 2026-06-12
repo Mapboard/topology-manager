@@ -34,6 +34,7 @@ def base_db(empty_db):
     _create_tables(empty_db)
     create_demo_units(empty_db)
     yield empty_db
+    empty_db.engine.dispose()
 
 
 @fixture(scope="class")
@@ -48,11 +49,10 @@ def db(base_db, pytestconfig):
     base_db.automap(schemas=["test_map_data"])
 
     commit = pytestconfig.getoption("--commit")
-    if commit:
-        # Enable auto-commit mode
+    rollback = "never" if commit else "always"
+    with base_db.transaction(rollback=rollback):
+        log.info("Starting database transaction")
         yield base_db
-    else:
-        with base_db.transaction(rollback="always"):
-            log.info("Starting database transaction")
-            yield base_db
-        log.info("Rolling back database transaction")
+        if rollback == "always":
+            log.info("Rolling back database transaction")
+    base_db.session.close()
