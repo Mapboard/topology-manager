@@ -2,7 +2,7 @@ from rich.prompt import Confirm
 from typer import Option, Typer
 
 from .commands import add_all_commands
-from .database import get_database, sql, set_context
+from .config import get_database, sql, create_context
 from .utilities import console
 
 
@@ -25,7 +25,7 @@ def main(
     ),
 ):
     if database is not None:
-        set_context(database)
+        create_context(database)
 
 
 add_all_commands(app)

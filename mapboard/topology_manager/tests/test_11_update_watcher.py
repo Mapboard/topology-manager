@@ -35,15 +35,14 @@ def _insert_linework(db, layer_id):
 
 
 @pytest.fixture(scope="function")
-def ctx_no_transaction(base_ctx):
-    ctx = base_ctx
-    yield ctx
-    ctx.database.run_sql("""TRUNCATE TABLE {data_schema}.linework CASCADE;""")
+def mgr_no_transaction(base_mgr):
+    mgr = base_mgr
+    yield mgr
+    mgr.database.run_sql("""TRUNCATE TABLE {data_schema}.linework CASCADE;""")
 
 
-def test_start_watcher_handles_real_linework_event(ctx_no_transaction, monkeypatch):
-    db = ctx_no_transaction.database
-    ctx = ctx_no_transaction
+def test_start_watcher_handles_real_linework_event(mgr_no_transaction, monkeypatch):
+    db = mgr_no_transaction.database
     layer_id = map_layer_id(db, "surficial")
     update_calls = []
 
@@ -72,4 +71,4 @@ def test_start_watcher_handles_real_linework_event(ctx_no_transaction, monkeypat
 
     assert test_loop.reader is not None
     assert len(update_calls) == 1
-    assert update_calls[0] == (ctx, {"composite_layers": True})
+    assert update_calls[0] == (mgr_no_transaction._ctx, {"composite_layers": True})

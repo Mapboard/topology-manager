@@ -5,11 +5,10 @@ from .helpers import (
     square,
     insert_polygon,
 )
-from ..commands.update import _update
 from pytest import mark
 
 
-def test_non_topological_lines(ctx, db):
+def test_non_topological_lines(mgr, db):
     """Test that a face with no identifier is created"""
 
     lyr = map_layer_id(db, "bedrock")
@@ -34,19 +33,19 @@ def test_non_topological_lines(ctx, db):
         map_layer=lyr,
     )
 
-    _update(ctx)
+    mgr.update()
     assert n_faces(db) == 1
 
     # Add a bisecting line
     insert_line(db, ((-1, 1), (3, 1)), type="test0", map_layer=lyr)
 
-    _update(ctx)
+    mgr.update()
 
     # Check that the face is still the same
     assert n_faces(db) == 1
 
 
-def test_non_topological_polygons(ctx, db):
+def test_non_topological_polygons(mgr, db):
     """Test that a face with no identifier is created"""
 
     lyr = map_layer_id(db, "bedrock")
@@ -81,7 +80,7 @@ def test_non_topological_polygons(ctx, db):
         map_layer=lyr,
     )
 
-    _update(ctx)
+    mgr.update()
 
     # Check that the face isn't identified
     assert n_faces(db, identified=True) == 0
@@ -94,7 +93,7 @@ def test_non_topological_polygons(ctx, db):
         map_layer=lyr,
     )
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db, identified=True) == 1
 

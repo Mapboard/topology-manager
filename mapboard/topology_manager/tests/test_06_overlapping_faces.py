@@ -13,8 +13,6 @@ from .helpers import (
     create_grid,
     n_face_primitives,
 )
-from ..commands.update import _update
-from ..commands.update_contacts import _update_contacts
 from ..commands.update_faces import n_dirty_faces
 
 log = get_logger(__name__)
@@ -50,19 +48,19 @@ def layers(db):
     )
 
 
-def test_faces_sharing_common_edge(ctx, db, layers):
+def test_faces_sharing_common_edge(mgr, db, layers):
     """Test that faces sharing an edge are still treated independently."""
     # Create two square faces
 
     insert_line(db, square(1, (0.5, 0.5)), type="bedrock", map_layer=layers.child)
     insert_line(db, square(1, (1.5, 0.5)), type="bedrock", map_layer=layers.child)
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db, map_layer=layers.child) == 2
 
 
-def test_faces_sharing_common_edge_multilayer(ctx, db, layers):
+def test_faces_sharing_common_edge_multilayer(mgr, db, layers):
     """Test that faces sharing an edge are still treated independently."""
     # Create two square faces
 
@@ -70,7 +68,7 @@ def test_faces_sharing_common_edge_multilayer(ctx, db, layers):
     insert_line(db, square(1, (1.5, 0.5)), type="bedrock", map_layer=layers.overlay)
     insert_line(db, square(1, (2.5, 0.5)), type="bedrock", map_layer=layers.child)
 
-    _update_contacts(ctx)
+    mgr.update_contacts()
 
     assert n_face_primitives(db) == 3
     assert n_dirty_faces(db, map_layer=layers.child) > 0
@@ -78,7 +76,7 @@ def test_faces_sharing_common_edge_multilayer(ctx, db, layers):
     assert n_faces(db, map_layer=layers.child) == 0
     assert n_faces(db, map_layer=layers.overlay) == 0
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db, map_layer=layers.child) == 2
     assert n_faces(db, map_layer=layers.overlay) == 1
@@ -86,20 +84,20 @@ def test_faces_sharing_common_edge_multilayer(ctx, db, layers):
 
 # Parameterize for grids either offset from grid squares or aligned with them
 @mark.parametrize("square_center", [(3.1, 3.1), (3.5, 3.5)])
-def test_multistage_face_management(ctx, db, layers, square_center):
+def test_multistage_face_management(mgr, db, layers, square_center):
     """Remove the surficial face and add a smaller one."""
     create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
-    _update(ctx)
+    mgr.update()
 
     assert n_face_primitives(db) == grid_count_on_each_axis**2
 
     insert_line(db, square(5, square_center), type="bedrock", map_layer=layers.overlay)
 
-    _update_contacts(ctx)
+    mgr.update_contacts()
 
     assert n_dirty_faces(db, map_layer=layers.overlay) > 1
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db, map_layer=layers.overlay) == 1
     assert n_faces(db, map_layer=layers.child) == grid_count_on_each_axis**2

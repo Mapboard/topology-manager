@@ -2,7 +2,7 @@ from pathlib import Path
 
 from psycopg.sql import Identifier
 
-from ..commands.update import _update
+
 from .helpers import (
     n_faces,
     square,
@@ -64,14 +64,14 @@ class TestTopology:
         ).one()
         assert res.type == "upper-omkyk"
 
-    def test_solve_topology(self, ctx, db):
+    def test_solve_topology(self, mgr, db):
         """Solve topology and check that we have a map face"""
-        _update(ctx)
+        mgr.update()
         assert n_faces(db) == 1
 
         assert n_edge_relations(db) > 0
 
-    def test_change_line_type(self, ctx, db):
+    def test_change_line_type(self, mgr, db):
         """Change a line type and check that the map face is NOT removed
         NOTE: No longer works because topology is now controlled by map layers.
         """
@@ -86,10 +86,10 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        _update(ctx)
+        mgr.update()
         assert n_faces(db) == 1
 
-    def test_change_line_layer(self, ctx, db):
+    def test_change_line_layer(self, mgr, db):
         """Change a line type and check that the map face is NOT removed
         NOTE: No longer works because topology is now controlled by map layers.
         """
@@ -108,7 +108,7 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        _update(ctx)
+        mgr.update()
         assert n_faces(db) == 0
 
 
@@ -130,12 +130,12 @@ def test_isolation(db):
 #     assert len(res) == 0
 
 
-def test_create_and_delete_line(ctx, db):
+def test_create_and_delete_line(mgr, db):
     """Test that the topology returns to a clean state after deleting a line"""
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db) == 1
 
@@ -147,21 +147,21 @@ def test_create_and_delete_line(ctx, db):
 
     assert db.run_query("SELECT count(*) FROM {data_schema}.linework").scalar() == 0
 
-    _update(ctx)
+    mgr.update()
     assert n_faces(db) == 0
 
 
-def test_update_line_geometry(ctx, db):
+def test_update_line_geometry(mgr, db):
     # We want to make sure that line changes are recorded automatically
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    _update(ctx)
+    mgr.update()
     assert n_faces(db) == 1
 
     assert get_geometry_hash(db, line_id) is not None
 
-    _update(ctx)
+    mgr.update()
 
     # Update the geometry
     db.run_query(
@@ -182,7 +182,7 @@ def test_update_line_geometry(ctx, db):
 
     assert get_geometry_hash(db, line_id) is None
 
-    _update(ctx)
+    mgr.update()
 
     assert n_faces(db) == 1
 
@@ -194,7 +194,7 @@ def test_update_line_geometry(ctx, db):
         {"id": line_id},
     )
 
-    _update(ctx)
+    mgr.update()
     assert n_faces(db) == 0
 
 

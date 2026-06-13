@@ -6,8 +6,8 @@ from pytest import fixture
 from macrostrat.utils import get_logger
 from psycopg.sql import Identifier
 
-from ...commands.create_tables import _create_tables
 from ...config import create_context
+from ...manager import TopologyManager
 from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
@@ -16,7 +16,7 @@ log = get_logger(__name__)
 
 
 @fixture(scope="session")
-def empty_ctx(pytestconfig):
+def empty_mgr(pytestconfig):
     # Check if we are dropping the database after tests
     drop = not pytestconfig.getoption("--no-drop")
 
@@ -29,7 +29,8 @@ def empty_ctx(pytestconfig):
             srid=32612,
             tolerance=0.1,
         )
-        yield ctx
+        manager = TopologyManager(ctx)
+        yield manager
         if drop:
             # Drop the database with force
             url = engine.url
@@ -43,43 +44,41 @@ def empty_ctx(pytestconfig):
 
 
 @fixture(scope="session")
-def empty_db(empty_ctx):
-    return empty_ctx.database
+def empty_db(empty_mgr):
+    return empty_mgr.db
 
 
 @fixture(scope="session")
-def base_ctx(empty_ctx):
-    _create_tables(empty_ctx)
-    create_demo_units(empty_ctx.database)
-    yield empty_ctx
+def base_mgr(empty_mgr):
+    empty_mgr.create_tables()
+    create_demo_units(empty_mgr.db)
+    yield empty_mgr
 
 
 @fixture(scope="session")
-def base_db(base_ctx):
-    return base_ctx.database
+def base_db(base_mgr):
+    return base_mgr.db
 
 
 @fixture(scope="class")
-def ctx(base_ctx, pytestconfig):
-    """Create a database session that is rolled back after each test
+def mgr(base_mgr, pytestconfig):
+    """Create a database session that is rolled back after each test class.
 
-    This is based on the Sparrow's implementation:
+    This is based on Sparrow's implementation:
     https://github.com/EarthCubeGeochron/Sparrow/blob/main/backend/conftest.py
     """
-
-    base_db = base_ctx.database
-    # Create a new database session for each test
+    base_db = base_mgr.db
     base_db.automap(schemas=["test_map_data"])
 
     commit = pytestconfig.getoption("--commit")
     rollback = "never" if commit else "always"
     with base_db.transaction(rollback=rollback):
         log.info("Starting database transaction")
-        yield base_ctx
+        yield base_mgr
         if rollback == "always":
             log.info("Rolling back database transaction")
 
 
 @fixture(scope="class")
-def db(ctx):
-    return ctx.database
+def db(mgr):
+    return mgr.db

@@ -1,4 +1,3 @@
-from ..commands.update import _update
 from .helpers import (
     insert_line,
     insert_polygon,
@@ -39,12 +38,12 @@ def _test_points(db, lyr):
 
 
 class TestFillHoles:
-    def test_fill_holes(self, ctx, db):
+    def test_fill_holes(self, mgr, db):
         """Create a linework dataset with holes"""
         lyr = map_layer_id(db, "bedrock")
         insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=lyr)
         insert_line(db, square(2, center=(3, 3)), type="bedrock", map_layer=lyr)
-        _update(ctx)
+        mgr.update()
 
         # Check that we have no identified map faces
         assert n_faces(db) == 2
@@ -54,36 +53,36 @@ class TestFillHoles:
         assert points[0].face_id != points[1].face_id
         assert points[0].map_face_id != points[1].map_face_id
 
-    def test_identify_faces(self, ctx, db):
+    def test_identify_faces(self, mgr, db):
         insert_polygon(
             db,
             square(1, center=(1, 1)),
             type="upper-omkyk",
             map_layer=map_layer_id(db, "bedrock"),
         )
-        _update(ctx)
+        mgr.update()
         # Check that we have one identified map face
         assert n_faces(db, identified=True) == 1
 
-    def test_add_irrelevant_unit_id(self, db, ctx):
+    def test_add_irrelevant_unit_id(self, db, mgr):
         insert_polygon(
             db,
             square(1, center=(3, 3)),
             type="terrace",
             map_layer=map_layer_id(db, "surficial"),
         )
-        _update(ctx)
+        mgr.update()
         # Check that we still only have one map face
         assert n_faces(db, identified=True) == 1
 
-    def test_add_relevant_unit_id(self, ctx, db):
+    def test_add_relevant_unit_id(self, mgr, db):
         insert_polygon(
             db,
             square(0.5, center=(3, 3)),
             type="lower-omkyk",
             map_layer=map_layer_id(db, "bedrock"),
         )
-        _update(ctx)
+        mgr.update()
         # Check that we now have two map faces
         assert n_faces(db, identified=True) == 2
 
@@ -95,13 +94,13 @@ class TestFillHoles:
         ).scalar()
         assert n == 1
 
-    def test_remove_identifiers(self, ctx, db):
+    def test_remove_identifiers(self, mgr, db):
         db.run_query("DELETE FROM test_map_data.polygon WHERE type = 'lower-omkyk'")
-        _update(ctx)
+        mgr.update()
         assert n_faces(db, identified=True) == 1
         assert n_faces(db) == 2
 
-    def test_remove_line(self, ctx, db):
+    def test_remove_line(self, mgr, db):
         _bedrock = map_layer_id(db, "bedrock")
         db.run_query(
             "DELETE FROM test_map_data.linework WHERE ST_Intersects(geometry, :geom)",
@@ -111,7 +110,7 @@ class TestFillHoles:
         n = db.run_query("SELECT count(*) FROM test_map_data.linework").scalar()
         assert n == 1
 
-        _update(ctx)
+        mgr.update()
 
         points = _test_points(db, _bedrock)
         expanded = get_adjacent_faces(db, points[0].face_id, _bedrock)
