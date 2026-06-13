@@ -186,7 +186,7 @@ class TestNestedLayers:
 
     def test_correct_face_count(self, mgr, db):
 
-        # Check that we have three potential faces in the __dirty_face table
+        # Check that we have three potential faces in the dirty_face table
         res = dirty_faces(db)
         assert len(res) == 2
         assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 2
@@ -277,7 +277,7 @@ class TestNestedLayers:
 
 def dirty_faces(db):
     return db.run_query(
-        "SELECT * FROM {topo_schema}.__dirty_face",
+        "SELECT * FROM {topo_schema}.dirty_face",
     ).fetchall()
 
 

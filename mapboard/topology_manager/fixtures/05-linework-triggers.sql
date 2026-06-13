@@ -83,7 +83,7 @@ BEGIN
   WITH ml AS (
     SELECT {topo_schema}.child_map_layers(line.map_layer) id
   )
-  INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
+  INSERT INTO {topo_schema}.dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
     ml.id

@@ -56,7 +56,7 @@ SELECT topology.AddTopoGeometryColumn(:topo_name, :topo_name , 'map_face', 'topo
 CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 
 /* A table to hold dirty faces */
-CREATE TABLE IF NOT EXISTS {topo_schema}.__dirty_face (
+CREATE TABLE IF NOT EXISTS {topo_schema}.dirty_face (
   id        integer REFERENCES {topo_schema}.face(face_id) ON DELETE CASCADE,
   map_layer integer REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
   PRIMARY KEY (id, map_layer)

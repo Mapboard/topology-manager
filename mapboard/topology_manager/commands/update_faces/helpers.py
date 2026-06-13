@@ -160,7 +160,7 @@ def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
 def _unmark_dirty_faces_for_layer(db, map_layer, faces):
     db.run_sql(
         """DELETE
-           FROM {topo_schema}.__dirty_face df
+           FROM {topo_schema}.dirty_face df
            WHERE
                df.map_layer = :map_layer
              AND (id = ANY(:dissolved_faces)

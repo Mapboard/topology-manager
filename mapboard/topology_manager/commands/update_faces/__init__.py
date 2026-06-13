@@ -12,12 +12,12 @@ from typing import Optional
 from ...config import TopologyContext, sql, get_context
 from .helpers import update_map_face_python, persist_map_face_updates, log
 
-count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
+count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
 
 
 def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:
     """Get the number of dirty faces in a layer"""
-    sql = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
+    sql = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
     params = {}
     if map_layer is not None:
         sql = sql + " WHERE map_layer = :layer"
@@ -64,7 +64,7 @@ def update_faces(
     niter = 0
 
     dirty_faces = db.run_query(
-        "SELECT id, map_layer FROM {topo_schema}.__dirty_face"
+        "SELECT id, map_layer FROM {topo_schema}.dirty_face"
     ).all()
     init_n_faces = len(dirty_faces)
     ix = get_dirty_faces_layer_index(dirty_faces)
