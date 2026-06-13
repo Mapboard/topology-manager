@@ -62,7 +62,12 @@ def _clean_topology(ctx: TopologyContext):
 
     db = ctx.database
 
-    remove_empty_topogeometries(db, ctx.data_schema, "linework", "topo")
+    data_layer = ("linework", "topo")
+    if ctx.in_macrostrat_mode:
+        # We instead work with the map bounds layer
+        data_layer = ("map_topo", "topo")
+
+    remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
     remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")
 
     res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()

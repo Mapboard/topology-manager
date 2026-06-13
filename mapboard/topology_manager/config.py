@@ -24,6 +24,7 @@ class TopologyContext:
     tolerance: float = 0.0001
     create_extra_fields: bool = False
     composite_layers: bool = False
+    in_macrostrat_mode: bool = False
 
 
 # Context vars to store the current TopologyContext
@@ -49,6 +50,7 @@ def create_context(
     *,
     create_extra_fields: bool = True,
     composite_layers: bool = True,
+    in_macrostrat_mode: bool = False,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -90,6 +92,7 @@ def create_context(
         tolerance=tolerance,
         create_extra_fields=create_extra_fields,
         composite_layers=composite_layers,
+        in_macrostrat_mode=in_macrostrat_mode,
     )
 
     _side_effects(ctx)
