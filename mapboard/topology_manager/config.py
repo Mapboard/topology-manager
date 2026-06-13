@@ -69,6 +69,11 @@ def create_context(
     data_schema = str(data_schema)
     topo_schema = str(topo_schema)
 
+    boundary_table_name = "linework"
+    if in_macrostrat_mode:
+        # A different table to store relevant boundaries
+        boundary_table_name = "map_topo"
+
     _database = Database(database.engine)
     _database.instance_params = {
         "data_schema": Identifier(data_schema),
@@ -82,6 +87,7 @@ def create_context(
         "srid": srid,
         "srid_literal": Literal(srid),
         "tolerance": tolerance,
+        "boundary_table": Identifier(data_schema, boundary_table_name),
     }
 
     ctx = TopologyContext(

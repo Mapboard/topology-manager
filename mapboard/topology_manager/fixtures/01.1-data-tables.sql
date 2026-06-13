@@ -83,3 +83,36 @@ CREATE TABLE IF NOT EXISTS {data_schema}.polygon (
 
 CREATE INDEX IF NOT EXISTS {index_prefix}_polygon_geometry_idx
   ON {data_schema}.polygon USING gist (geometry);
+
+
+-- Create an initial linework type (if nothing exists)
+INSERT INTO {data_schema}.linework_type (id, name, color)
+SELECT
+  'default',
+  'Default',
+  '#000000'
+FROM topology.topology -- dummy table
+WHERE NOT EXISTS (SELECT * FROM {data_schema}.linework_type)
+  ON CONFLICT DO NOTHING;
+
+-- Same for polygon-types
+INSERT INTO {data_schema}.polygon_type (id, name, color)
+SELECT
+  'default',
+  'Default',
+  '#000000'
+FROM topology.topology -- dummy table
+WHERE NOT EXISTS (SELECT * FROM {data_schema}.polygon_type)
+  ON CONFLICT DO NOTHING;
+
+INSERT INTO {data_schema}.map_layer (id, name, topological)
+VALUES (0, 'Default', true)
+  ON CONFLICT DO NOTHING;
+
+/* Add topology columns to linework table.
+TODO: we should consider migrating this to a separate table within the topology schema.
+*/
+SELECT topology.AddTopoGeometryColumn(:topo_name, :data_schema_name,'linework', 'topo','LINE');
+ALTER TABLE {data_schema}.linework
+  ADD COLUMN geometry_hash uuid,
+  ADD COLUMN topology_error text;

@@ -1,21 +1,21 @@
 from ..config import get_context
 from .clean_topology import clean_topology
-from .create_tables import _create_tables
+from .create_tables import create_tables
 from .update import update
 from .update_contacts import update_contacts
 from .update_faces import update_faces
 
 
-def create_tables_cmd():
+def _create_tables():
     """Create tables"""
     ctx = get_context()
-    _create_tables(ctx)
+    create_tables(ctx)
 
 
 def add_all_commands(app):
 
     app.add_command(clean_topology)
-    app.add_command(create_tables_cmd, name="create-tables")
+    app.add_command(_create_tables, name="create-tables")
     app.add_command(update)
     app.add_command(update_contacts)
 

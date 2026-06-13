@@ -85,7 +85,7 @@ CREATE OR REPLACE VIEW {topo_schema}.seed_face AS
 SELECT mf.id,
   mf.map_layer,
   coalesce(mf.source_layer, mf.map_layer) source_layer,
-  sub.face_id                             seed_face_id
+  sub.face_id seed_face_id
 FROM {topo_schema}.map_face mf
 JOIN LATERAL (
     SELECT element_id face_id

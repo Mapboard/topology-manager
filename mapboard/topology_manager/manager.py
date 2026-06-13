@@ -6,7 +6,7 @@ from .commands.update_contacts import _update_contacts
 from .commands.clean_topology import _clean_topology
 from .commands.update_faces import update_faces
 from .commands.update_composite_layers import update_composite_layers
-from .commands.create_tables import _create_tables
+from .commands.create_tables import create_tables
 
 
 class TopologyManager:
@@ -66,5 +66,4 @@ class TopologyManager:
 
     def create_tables(self):
         """Create the topology schema tables from SQL fixtures."""
-        _create_tables(self._ctx)
-
+        create_tables(self._ctx)

@@ -20,7 +20,7 @@ FROM {topo_schema}.edge_data e
 JOIN {topo_schema}.relation r
   ON e.edge_id = abs(r.element_id)
  AND r.element_type = 2 -- edges
-JOIN {data_schema}.linework l
+JOIN {boundary_table} l
   ON (l.topo).id = r.topogeo_id
   AND r.layer_id = (l.topo).layer_id
 JOIN {data_schema}.map_layer ml
@@ -30,7 +30,7 @@ WHERE l.topo IS NOT null
 
 /** Initially create the table */
 CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation (
-  line_id integer NOT NULL REFERENCES {data_schema}.linework(id) ON DELETE CASCADE,
+  line_id integer NOT NULL REFERENCES {boundary_table} (id) ON DELETE CASCADE,
   map_layer integer NOT NULL REFERENCES {data_schema}.map_layer(id) ON DELETE CASCADE,
   edge_id integer NOT NULL REFERENCES {topo_schema}.edge_data(edge_id) ON DELETE CASCADE,
   topogeo_id integer NOT NULL,
@@ -63,7 +63,7 @@ FROM {topo_schema}.edge_data e
 JOIN {topo_schema}.relation r
   ON e.edge_id = abs(r.element_id)
  AND r.element_type = 2 -- edges
-JOIN {data_schema}.linework l
+JOIN {boundary_table} l
   ON (l.topo).id = r.topogeo_id
   AND r.layer_id = (l.topo).layer_id
 JOIN {data_schema}.map_layer ml
@@ -100,7 +100,7 @@ BEGIN
     abs(NEW.element_id) edge_id,
     (l.topo).id topogeo_id,
     (l.topo).layer_id topolayer_id
-  FROM {data_schema}.linework l
+  FROM {boundary_table} l
   WHERE l.topo IS NOT NULL
     AND (l.topo).id = NEW.topogeo_id
     AND (l.topo).layer_id = NEW.layer_id
@@ -137,7 +137,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER update_edge_relation_map_layer
 BEFORE UPDATE
-ON {data_schema}.linework
+ON {boundary_table}
 FOR EACH ROW
 WHEN (OLD.map_layer IS DISTINCT FROM NEW.map_layer)
 EXECUTE FUNCTION {topo_schema}.update_edge_relation_map_layer();
@@ -179,7 +179,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER update_line_edge_relation
-BEFORE INSERT OR UPDATE ON {data_schema}.linework
+BEFORE INSERT OR UPDATE ON {boundary_table}
 FOR EACH ROW
 WHEN (NEW.topo IS NOT NULL)
 EXECUTE FUNCTION {topo_schema}.update_line_edge_relation();
