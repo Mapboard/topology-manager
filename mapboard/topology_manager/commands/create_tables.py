@@ -9,17 +9,17 @@ log = get_logger(__name__)
 
 
 def create_tables(ctx: TopologyContext):
-    print(ctx.database.instance_params)
     db = ctx.database
     _fixtures = list(fixtures_dir.glob("*.sql"))
     _fixtures.sort()
 
     skipped = []
+    if not ctx.notify_triggers:
+        skipped += ["notify"]
     if ctx.in_macrostrat_mode:
-        skipped = ["data-tables", "linework", "polygon"]
+        skipped += ["data-tables", "linework", "polygon"]
 
     for fixture in _fixtures:
-        print(f"{fixture}")
         should_skip = False
         for pattern in skipped:
             if pattern in fixture.name:
@@ -27,6 +27,6 @@ def create_tables(ctx: TopologyContext):
                 should_skip = True
         if should_skip:
             continue
-
+        print(f"{fixture}")
         db.run_sql(fixture)
         print("")

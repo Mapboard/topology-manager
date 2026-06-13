@@ -25,6 +25,8 @@ class TopologyContext:
     create_extra_fields: bool = False
     composite_layers: bool = False
     in_macrostrat_mode: bool = False
+    # Whether to include listen/notify triggers for layer updates
+    notify_triggers: bool = True
 
 
 # Context vars to store the current TopologyContext
@@ -51,6 +53,7 @@ def create_context(
     create_extra_fields: bool = True,
     composite_layers: bool = True,
     in_macrostrat_mode: bool = False,
+    notify_triggers: bool = True,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -99,6 +102,7 @@ def create_context(
         create_extra_fields=create_extra_fields,
         composite_layers=composite_layers,
         in_macrostrat_mode=in_macrostrat_mode,
+        notify_triggers=notify_triggers,
     )
 
     _side_effects(ctx)
