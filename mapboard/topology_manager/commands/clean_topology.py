@@ -1,3 +1,4 @@
+from ..config import TopologyContext, get_context
 from ..database import get_database, sql
 from ..utilities import console
 from psycopg.sql import Identifier
@@ -8,8 +9,8 @@ log = get_logger(__name__)
 
 def clean_topology():
     """Clean the topology"""
-    db = get_database()
-    _clean_topology(db)
+    ctx = get_context()
+    _clean_topology(ctx)
 
 
 def _delete_edges(db):
@@ -55,15 +56,14 @@ def remove_empty_topogeometries(db, schema, table, column):
         )
 
 
-def _clean_topology(db):
+def _clean_topology(ctx: TopologyContext):
     """Clean topology"""
     # _delete_edges(db)
 
-    data_schema = db.instance_params["data_schema_name"]
-    topo_schema = db.instance_params["topo_name"]
+    db = ctx.database
 
-    remove_empty_topogeometries(db, data_schema, "linework", "topo")
-    remove_empty_topogeometries(db, topo_schema, "map_face", "topo")
+    remove_empty_topogeometries(db, ctx.data_schema, "linework", "topo")
+    remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")
 
     res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
     log.info(f"Removed {res} unused primitives")

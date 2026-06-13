@@ -5,7 +5,7 @@ from json import loads, JSONDecodeError
 
 from typer import Option
 
-from ..database import Database, get_database
+from ..config import TopologyContext, get_context
 from ..utilities import console
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
@@ -25,14 +25,14 @@ def update(
 ):
     """Update the topology"""
 
-    db = get_database()
+    ctx = get_context()
 
     kwargs = dict(
         composite_layers=composite_layers,
     )
 
     _update(
-        db,
+        ctx,
         reset=reset,
         fill_holes=fill_holes,
         fix_failed=fix_failed,
@@ -44,7 +44,7 @@ def update(
 
 
 def _update(
-    db: Database,
+    ctx: TopologyContext,
     *,
     reset: bool = False,
     fill_holes: bool = False,
@@ -56,14 +56,14 @@ def _update(
     console.print("Updating contacts", style="header")
     timer = Timer()
     with timer.context():
-        _update_contacts(db, fix_failed=fix_failed)
+        _update_contacts(ctx, fix_failed=fix_failed)
         print_step(timer, "Update contacts")
-        _clean_topology(db)
+        _clean_topology(ctx)
 
         t0 = perf_counter()
         console.print("Updating faces", style="header")
         update_faces(
-            db,
+            ctx,
             reset=reset,
             fill_holes=fill_holes,
             incremental=incremental,
@@ -72,14 +72,14 @@ def _update(
         _print_step("Update faces", t1 - t0)
 
         console.print("Cleaning topology", style="header")
-        _clean_topology(db)
+        _clean_topology(ctx)
 
         t2 = perf_counter()
         _print_step("Clean topology", t2 - t1)
 
         if composite_layers:
             console.print("Updating composite layers", style="header")
-            update_composite_layers(db)
+            update_composite_layers(ctx)
             t3 = perf_counter()
             _print_step("Update composite layers", t3 - t2)
 
@@ -89,7 +89,7 @@ needs_update = ContextVar("needs_update", default=True)
 
 
 def _start_watcher(**kwargs):
-    db = get_database()
+    ctx = get_context()
 
     def _update_topology():
         if update_in_progress.get():
@@ -103,14 +103,15 @@ def _start_watcher(**kwargs):
         needs_update.set(False)
         # Do the update
         console.print("Updating topology", style="header")
-        _update(db, **kwargs)
+        _update(ctx, **kwargs)
         update_in_progress.set(False)
-        db.session.close()
+        ctx.database.session.close()
+
         print("Done updating topology")
 
     console.print("Watching for changes", style="header")
 
-    sa_conn = db.engine.connect()
+    sa_conn = ctx.database.engine.connect()
     # Get a raw driver connection to listen for notifications
     pooled_conn = sa_conn.connection
     conn = getattr(pooled_conn, "driver_connection", pooled_conn)

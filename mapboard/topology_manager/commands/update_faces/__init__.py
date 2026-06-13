@@ -9,7 +9,7 @@ from macrostrat.utils.timer import Timer
 from enum import Enum
 from typing import Optional
 
-from ...database import get_database, sql
+from ...config import TopologyContext, sql, get_context
 from .helpers import update_map_face_python, persist_map_face_updates, log
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.__dirty_face"
@@ -31,7 +31,7 @@ class Engine(str, Enum):
 
 
 def update_faces(
-    db: Database = Argument(callback=get_database, help="Database connection"),
+    ctx: TopologyContext = Argument(callback=get_context, help="Database connection"),
     *,
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
@@ -45,6 +45,8 @@ def update_faces(
 ):
     """Update faces"""
     log.info("Updating faces with engine %s", engine)
+
+    db = ctx.database
 
     if fill_holes:
         warnings.warn("The 'fill_holes' option has been removed", DeprecationWarning)

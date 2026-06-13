@@ -2,6 +2,7 @@ from time import perf_counter
 
 from rich.progress import Progress
 
+from ..config import TopologyContext
 from ..database import Database, get_database, sql
 from ..utilities import console
 from .clean_topology import _clean_topology
@@ -20,7 +21,8 @@ def update_contacts(fix_failed: bool = False):
     _update_contacts(db, fix_failed)
 
 
-def _update_contacts(db: Database, fix_failed: bool = False):
+def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
+    db = ctx.database
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
@@ -43,7 +45,9 @@ def _update_contacts(db: Database, fix_failed: bool = False):
             #    _clean_topology(db)
 
             t0 = perf_counter()
-            rows = db.run_query(sql("procedures/update-contact"), {"n": batch_size}).all()
+            rows = db.run_query(
+                sql("procedures/update-contact"), {"n": batch_size}
+            ).all()
             db.session.commit()
             t1 = perf_counter()
             nrows = len(rows)

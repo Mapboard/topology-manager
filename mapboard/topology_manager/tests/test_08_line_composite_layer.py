@@ -70,8 +70,9 @@ def layers(db):
     return _layers
 
 
-def test_lines_in_composite_layer(layers, db):
+def test_lines_in_composite_layer(layers, ctx, db):
     """Test that lines in composite layer are updated correctly."""
+    ctx.database = db
     insert_line(
         db,
         square(2, (0, 0)),
@@ -86,7 +87,7 @@ def test_lines_in_composite_layer(layers, db):
     insert_polygon(db, square(1, (1, 1)), map_layer=layers.basement, type="unit0")
 
     # Update faces
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
 
     # Check that the composite layer has two faces
     assert n_face_primitives(db) == 3
@@ -136,9 +137,10 @@ def test_lines_in_composite_layer(layers, db):
     )
 
 
-def test_non_topological_lines_in_composite_layer(layers, db):
+def test_non_topological_lines_in_composite_layer(layers, ctx, db):
     """Test that non topological lines in the composite layer are updated correctly"""
     # Create a non-topological line type
+    ctx.database = db
     db.run_sql(
         """
         INSERT INTO {data_schema}.linework_type (id, topological)
@@ -157,7 +159,7 @@ def test_non_topological_lines_in_composite_layer(layers, db):
         map_layer=layers.basement,
     )
 
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
     # Check that the line is in the composite layer
     assert n_lines(db, map_layer=layers.composite) == 1
     assert n_lines(db, map_layer=layers.basement) == 1
@@ -171,29 +173,30 @@ def test_non_topological_lines_in_composite_layer(layers, db):
         dict(layer=layers.basement),
     )
 
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
 
     # Check that the line is removed from the composite layer
     assert n_lines(db, map_layer=layers.composite) == 0
     assert n_lines(db, map_layer=layers.basement) == 0
 
 
-def test_lines_removed_from_composite_layer(layers, db):
+def test_lines_removed_from_composite_layer(layers, ctx, db):
     """Test that lines in composite layer are updated correctly"""
+    ctx.database = db
     _id = insert_line(
         db,
         square(2, (0, 0)),
         type="bedrock",
         map_layer=layers.surficial,
     )
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
     # Check that we have a single face primitive
     assert n_face_primitives(db) == 1
 
     insert_line(db, square(2, (1, 1)), map_layer=layers.basement, type="bedrock")
 
     # Update faces
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
 
     # Check that the composite layer has two faces
     assert n_face_primitives(db) == 3
@@ -214,13 +217,14 @@ def test_lines_removed_from_composite_layer(layers, db):
 
     assert n_lines(db, map_layer=layers.external) == 1
 
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
 
     assert n_lines(db, map_layer=layers.composite) == 1
 
 
-def test_non_topological_lines_removed_from_composite_layer(layers, db):
+def test_non_topological_lines_removed_from_composite_layer(layers, ctx, db):
     """Non-topological lines should be carried into composite layers"""
+    ctx.database = db
     # Create a non-topological line type
     db.run_sql(
         """
@@ -240,7 +244,7 @@ def test_non_topological_lines_removed_from_composite_layer(layers, db):
         map_layer=layers.basement,
     )
 
-    _update(db, composite_layers=True)
+    _update(ctx, composite_layers=True)
     # Check that the line is in the composite layer
     assert n_lines(db, map_layer=layers.composite) == 1
     _count = db.run_query(

@@ -5,6 +5,7 @@ import time
 import pytest
 
 from .helpers import insert_line, map_layer_id, square
+from ..config import _side_effects
 
 update_cmd = importlib.import_module("mapboard.topology_manager.commands.update")
 
@@ -34,20 +35,22 @@ def _insert_linework(db, layer_id):
 
 
 @pytest.fixture(scope="function")
-def db_no_transaction(base_db):
-    db = base_db
-    yield db
-    db.run_sql("""TRUNCATE TABLE {data_schema}.linework CASCADE;""")
+def ctx_no_transaction(base_ctx):
+    ctx = base_ctx
+    yield ctx
+    ctx.database.run_sql("""TRUNCATE TABLE {data_schema}.linework CASCADE;""")
 
 
-def test_start_watcher_handles_real_linework_event(db_no_transaction, monkeypatch):
-    db = db_no_transaction
-    db.set_active()
+def test_start_watcher_handles_real_linework_event(ctx_no_transaction, monkeypatch):
+    db = ctx_no_transaction.database
+    ctx = ctx_no_transaction
     layer_id = map_layer_id(db, "surficial")
     update_calls = []
 
     def _run_callbacks(callback):
-        notifier = threading.Thread(target=_insert_linework, args=(db, layer_id), daemon=True)
+        notifier = threading.Thread(
+            target=_insert_linework, args=(db, layer_id), daemon=True
+        )
         notifier.start()
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline and not update_calls:
@@ -58,12 +61,15 @@ def test_start_watcher_handles_real_linework_event(db_no_transaction, monkeypatc
     test_loop = _TestLoop(_run_callbacks)
 
     monkeypatch.setattr(
-        update_cmd, "_update", lambda passed_db, **kwargs: update_calls.append((passed_db, kwargs))
+        update_cmd,
+        "_update",
+        lambda passed_ctx, **kwargs: update_calls.append((passed_ctx, kwargs)),
     )
     monkeypatch.setattr(update_cmd.asyncio, "get_event_loop", lambda: test_loop)
 
+    # Start the watch command
     update_cmd._start_watcher(composite_layers=True)
 
     assert test_loop.reader is not None
     assert len(update_calls) == 1
-    assert update_calls[0] == (db, {"composite_layers": True})
+    assert update_calls[0] == (ctx, {"composite_layers": True})

@@ -3,7 +3,14 @@ from pathlib import Path
 from psycopg.sql import Identifier
 
 from ..commands.update import _update
-from .helpers import n_faces, square, map_layer_id, insert_line, prepare_geometry, n_edge_relations
+from .helpers import (
+    n_faces,
+    square,
+    map_layer_id,
+    insert_line,
+    prepare_geometry,
+    n_edge_relations,
+)
 from shapely.geometry import LineString
 
 proc = Path(__file__).parent / "fixtures" / "procedures"
@@ -57,14 +64,14 @@ class TestTopology:
         ).one()
         assert res.type == "upper-omkyk"
 
-    def test_solve_topology(self, db):
+    def test_solve_topology(self, ctx, db):
         """Solve topology and check that we have a map face"""
-        _update(db)
+        _update(ctx)
         assert n_faces(db) == 1
 
         assert n_edge_relations(db) > 0
 
-    def test_change_line_type(self, db):
+    def test_change_line_type(self, ctx, db):
         """Change a line type and check that the map face is NOT removed
         NOTE: No longer works because topology is now controlled by map layers.
         """
@@ -79,10 +86,10 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        _update(db)
+        _update(ctx)
         assert n_faces(db) == 1
 
-    def test_change_line_layer(self, db):
+    def test_change_line_layer(self, ctx, db):
         """Change a line type and check that the map face is NOT removed
         NOTE: No longer works because topology is now controlled by map layers.
         """
@@ -101,7 +108,7 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        _update(db)
+        _update(ctx)
         assert n_faces(db) == 0
 
 
@@ -118,16 +125,17 @@ def test_isolation(db):
 #     db.run_sql(
 #         "TRUNCATE {data_schema}.linework CASCADE; TRUNCATE {data_schema}.polygon CASCADE"
 #     )
-#     _update(db)
+#     _update(ctx)
 #     res = db.run_query("SELECT * FROM {topo_schema}.map_face").fetchall()
 #     assert len(res) == 0
 
-def test_create_and_delete_line(db):
+
+def test_create_and_delete_line(ctx, db):
     """Test that the topology returns to a clean state after deleting a line"""
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    _update(db)
+    _update(ctx)
 
     assert n_faces(db) == 1
 
@@ -139,31 +147,42 @@ def test_create_and_delete_line(db):
 
     assert db.run_query("SELECT count(*) FROM {data_schema}.linework").scalar() == 0
 
-    _update(db)
+    _update(ctx)
     assert n_faces(db) == 0
 
 
-def test_update_line_geometry(db):
+def test_update_line_geometry(ctx, db):
     # We want to make sure that line changes are recorded automatically
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    _update(db)
+    _update(ctx)
     assert n_faces(db) == 1
 
     assert get_geometry_hash(db, line_id) is not None
 
-    _update(db)
+    _update(ctx)
 
     # Update the geometry
     db.run_query(
         "UPDATE {data_schema}.linework SET geometry = :geom WHERE id = :id",
-        {"id": line_id, "geom": prepare_geometry(LineString(square(2, (0, 0), )), srid=32612)},
+        {
+            "id": line_id,
+            "geom": prepare_geometry(
+                LineString(
+                    square(
+                        2,
+                        (0, 0),
+                    )
+                ),
+                srid=32612,
+            ),
+        },
     )
 
     assert get_geometry_hash(db, line_id) is None
 
-    _update(db)
+    _update(ctx)
 
     assert n_faces(db) == 1
 
@@ -175,7 +194,7 @@ def test_update_line_geometry(db):
         {"id": line_id},
     )
 
-    _update(db)
+    _update(ctx)
     assert n_faces(db) == 0
 
 

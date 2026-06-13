@@ -1,12 +1,14 @@
 from .update_faces.helpers import FaceUpdateResult, log
+from ..config import TopologyContext
 from ..database import sql
 from psycopg.sql import Identifier
 from functools import lru_cache
 
 
 # Update faces for composite layers if requested
-def update_composite_layers(db):
+def update_composite_layers(ctx: TopologyContext):
     log.info("Updating composite layers")
+    db = ctx.database
     layers = db.run_query(
         "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
     ).scalars()
