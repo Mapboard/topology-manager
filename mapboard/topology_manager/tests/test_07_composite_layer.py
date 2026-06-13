@@ -244,8 +244,13 @@ class TestCompositeLayers:
 
         assert n_faces(db, map_layer=layers.composite) == bedrock_count - 16 + 1
 
+def test_add_surficial_face_standalone(ctx, db, layers):
+    assert n_faces(db, map_layer=layers.surficial) == 0
+    insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.surficial)
+    _update(ctx, composite_layers=True)
+    assert n_faces(db, map_layer=layers.surficial) == 1
 
-def identify_faces(ctx, *layers, unit_id="unit0"):
+def identify_faces(db, ctx, *layers, unit_id="unit0"):
     db.run_sql(
         """
         UPDATE {topo_schema}.map_face
@@ -259,15 +264,6 @@ def identify_faces(ctx, *layers, unit_id="unit0"):
     )
     _update(ctx, composite_layers=True)
 
-
-def test_add_surficial_face_standalone(ctx, db, layers):
-    assert n_faces(db, map_layer=layers.surficial) == 0
-
-    insert_line(db, square(5, (3.1, 3.1)), type="bedrock", map_layer=layers.surficial)
-
-    _update(ctx, composite_layers=True)
-
-    assert n_faces(db, map_layer=layers.surficial) == 1
 
 
 def _insert_identified(db, size, center, *, map_layer=None):

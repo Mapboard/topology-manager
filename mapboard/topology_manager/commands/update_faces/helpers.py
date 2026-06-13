@@ -5,7 +5,6 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
-from functools import lru_cache
 
 from ...database import sql
 
@@ -171,7 +170,6 @@ def _unmark_dirty_faces_for_layer(db, map_layer, faces):
     )
 
 
-@lru_cache(maxsize=None)
 def get_topolayer_id(db: Database, table_name: str, feature_column: str):
     return db.run_query(
         """

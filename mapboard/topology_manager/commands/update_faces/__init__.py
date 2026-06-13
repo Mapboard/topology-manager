@@ -78,6 +78,7 @@ def update_faces(
             "%s dirty faces remaining",
             len(dirty_faces),
         )
+        prev_len = len(dirty_faces)
         # Extract one face
         face = dirty_faces.pop(0)
 
@@ -91,6 +92,14 @@ def update_faces(
             if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
         ]
         niter += 1
+
+        # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
+        if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
+            log.warning(
+                "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
+                niter,
+            )
+            break
 
     ## Delete old topogeoms
     if not incremental:

@@ -2,7 +2,6 @@ from .update_faces.helpers import FaceUpdateResult, log
 from ..config import TopologyContext
 from ..database import sql
 from psycopg.sql import Identifier
-from functools import lru_cache
 
 
 # Update faces for composite layers if requested
@@ -136,7 +135,6 @@ def add_composite_layer_types(db, map_layer: int, layers: list[int]):
         )
 
 
-@lru_cache(maxsize=128)
 def get_composite_layers(db, map_layer: int) -> list[int]:
     """Get the list of composite layers that a given map layer is part of."""
     layers = db.run_query(
