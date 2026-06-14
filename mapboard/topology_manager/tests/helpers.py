@@ -3,6 +3,38 @@ from psycopg.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
 from macrostrat.database import Database
 
+from mapboard.topology_manager.config import TopologyContext
+
+
+class TopologyInspector:
+    ctx: TopologyContext
+    db: Database
+
+    def __init__(self, ctx: TopologyContext):
+        self.ctx = ctx
+        self.db = ctx.database
+
+    def n_faces(self, **kwargs):
+        return n_faces(self.db, **kwargs)
+
+    def n_lines(self, **kwargs):
+        return n_lines(self.db, **kwargs)
+
+    def n_edges(self):
+        return n_edges(self.db)
+
+    def n_face_primitives(self, include_global=False):
+        return n_face_primitives(self.db, include_global=include_global)
+
+    def n_edge_relations(self):
+        return n_edge_relations(self.db)
+
+    def get_face_id(self, _point):
+        return get_face_id(self.db, _point)
+
+    def intersecting_faces(self, geom):
+        return intersecting_faces(self.db, geom)
+
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
     if isinstance(map_layer, str):
