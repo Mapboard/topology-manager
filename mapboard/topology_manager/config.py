@@ -75,7 +75,7 @@ def create_context(
     boundary_table_name = "linework"
     if in_macrostrat_mode:
         # A different table to store relevant boundaries
-        boundary_table_name = "map_topo"
+        boundary_table_name = "map_area"
 
     _database = Database(database.engine)
     _database.instance_params = {
@@ -91,6 +91,7 @@ def create_context(
         "srid_literal": Literal(srid),
         "tolerance": tolerance,
         "boundary_table": Identifier(data_schema, boundary_table_name),
+        "boundary_table_literal": Literal(boundary_table_name),
     }
 
     ctx = TopologyContext(

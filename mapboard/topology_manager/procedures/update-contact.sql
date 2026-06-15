@@ -1,6 +1,6 @@
 SELECT
   l.id,
-  {topo_schema}.update_linework_topo(l) err
+  {topo_schema}.update_boundary_topo(l) err
 FROM {data_schema}.linework l
 WHERE {topo_schema}.get_topological_map_layer(l) IS NOT null
   AND l.topology_error IS NULL

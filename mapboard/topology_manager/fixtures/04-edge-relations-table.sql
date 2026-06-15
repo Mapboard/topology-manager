@@ -155,6 +155,10 @@ BEGIN
     WHERE line_id = OLD.id;
   END IF;
 
+  IF NEW.map_layer IS NULL THEN
+    RETURN NEW;
+  END IF;
+
   INSERT INTO {topo_schema}.__edge_relation (
     line_id,
     map_layer,
