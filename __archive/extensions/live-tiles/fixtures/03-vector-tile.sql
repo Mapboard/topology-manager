@@ -94,10 +94,10 @@ SELECT
 FROM {topo_schema}.edge_data e
 JOIN {topo_schema}.__edge_relation er
   ON er.edge_id = e.edge_id
-JOIN {topo_schema}.face_type f1
+JOIN {topo_schema}.face_identity f1
   ON e.left_face = f1.face_id
  AND er.topology = f1.topology
-JOIN {topo_schema}.face_type f2
+JOIN {topo_schema}.face_identity f2
   ON e.right_face = f2.face_id
  AND er.topology = f2.topology
 WHERE e.geom && projected_bbox
@@ -129,7 +129,7 @@ SELECT
 FROM {data_schema}.linework l
 JOIN {data_schema}.linework_type lt
   ON lt.id = l.type
-WHERE 
+WHERE
   topology IS NOT null
   AND l.type NOT IN (
     'arbitrary-bedrock',
