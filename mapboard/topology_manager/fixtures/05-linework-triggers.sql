@@ -5,19 +5,6 @@ to `map_topology.map_face`
 
 /* Util functions */
 
-/** Get the topology for a line */
-CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
-RETURNS integer AS $$
-SELECT ml.id
-FROM {data_schema}.map_layer ml,
-     {data_schema}.linework_type lt
-WHERE ml.id = $1.map_layer
-  AND ml.composited_from IS NULL
-  AND lt.id = $1.type
-  AND coalesce(lt.topological, true)
-  AND ml.topological;
-$$ LANGUAGE SQL IMMUTABLE;
-
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
 RETURNS uuid AS $$
 SELECT md5(ST_AsBinary(geom))::uuid;

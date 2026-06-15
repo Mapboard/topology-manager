@@ -116,3 +116,19 @@ SELECT topology.AddTopoGeometryColumn(:topo_name, :data_schema_name,'linework', 
 ALTER TABLE {data_schema}.linework
   ADD COLUMN geometry_hash uuid,
   ADD COLUMN topology_error text;
+
+
+/** Get the topology for a line. Both the map layer and linework type must be topological.
+  TODO: it may be useful to deprecate this function.
+  */
+CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
+  RETURNS integer AS $$
+SELECT ml.id
+FROM {data_schema}.map_layer ml,
+     {data_schema}.linework_type lt
+WHERE ml.id = $1.map_layer
+  AND ml.composited_from IS NULL
+  AND lt.id = $1.type
+  AND coalesce(lt.topological, true)
+  AND ml.topological;
+$$ LANGUAGE SQL IMMUTABLE;

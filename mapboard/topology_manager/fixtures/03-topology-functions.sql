@@ -109,7 +109,10 @@ LANGUAGE 'plpgsql';
 /*
 Get the map face that defines a polygon for a specific topology
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.unitForArea(face geometry, _map_layer integer)
+CREATE OR REPLACE FUNCTION {topo_schema}.identity_for_area(
+  face geometry,
+  _map_layer integer
+)
 RETURNS text AS $$
 DECLARE result text;
 BEGIN

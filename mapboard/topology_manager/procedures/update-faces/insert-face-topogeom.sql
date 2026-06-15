@@ -28,6 +28,6 @@ INTO {topo_schema}.map_face (
     geometry
 )
 SELECT
-    {topo_schema}.unitForArea(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
+    {topo_schema}.identity_for_area(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom
 FROM
     p2

@@ -57,7 +57,7 @@ updated.
 Using source_layer also handles composite layers.
 */
 UPDATE {topo_schema}.map_face mf
-SET unit_id = {topo_schema}.unitForArea(geometry, mf.map_layer)
+SET unit_id = {topo_schema}.identity_for_area(geometry, mf.map_layer)
 WHERE ST_Intersects(affected_area, geometry)
   AND (mf.map_layer = __topology OR mf.source_layer = __topology);
 
@@ -74,7 +74,7 @@ FOR EACH ROW
 EXECUTE PROCEDURE {topo_schema}.polygon_update_trigger();
 
 CREATE OR REPLACE FUNCTION
-{topo_schema}.register_face_unit(__map_face_id integer)
+{topo_schema}.register_face_identity(__map_face_id integer)
 RETURNS void AS $$
 WITH t AS (
 SELECT
@@ -85,7 +85,8 @@ SELECT
 FROM {topo_schema}.map_face
 WHERE id = __map_face_id
 )
-INSERT INTO {topo_schema}.face_type AS ft (face_id, map_face, unit_id, map_layer)
+INSERT INTO {topo_schema}.face_type AS ft
+  (face_id, map_face, unit_id, map_layer)
 SELECT
   face_id,
   map_face,
@@ -114,7 +115,7 @@ BEGIN
 IF (NEW.topo IS NULL) THEN
   RETURN null;
 END IF;
-PERFORM {topo_schema}.register_face_unit(NEW.id);
+PERFORM {topo_schema}.register_face_identity(NEW.id);
 RETURN null;
 END;
 $$ LANGUAGE plpgsql;

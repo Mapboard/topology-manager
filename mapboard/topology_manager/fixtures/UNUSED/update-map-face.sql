@@ -171,7 +171,7 @@ END IF;
 INSERT INTO {topo_schema}.map_face
   (unit_id, topo, map_layer, geometry)
 SELECT
-  {topo_schema}.unitForArea(
+  {topo_schema}.identity_for_area(
     __geometry,
     __face.map_layer
   ) unit_id,
