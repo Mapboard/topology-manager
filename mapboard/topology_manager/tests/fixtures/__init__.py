@@ -40,6 +40,7 @@ def empty_mgr(pytestconfig):
             user_db.run_sql(
                 "COMMIT; DROP DATABASE {database} WITH (FORCE)",
                 dict(database=Identifier(database_name)),
+                use_transaction=False,
             )
 
 
