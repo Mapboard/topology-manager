@@ -29,7 +29,7 @@ def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
         db.run_sql(reset_errors)
 
     if nlines == 0:
-        console.print("No contacts to update")
+        console.print("No boundaries to update")
 
     res = db.run_query(get_contacts).all()
     remaining = len(res)

@@ -53,11 +53,11 @@ def _update(
     composite_layers: bool = False,
 ):
     """Update the topology"""
-    console.print("Updating contacts", style="header")
     timer = Timer()
     with timer.context():
+        console.print("Updating boundaries", style="header")
         _update_contacts(ctx, fix_failed=fix_failed)
-        print_step(timer, "Update contacts")
+        print_step(timer, "Update boundaries")
         _clean_topology(ctx)
 
         t0 = perf_counter()

@@ -26,11 +26,41 @@ SELECT precision::numeric
   WHERE name={topo_name_literal};
 $$ LANGUAGE SQL IMMUTABLE;
 
+/** Adjacent faces (lines) or overlapping faces (polygons) for a given topogeometry */
+CREATE OR REPLACE FUNCTION {topo_schema}.relevant_faces(topo topogeometry) RETURNS integer[] AS $$
+WITH topo_primitives AS (
+  SELECT topology.GetTopoGeomElements(topo) primitives
+),
+edge_faces AS (
+  SELECT
+    left_face,
+    right_face
+  FROM topo_primitives tp
+  JOIN {topo_schema}.edge_data e1
+    ON e1.edge_id = tp.primitives[1]
+  WHERE tp.primitives[2] = 2 -- edge_type = 2 (line)
+),
+faces AS (
+  SELECT left_face f FROM edge_faces
+  UNION
+  SELECT right_face f FROM edge_faces
+  UNION
+  SELECT tp.primitives[1] f FROM topo_primitives tp
+  WHERE tp.primitives[2] = 3 -- edge_type = 3 (polygon)
+),
+unique_faces AS (
+  SELECT DISTINCT f FROM faces
+)
+SELECT array_agg(f)
+FROM unique_faces;
+$$
+LANGUAGE SQL IMMUTABLE;
+
+
 /*
 When `map_topology.contact` table is updated, changes should propagate
 to `map_topology.map_face`
 */
-
 CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
   line {boundary_table})
 RETURNS void AS $$
@@ -41,26 +71,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- GET ADJACENT FACES
-  WITH edges AS (
-  SELECT (topology.GetTopoGeomElements(line.topo))[1] edge_id
-  ),
-  faces AS (
-  SELECT
-    left_face,
-    right_face
-  FROM edges e
-  JOIN {topo_schema}.edge_data e1
-    ON e.edge_id = e1.edge_id
-  ),
-  faces1 AS (
-  SELECT left_face f FROM faces
-  UNION
-  SELECT right_face f FROM faces
-  )
-  SELECT array_agg(f)
-  INTO __faces
-  FROM faces1;
+  SELECT {topo_schema}.relevant_faces(line.topo)
+  INTO __faces;
 
   WITH ml AS (
     SELECT {topo_schema}.child_map_layers(line.map_layer) id

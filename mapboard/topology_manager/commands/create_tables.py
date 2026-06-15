@@ -21,7 +21,7 @@ def create_tables(
     if not ctx.notify_triggers:
         skipped += ["notify"]
     if ctx.in_macrostrat_mode:
-        skipped += ["data-tables", "linework-triggers", "polygon-triggers"]
+        skipped += ["data-tables", "polygon-triggers"]
 
     did_run_data_tables = False
     for fixture in _fixtures:
