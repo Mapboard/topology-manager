@@ -65,7 +65,7 @@ def _clean_topology(ctx: TopologyContext):
     data_layer = ("linework", "topo")
     if ctx.in_macrostrat_mode:
         # We instead work with the map bounds layer
-        data_layer = ("map_topo", "topo")
+        data_layer = ("map_area", "topo")
 
     remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
     remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")

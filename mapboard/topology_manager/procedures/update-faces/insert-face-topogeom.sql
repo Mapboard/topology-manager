@@ -22,10 +22,10 @@ WITH
                p1)
 INSERT
 INTO {topo_schema}.map_face (
-    unit_id,
-    topo,
-    map_layer,
-    geometry
+  {face_identity_column},
+  topo,
+  map_layer,
+  geometry
 )
 SELECT
     {topo_schema}.identity_for_area(p2.geom, :map_layer), p2.topo, :map_layer, p2.geom

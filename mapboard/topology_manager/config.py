@@ -77,7 +77,7 @@ def create_context(
     if in_macrostrat_mode:
         # A different table to store relevant boundaries
         boundary_table_name = "map_area"
-        face_identity_column = "source_id"
+        face_identity_column = "map_id"
 
     _database = Database(database.engine)
     _database.instance_params = {
