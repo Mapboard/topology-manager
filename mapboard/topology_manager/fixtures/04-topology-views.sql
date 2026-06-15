@@ -108,7 +108,7 @@ SELECT
   f1.source_layer,
   f1.parent_layer,
   ml.name parent_layer_name,
-  {topo_schema}.unitforface(f1.seed_face_id, parent_layer) unit_id
+  {topo_schema}.identity_for_face(f1.seed_face_id, parent_layer) unit_id
 FROM f1
 JOIN {data_schema}.map_layer ml
   ON f1.parent_layer = ml.id;

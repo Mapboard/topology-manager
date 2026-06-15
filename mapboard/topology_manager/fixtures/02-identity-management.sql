@@ -1,17 +1,3 @@
-/** Unused function
-CREATE OR REPLACE FUNCTION {topo_schema}.unitForFace(face_id integer, map_layer integer)
-RETURNS text AS $$
-SELECT
-  unit_id
-FROM {topo_schema}.relation r
-JOIN {topo_schema}.map_face f
-  ON (f.topo).id = r.topogeo_id
-WHERE element_id = $1
-  AND element_type = 3
-  AND r.layer_id = {topo_schema}.__map_face_layer_id()
-  AND f.map_layer = $2;
-$$ LANGUAGE SQL IMMUTABLE;
- */
 
 CREATE OR REPLACE FUNCTION
   {topo_schema}.register_face_identity(__map_face_id integer)
