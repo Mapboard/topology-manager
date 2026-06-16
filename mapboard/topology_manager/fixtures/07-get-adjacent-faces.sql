@@ -97,16 +97,18 @@ WITH RECURSIVE
       ARRAY[_map_layer]::integer[] || _barrier_layers,
       e.layers
       )
+      AND {topo_schema}.faces_are_joinable(left_face, right_face, _map_layer)
   ),
   face_relations AS (
-    SELECT left_face, right_face FROM joinable_edges
+    SELECT left_face, right_face
+    FROM joinable_edges
     UNION ALL
-    SELECT right_face, left_face FROM joinable_edges
+    SELECT right_face, left_face
+    FROM joinable_edges
   ),
   face_adjacency AS (
     SELECT left_face this_face, right_face opp_face
     FROM face_relations
-    WHERE {topo_schema}.faces_are_joinable(left_face, right_face, _map_layer)
     GROUP BY left_face, right_face
   ),
   r(faces, edge_faces, depth) AS (
