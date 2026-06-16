@@ -70,7 +70,9 @@ def _clean_topology(ctx: TopologyContext):
     remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
     remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")
 
-    res = db.run_query("SELECT RemoveUnusedPrimitives(:topo_name)").scalar()
+    db.session.commit()
+    print("Removing unused primitives")
+    res = db.run_sql("SELECT RemoveUnusedPrimitives(:topo_name)", use_transaction=False)
     log.info(f"Removed {res} unused primitives")
 
     res = db.run_query(sql("procedures/clean-topology/heal-edges")).scalar()

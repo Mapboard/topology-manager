@@ -35,6 +35,14 @@ class TopologyInspector:
     def intersecting_faces(self, geom):
         return intersecting_faces(self.db, geom)
 
+    def is_valid(self):
+        return (
+            self.db.run_query(
+                "SELECT count(*) FROM topology.ValidateTopology(:topo_name);"
+            ).scalar()
+            == 0
+        )
+
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
     if isinstance(map_layer, str):
