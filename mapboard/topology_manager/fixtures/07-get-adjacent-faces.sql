@@ -47,6 +47,27 @@ CREATE TYPE {topo_schema}.face_group AS (
   map_layer integer
 );
 
+CREATE OR REPLACE FUNCTION {topo_schema}.layers_are_joinable(
+  boundary_layers integer[],
+  edge_layers integer[]
+)
+RETURNS boolean
+AS $$
+DECLARE
+  boundary_layers_with_parents integer[];
+BEGIN
+  boundary_layers_with_parents := array(
+    SELECT DISTINCT ON (id) {topo_schema}.parent_map_layers(lyr.id) AS id
+    FROM unnest(boundary_layers) AS lyr(id)
+  );
+
+  RETURN NOT (edge_layers && boundary_layers_with_parents)
+      OR array_length(edge_layers, 1) = 0
+      OR array_length(boundary_layers_with_parents, 1) = 0;
+END;
+$$ LANGUAGE plpgsql;
+
+
 CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
   face_id integer,
   _map_layer integer,
@@ -55,19 +76,6 @@ CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
 RETURNS {topo_schema}.face_group
 AS $$
 WITH RECURSIVE
-  boundary_layers_no_parents AS (
-    -- Layers at which face dissolving stops
-    SELECT _map_layer AS id
-    -- Additional barrier layers can be added here. They and their parents will be used.
-    -- This can be used to create composite layers, etc.
-    UNION ALL
-    SELECT unnest(_barrier_layers) AS id
-  ),
-  boundary_layers AS (
-    -- Get all parent layers of the boundary layers
-    SELECT DISTINCT ON (id) {topo_schema}.parent_map_layers(lyr.id) AS id
-    FROM boundary_layers_no_parents lyr
-  ),
   edge_groups AS (
     SELECT
       e.edge_id,
@@ -82,13 +90,13 @@ WITH RECURSIVE
   ),
   joinable_edges AS (
     SELECT
-      e.edge_id,
       e.left_face,
       e.right_face
     FROM edge_groups e
-    WHERE
-      NOT layers && array(SELECT * FROM boundary_layers)
-      OR array_length(layers, 1) = 0
+    WHERE {topo_schema}.layers_are_joinable(
+      ARRAY[_map_layer]::integer[] || _barrier_layers,
+      e.layers
+      )
   ),
   face_relations AS (
     SELECT left_face, right_face FROM joinable_edges
