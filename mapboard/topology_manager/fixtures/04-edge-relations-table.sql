@@ -104,6 +104,7 @@ BEGIN
   WHERE l.topo IS NOT NULL
     AND (l.topo).id = NEW.topogeo_id
     AND (l.topo).layer_id = NEW.layer_id
+    AND NEW.element_type = 2
   ON CONFLICT DO NOTHING;
 
   RETURN NEW;
@@ -176,8 +177,8 @@ BEGIN
   WHERE NEW.topo IS NOT NULL
     AND (NEW.topo).id = r.topogeo_id
     AND (NEW.topo).layer_id = r.layer_id
+    AND r.element_type = 2 -- edges
   ON CONFLICT DO NOTHING;
-
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
