@@ -38,6 +38,8 @@ def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResu
     # we are looking at.
     existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
 
+    print(existing_map_faces)
+
     res = FaceUpdateResult(
         dissolved_faces=face_list,
         existing_map_faces=existing_map_faces,

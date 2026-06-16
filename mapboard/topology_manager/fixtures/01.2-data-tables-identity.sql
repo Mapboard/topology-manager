@@ -47,6 +47,7 @@ RETURN result;
 END
 $$ LANGUAGE plpgsql;
 
+/** We can compute the face's identity by looking at the unit id of the relation */
 CREATE OR REPLACE FUNCTION {topo_schema}.identity_for_face(face_id integer, map_layer integer)
   RETURNS text AS $$
 SELECT
@@ -59,3 +60,14 @@ WHERE element_id = $1
   AND r.layer_id = {topo_schema}.__map_face_layer_id()
   AND f.map_layer = $2;
 $$ LANGUAGE SQL IMMUTABLE;
+
+
+/** Helper function that allows us to check whether edges are joinable within a layer */
+CREATE OR REPLACE FUNCTION {topo_schema}.faces_are_joinable(
+  f1 integer, f2 integer, _map_layer integer
+) RETURNS boolean
+AS $$
+BEGIN
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;

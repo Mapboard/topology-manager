@@ -35,6 +35,9 @@ class TopologyInspector:
     def intersecting_faces(self, geom):
         return intersecting_faces(self.db, geom)
 
+    def map_layer_id(self, name: str):
+        return map_layer_id(self.db, name)
+
     def is_valid(self):
         return (
             self.db.run_query(

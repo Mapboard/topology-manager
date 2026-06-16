@@ -2,7 +2,7 @@
 Procedure to create map faces in bulk after deleting all of them.
 */
 -- Every topology face is dirty
-INSERT INTO {topo_schema}.dirty_face (id, layer)
+INSERT INTO {topo_schema}.dirty_face (id, map_layer)
 SELECT face_id, ml.id
 FROM {topo_schema}.face
 -- This is kind of overkill, because it will include

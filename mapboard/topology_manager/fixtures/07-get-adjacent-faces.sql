@@ -98,6 +98,7 @@ WITH RECURSIVE
   face_adjacency AS (
     SELECT left_face this_face, right_face opp_face
     FROM face_relations
+    WHERE {topo_schema}.faces_are_joinable(left_face, right_face, _map_layer)
     GROUP BY left_face, right_face
   ),
   r(faces, edge_faces, depth) AS (

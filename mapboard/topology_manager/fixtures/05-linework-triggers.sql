@@ -37,16 +37,18 @@ edge_faces AS (
     right_face
   FROM topo_primitives tp
   JOIN {topo_schema}.edge_data e1
-    ON e1.edge_id = tp.primitives[1]
-  WHERE tp.primitives[2] = 2 -- edge_type = 2 (line)
+    ON (
+      (e1.edge_id = tp.primitives[1] AND tp.primitives[2] = 2)
+      OR
+      (left_face = tp.primitives[1] AND tp.primitives[2] = 3)
+      OR
+      (right_face = tp.primitives[1] AND tp.primitives[2] = 3)
+    )
 ),
 faces AS (
   SELECT left_face f FROM edge_faces
   UNION
   SELECT right_face f FROM edge_faces
-  UNION
-  SELECT tp.primitives[1] f FROM topo_primitives tp
-  WHERE tp.primitives[2] = 3 -- edge_type = 3 (polygon)
 ),
 unique_faces AS (
   SELECT DISTINCT f FROM faces
