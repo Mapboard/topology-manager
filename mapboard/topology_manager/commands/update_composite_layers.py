@@ -66,7 +66,8 @@ def _update_composite_layer(
     # Get intersecting with dirty map faces...
     overlay_layers = []
     for layer in reversed_layers:
-        log.info("Updating composite layer from layer %s", layer)
+        log.info("Updating composite layer %s from layer %s", map_layer, layer)
+        log.info("Overlay layers: %s", overlay_layers)
         ids = db.run_query(
             sql("procedures/update-faces/update-composite-face-elements"),
             dict(
@@ -96,7 +97,8 @@ def _update_composite_layer(
             log.info(f"Inserted %d lines from layer %s", _n_lines, layer)
 
             db.session.commit()
-            overlay_layers.append(layer)
+
+        overlay_layers.append(layer)
 
     if manage_boundaries:
         ids = (

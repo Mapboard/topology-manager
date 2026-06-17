@@ -19,6 +19,7 @@ WITH delete_dereferenced_elements AS (
      WHERE mfc.source_id = mf.id
        AND mfc.map_layer = :composite_layer
        AND mf.map_layer = :map_layer
+       AND mfc.{face_identity_column} IS DISTINCT FROM mf.{face_identity_column}
  ),
  overlay_primitives AS (
    SELECT

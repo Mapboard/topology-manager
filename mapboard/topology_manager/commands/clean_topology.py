@@ -72,7 +72,9 @@ def _clean_topology(ctx: TopologyContext):
 
     db.session.commit()
     print("Removing unused primitives")
-    res = db.run_sql("SELECT RemoveUnusedPrimitives(:topo_name)", use_transaction=False)
+    res = db.run_query(
+        "SELECT RemoveUnusedPrimitives(:topo_name)", use_transaction=False
+    ).scalar()
     log.info(f"Removed {res} unused primitives")
 
     res = db.run_query(sql("procedures/clean-topology/heal-edges")).scalar()
