@@ -10,31 +10,29 @@ WITH delete_dereferenced_elements AS (
      WHERE f.map_layer = :composite_layer
        AND mf.map_layer = :map_layer
        AND f.source_id = mf.id
-       AND (mf.unit_id IS NULL OR mf.unit_id = 'none')
- ),
+       AND NOT {topo_schema}.map_face_is_identified(mf)
+  ),
  update_faces_with_changed_identity AS (
    UPDATE {topo_schema}.map_face mfc
-     SET unit_id = mf.unit_id
+     SET {face_identity_column} = mf.{face_identity_column}
      FROM {topo_schema}.map_face mf
      WHERE mfc.source_id = mf.id
        AND mfc.map_layer = :composite_layer
        AND mf.map_layer = :map_layer
-       AND coalesce(mf.unit_id, 'none') != coalesce(mfc.unit_id, 'none')
  ),
  overlay_primitives AS (
    SELECT
      r.element_id
    FROM {topo_schema}.map_face f
-          JOIN {topo_schema}.relation r
-               ON (f.topo).id = r.topogeo_id
-                 AND r.layer_id = (f.topo).layer_id
+   JOIN {topo_schema}.relation r
+     ON (f.topo).id = r.topogeo_id
+    AND r.layer_id = (f.topo).layer_id
    WHERE r.element_type = 3
      -- Looking at all overlay layers, rather than the accumulating composite layer,
      -- prevents us from having to consider ordering issues in composite feature insertion.
      -- However, it might be a bit slower for multiple overlapping layers.
      AND f.map_layer = ANY(:overlay_layers)
-     AND f.unit_id IS NOT NULL
-     AND f.unit_id != 'none'
+     AND {topo_schema}.map_face_is_identified(f)
  ),
 composite_faces AS (
   /*
@@ -45,8 +43,7 @@ composite_faces AS (
   SELECT f.id
   FROM {topo_schema}.map_face f
   WHERE f.map_layer = :map_layer
-    AND f.unit_id IS NOT NULL
-    AND f.unit_id != 'none'
+    AND {topo_schema}.map_face_is_identified(f)
     AND f.id NOT IN (
     SELECT -- Omit faces that are already in the composite layer.
       source_id
@@ -96,7 +93,7 @@ feature_summary0 AS (
 feature_summary AS (
   SELECT
     f.id,
-    mf.unit_id,
+    {face_identity_column},
     coalesce(f.topo, mf.topo) AS topo,
     coalesce(f.topo::geometry, mf.geometry) AS geometry
   FROM feature_summary0 f
@@ -117,7 +114,7 @@ delete_overlapping_features AS (
 )
 INSERT INTO {topo_schema}.map_face (
   source_id,
-  unit_id,
+  {face_identity_column},
   source_layer,
   map_layer,
   topo,
@@ -125,7 +122,7 @@ INSERT INTO {topo_schema}.map_face (
 )
 SELECT
   p1.id,
-  p1.unit_id,
+  {face_identity_column},
   :map_layer,
   :composite_layer,
   p1.topo,

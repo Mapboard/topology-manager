@@ -109,8 +109,10 @@ def n_faces(db, *, identified=False, map_layer=None, source_layer=None):
     where = []
     params = {}
     if identified:
-        where.append("unit_id IS NOT NULL")
+        where.append("{face_identity_column} IS NOT NULL")
     if map_layer is not None:
+        if isinstance(map_layer, str):
+            map_layer = map_layer_id(db, map_layer)
         where.append("map_layer = :map_layer")
         params["map_layer"] = map_layer
     if source_layer is not None:
