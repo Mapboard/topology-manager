@@ -1,6 +1,6 @@
 import os
 
-from macrostrat.database.utils import temp_database
+from macrostrat.database.utils import temporary_database
 from macrostrat.database import Database
 from pytest import fixture
 from macrostrat.utils import get_logger
@@ -20,7 +20,7 @@ def empty_mgr(pytestconfig):
     # Check if we are dropping the database after tests
     drop = not pytestconfig.getoption("--no-drop")
 
-    with temp_database(testing_db, drop=False, ensure_empty=True) as engine:
+    with temporary_database(testing_db, drop=False, ensure_empty=True) as engine:
         database = Database(engine.url)
         ctx = create_context(
             database,
@@ -38,7 +38,7 @@ def empty_mgr(pytestconfig):
             url.set(database=None)
             user_db = Database(url)
             user_db.run_sql(
-                "COMMIT; DROP DATABASE {database} WITH (FORCE)",
+                "DROP DATABASE {database} WITH (FORCE)",
                 dict(database=Identifier(database_name)),
                 use_transaction=False,
             )

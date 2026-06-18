@@ -1,8 +1,5 @@
 from pathlib import Path
 
-from psycopg.sql import Identifier
-
-
 from .helpers import (
     n_faces,
     square,
