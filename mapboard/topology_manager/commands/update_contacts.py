@@ -21,7 +21,8 @@ def update_contacts(fix_failed: bool = False):
     _update_contacts(db, fix_failed)
 
 
-def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
+def _update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
+    """Update contacts, returning the number of lines processed."""
     db = ctx.database
     nlines = db.run_query(count).scalar()
 
@@ -34,8 +35,9 @@ def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
     res = db.run_query(get_contacts).all()
     remaining = len(res)
     if remaining == 0:
-        return
+        return 0
 
+    total_updated = 0
     with Progress() as progress:
         bar = progress.add_task("Updating lines", total=nlines)
         nops = 0
@@ -56,6 +58,7 @@ def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
                     console.print(f"[dim]{row.id}[/dim]: [error]{row.err}[/error]")
             progress.update(bar, advance=nrows)
             remaining -= nrows
+            total_updated += nrows
             duration = t1 - t0
             log.info("Updated %s lines in %.2f seconds", nrows, duration)
             # Dynamically adjust batch size
@@ -67,3 +70,5 @@ def _update_contacts(ctx: TopologyContext, fix_failed: bool = False):
             #     log.info("Slowing down, using batch size %s", batch_size)
 
             nops += 1
+
+    return total_updated

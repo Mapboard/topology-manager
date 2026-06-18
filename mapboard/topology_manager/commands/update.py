@@ -6,12 +6,11 @@ from json import loads, JSONDecodeError
 from typer import Option
 
 from ..config import TopologyContext, get_context
-from ..utilities import console
+from ..utilities import console, print_step
 from .clean_topology import _clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import update_faces
 from .update_composite_layers import update_composite_layers
-from macrostrat.utils.timer import Timer
 
 verbose = True
 
@@ -53,35 +52,43 @@ def _update(
     composite_layers: bool = False,
 ):
     """Update the topology"""
-    timer = Timer()
-    with timer.context():
-        console.print("Updating boundaries", style="header")
-        _update_contacts(ctx, fix_failed=fix_failed)
-        print_step(timer, "Update boundaries")
+    t_start = perf_counter()
+
+    console.print("Updating boundaries", style="header")
+    n_contacts_updated = _update_contacts(ctx, fix_failed=fix_failed)
+    t1 = perf_counter()
+    print_step("Update boundaries", t1 - t_start)
+
+    if n_contacts_updated > 0:
+        console.print("Cleaning topology (pre-faces)", style="header")
         _clean_topology(ctx)
-
-        t0 = perf_counter()
-        console.print("Updating faces", style="header")
-        update_faces(
-            ctx,
-            reset=reset,
-            fill_holes=fill_holes,
-            incremental=incremental,
-        )
-        t1 = perf_counter()
-        _print_step("Update faces", t1 - t0)
-
-        console.print("Cleaning topology", style="header")
-        _clean_topology(ctx)
-
         t2 = perf_counter()
-        _print_step("Clean topology", t2 - t1)
+        print_step("Clean topology (pre-faces)", t2 - t1)
+    else:
+        t2 = t1
 
-        if composite_layers:
-            console.print("Updating composite layers", style="header")
-            update_composite_layers(ctx)
-            t3 = perf_counter()
-            _print_step("Update composite layers", t3 - t2)
+    console.print("Updating faces", style="header")
+    update_faces(
+        ctx,
+        reset=reset,
+        fill_holes=fill_holes,
+        incremental=incremental,
+    )
+    t3 = perf_counter()
+    print_step("Update faces", t3 - t2)
+
+    console.print("Cleaning topology", style="header")
+    _clean_topology(ctx)
+    t4 = perf_counter()
+    print_step("Clean topology", t4 - t3)
+
+    if composite_layers:
+        console.print("Updating composite layers", style="header")
+        update_composite_layers(ctx)
+        t5 = perf_counter()
+        print_step("Update composite layers", t5 - t4)
+
+    print_step("Total", perf_counter() - t_start)
 
 
 update_in_progress = ContextVar("update_in_progress", default=False)
@@ -157,21 +164,3 @@ def _start_watcher(**kwargs):
         sa_conn.close()
 
 
-def print_step(timer, step_name=None):
-    step = timer.timings[-1]
-    if step_name:
-        step = timer._add_step(step_name)
-
-    _print_step(step.name, step.delta)
-
-
-def _print_step(name, tdelta):
-    step_time = f"{tdelta:.2f} seconds"
-    if tdelta > 60:
-        step_time = f"{tdelta / 60:.2f} minutes"
-    if tdelta < 0.5:
-        step_time = f"{tdelta * 1000:.2f} ms"
-    if tdelta < 0.0005:
-        step_time = f"{tdelta * 1000 * 1000:.0f} µs"
-
-    console.print(f"Step [bold underline]{name}[/] took [cyan bold]{step_time}")
