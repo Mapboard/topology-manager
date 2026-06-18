@@ -8,6 +8,7 @@ from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
 from enum import Enum
 from typing import Optional
+from rich.progress import Progress
 
 from ...config import TopologyContext, sql, get_context
 from .helpers import update_map_face_python, persist_map_face_updates, log
@@ -74,37 +75,41 @@ def update_faces(
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
     results = []
-    while len(dirty_faces) > 0:
-        log.info(
-            "%s dirty faces remaining",
-            len(dirty_faces),
-        )
-        prev_len = len(dirty_faces)
-        # Extract one face
-        face = dirty_faces.pop(0)
+    with Progress() as progress:
+        bar = progress.add_task("Updating faces", total=init_n_faces)
 
-        res = update_map_face_python(db, face, write=incremental)
-        results.append(res)
-
-        # Filter dirty faces to remove the ones that have been dissolved into the current face
-        dirty_faces = [
-            d
-            for d in dirty_faces
-            if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
-        ]
-        niter += 1
-
-        # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
-        if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
-            log.warning(
-                "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
-                niter,
+        while len(dirty_faces) > 0:
+            log.info(
+                "%s dirty faces remaining",
+                len(dirty_faces),
             )
-            break
+            prev_len = len(dirty_faces)
+            # Extract one face
+            face = dirty_faces.pop(0)
 
-    ## Delete old topogeoms
-    if not incremental:
-        persist_map_face_updates(db, results)
+            res = update_map_face_python(db, face, write=incremental)
+            results.append(res)
+
+            # Filter dirty faces to remove the ones that have been dissolved into the current face
+            dirty_faces = [
+                d
+                for d in dirty_faces
+                if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
+            ]
+            niter += 1
+
+            progress.update(bar, completed=init_n_faces - len(dirty_faces))
+            # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
+            if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
+                log.warning(
+                    "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
+                    niter,
+                )
+                break
+
+        ## Delete old topogeoms
+        if not incremental:
+            persist_map_face_updates(db, results)
 
     t1 = perf_counter()
     log.info(

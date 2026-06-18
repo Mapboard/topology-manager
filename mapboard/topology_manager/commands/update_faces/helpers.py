@@ -2,6 +2,7 @@ from collections import defaultdict
 from time import perf_counter
 
 from macrostrat.database import Database
+from macrostrat.database.query import OutputMode
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
@@ -124,6 +125,7 @@ def delete_map_faces(db: Database, faces: list[int]):
         WHERE id = ANY (:map_faces)
         """,
         dict(map_faces=faces),
+        output_mode=OutputMode.NONE,
     )
 
 
