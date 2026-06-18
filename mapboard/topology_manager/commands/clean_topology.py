@@ -1,7 +1,10 @@
+from time import perf_counter
+
+from psycopg.sql import Identifier
+
 from ..config import TopologyContext, get_context
 from ..database import get_database, sql
-from ..utilities import console
-from psycopg.sql import Identifier
+from ..utilities import console, print_step
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
@@ -67,18 +70,23 @@ def _clean_topology(ctx: TopologyContext):
         # We instead work with the map bounds layer
         data_layer = ("map_area", "topo")
 
+    t0 = perf_counter()
     remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
     remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")
+    print_step("remove empty topogeometries", perf_counter() - t0)
 
     db.session.commit()
-    print("Removing unused primitives")
+    t1 = perf_counter()
     res = db.run_query(
         "SELECT RemoveUnusedPrimitives(:topo_name)", use_transaction=False
     ).scalar()
     log.info(f"Removed {res} unused primitives")
+    print_step("RemoveUnusedPrimitives", perf_counter() - t1)
 
+    t2 = perf_counter()
     res = db.run_query(sql("procedures/clean-topology/heal-edges")).scalar()
     log.info(f"Healed {res} edges")
+    print_step("heal edges", perf_counter() - t2)
 
     # heal_edges_piecewise(db)
 
