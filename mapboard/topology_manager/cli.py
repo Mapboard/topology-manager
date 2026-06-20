@@ -80,8 +80,12 @@ app.add_command(_update_faces, name="update-faces", help="Update faces")
 
 
 app.add_command(update_contacts)
-app.add_command(clean_topology)
 
+@app.command(name="clean-topology")
+def _clean_topology():
+    """Clean the topology"""
+    ctx = get_context()
+    clean_topology(ctx)
 
 def _operation_command(name):
     # Prompt user for confirmation

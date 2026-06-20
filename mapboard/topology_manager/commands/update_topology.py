@@ -5,7 +5,7 @@ from json import loads, JSONDecodeError
 
 from ..config import TopologyContext, get_context
 from ..utilities import console, print_step
-from .clean_topology import _clean_topology
+from .clean_topology import clean_topology
 from .update_contacts import _update_contacts
 from .update_faces import update_faces
 from .update_composite_layers import update_composite_layers
@@ -35,7 +35,7 @@ def update(
 
     if n_contacts_updated > 0:
         console.print("Cleaning topology (pre-faces)", style="header")
-        _clean_topology(ctx)
+        clean_topology(ctx)
         t2 = perf_counter()
         print_step("Clean topology (pre-faces)", t2 - t1)
     else:
@@ -52,7 +52,7 @@ def update(
     print_step("Update faces", t3 - t2)
 
     console.print("Cleaning topology", style="header")
-    _clean_topology(ctx)
+    clean_topology(ctx)
     t4 = perf_counter()
     print_step("Clean topology", t4 - t3)
 

@@ -3,17 +3,11 @@ from time import perf_counter
 from psycopg.sql import Identifier
 
 from ..config import TopologyContext, get_context
-from ..database import get_database, sql
+from ..database import  sql
 from ..utilities import console, print_step
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
-
-
-def clean_topology():
-    """Clean the topology"""
-    ctx = get_context()
-    _clean_topology(ctx)
 
 
 def _delete_edges(db):
@@ -59,7 +53,7 @@ def remove_empty_topogeometries(db, schema, table, column):
         )
 
 
-def _clean_topology(ctx: TopologyContext):
+def clean_topology(ctx: TopologyContext):
     """Clean topology"""
     # _delete_edges(db)
 

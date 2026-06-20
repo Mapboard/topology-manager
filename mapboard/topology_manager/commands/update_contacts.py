@@ -5,7 +5,7 @@ from rich.progress import Progress
 from ..config import TopologyContext, get_context
 from ..database import Database, get_database, sql
 from ..utilities import console
-from .clean_topology import _clean_topology
+from .clean_topology import clean_topology
 from macrostrat.utils import get_logger
 
 count = sql("procedures/count-contact")
