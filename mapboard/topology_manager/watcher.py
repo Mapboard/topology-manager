@@ -1,5 +1,5 @@
 import asyncio
-from _contextvars import ContextVar
+from contextvars import ContextVar
 from json import loads, JSONDecodeError
 
 from mapboard.topology_manager import update

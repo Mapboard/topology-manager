@@ -6,7 +6,8 @@ import pytest
 
 from ..helpers import insert_line, map_layer_id, square
 
-update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
+#update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
+watcher_cmd = importlib.import_module("mapboard.topology_manager.watcher")
 
 from mapboard.topology_manager.watcher import start_watcher
 
@@ -60,11 +61,11 @@ def test_start_watcher_handles_real_linework_event(mgr_no_transaction, monkeypat
     test_loop = _TestLoop(_run_callbacks)
 
     monkeypatch.setattr(
-        update_cmd,
+        watcher_cmd,
         "update",
         lambda passed_ctx, **kwargs: update_calls.append((passed_ctx, kwargs)),
     )
-    monkeypatch.setattr(update_cmd.asyncio, "get_event_loop", lambda: test_loop)
+    monkeypatch.setattr(watcher_cmd.asyncio, "get_event_loop", lambda: test_loop)
 
     # Start the watch command
     start_watcher(composite_layers=True)
