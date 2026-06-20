@@ -62,13 +62,21 @@ WHERE element_id = $1
 $$ LANGUAGE SQL IMMUTABLE;
 
 
-/** Helper function that allows us to check whether edges are joinable within a layer */
+/** Helper function that allows us to check whether two faces should be joined
+on the basis of a shared identity.
+
+This default (linework) implementation returns false: linework faces carry no
+intrinsic identity, so whether two faces dissolve together is governed entirely
+by `layers_are_joinable` (i.e. whether a contact separates them). The
+face-identity-based variant used for map-area mode overrides this to compare the
+faces' resolved identities. See the join condition in `get_adjacent_faces_core`,
+which combines the two with OR. */
 CREATE OR REPLACE FUNCTION {topo_schema}.faces_are_joinable(
   f1 integer, f2 integer, _map_layer integer
 ) RETURNS boolean
 AS $$
 BEGIN
-  RETURN true;
+  RETURN false;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 

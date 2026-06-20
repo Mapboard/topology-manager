@@ -93,11 +93,17 @@ WITH RECURSIVE
       e.left_face,
       e.right_face
     FROM edge_groups e
+    -- An edge can be crossed if it is not a barrier *or* the two faces share an
+    -- identity. For lineal boundaries (contacts) `faces_are_joinable` is a no-op
+    -- (returns false), so this reduces to `layers_are_joinable` — a contact
+    -- blocks the join. For areal boundaries a map's footprint edge sets
+    -- `layers_are_joinable` false, but same-identity faces still join via
+    -- `faces_are_joinable`, so higher-priority maps act as the real barriers.
     WHERE {topo_schema}.layers_are_joinable(
       ARRAY[_map_layer]::integer[] || _barrier_layers,
       e.layers
       )
-      AND {topo_schema}.faces_are_joinable(left_face, right_face, _map_layer)
+      OR {topo_schema}.faces_are_joinable(left_face, right_face, _map_layer)
   ),
   face_relations AS (
     SELECT left_face, right_face
