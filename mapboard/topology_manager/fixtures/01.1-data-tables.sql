@@ -117,6 +117,15 @@ ALTER TABLE {data_schema}.linework
   ADD COLUMN geometry_hash uuid,
   ADD COLUMN topology_error text;
 
+/* Identity column for the default ("search") strategy: the dominant polygon_type
+under each face. It lives with data-table creation because it references a data
+table (polygon_type); the strategy only names it. A host that supplies its own
+data tables defines the identity column there instead. */
+ALTER TABLE {topo_schema}.map_face
+  ADD COLUMN IF NOT EXISTS unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
+ALTER TABLE {topo_schema}.face_identity
+  ADD COLUMN IF NOT EXISTS unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
+
 
 /** Get the topology for a line. Both the map layer and linework type must be topological.
   TODO: it may be useful to deprecate this function.

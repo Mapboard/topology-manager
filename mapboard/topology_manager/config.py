@@ -6,7 +6,7 @@ from sqlalchemy.sql.expression import TextClause
 from contextvars import ContextVar
 from sqlalchemy.dialects.postgresql import base as pg
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 
 class Database(BaseDatabase):
@@ -18,17 +18,19 @@ class Database(BaseDatabase):
 class IdentityStrategy:
     """Defines how a map face acquires its identity.
 
-    A strategy owns the *resolution logic* (a set of SQL functions) and *declares*
-    where identity is stored (the column). The library installs and consults it.
-    The two axes — identity source and boundary geometry — are independent.
+    A strategy owns the *resolution logic* (a set of SQL functions). It only
+    *names* the identity column — the column itself (type, constraints) is created
+    as part of data-table creation, since the column references a data table. The
+    two axes — identity source and boundary geometry — are independent.
     See ``docs/design/identity-strategy.md``.
     """
 
-    # Registration + selection key (e.g. "search", "direct").
+    # Selection key (e.g. "search", "direct").
     key: str
-    # (column_name, column_type_spec). The type spec is everything after the
-    # column name in the DDL and may use template vars (e.g. ``{data_schema}``).
-    identity_column: tuple[str, str]
+    # The identity column name on map_face / face_identity. The column is defined
+    # by data-table creation (default or host); this is just its name, used to
+    # build the {face_identity_column} template variable.
+    identity_column: str
     # Install the strategy's SQL functions into a context's topo schema. Must
     # leave identity_for_area / identity_for_face / faces_are_joinable /
     # map_face_is_identified defined afterward.
@@ -56,10 +58,7 @@ def _install_search_strategy(ctx: "TopologyContext") -> None:
 
 SEARCH_STRATEGY = IdentityStrategy(
     key="search",
-    identity_column=(
-        "unit_id",
-        "text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE",
-    ),
+    identity_column="unit_id",
     install=_install_search_strategy,
 )
 
@@ -78,11 +77,17 @@ class TopologyContext:
     composite_layers: bool = False
     # The table holding boundary features (lines or polygons) that drive the topology.
     boundary_table: str = "linework"
-    # Whether the library owns and creates the feature/data tables. When False, the
-    # host provides them and the data-tables / polygon-trigger fixtures are skipped.
-    manage_data_tables: bool = True
+    # Optional host-supplied callable that creates the data tables (and the identity
+    # column, which references them). When None, the library creates its default data
+    # tables; when set, the library's data-table / polygon-trigger fixtures are skipped.
+    create_data_tables: Optional[Callable[["TopologyContext"], None]] = None
     # Whether to include listen/notify triggers for layer updates
     notify_triggers: bool = True
+
+    @property
+    def manage_data_tables(self) -> bool:
+        """True when the library owns the data tables (no host callable supplied)."""
+        return self.create_data_tables is None
 
 
 # Context vars to store the current TopologyContext
@@ -110,7 +115,7 @@ def create_context(
     composite_layers: bool = True,
     identity_strategy: IdentityStrategy = None,
     boundary_table: str = None,
-    manage_data_tables: bool = True,
+    create_data_tables: Optional[Callable[["TopologyContext"], None]] = None,
     notify_triggers: bool = True,
     **kwargs,
 ) -> TopologyContext:
@@ -134,7 +139,7 @@ def create_context(
         boundary_table = env.get("MAPBOARD_BOUNDARY_TABLE", "linework")
 
     strategy = identity_strategy or SEARCH_STRATEGY
-    face_identity_column = strategy.identity_column[0]
+    face_identity_column = strategy.identity_column
 
     _database = Database(database.engine)
     _database.instance_params = {
@@ -164,7 +169,7 @@ def create_context(
         create_extra_fields=create_extra_fields,
         composite_layers=composite_layers,
         boundary_table=boundary_table,
-        manage_data_tables=manage_data_tables,
+        create_data_tables=create_data_tables,
         notify_triggers=notify_triggers,
     )
 

@@ -62,7 +62,9 @@ open-ended extension point — not a binary.
 | skip `data-tables` + `polygon-triggers` (`create_tables.py`) | does the library own the feature tables | **`manage_data_tables: bool = True`** |
 | `add_composite_layer_types` + `manage_boundaries` (`update_composite_layers.py`) | does the library own the feature tables | **`manage_data_tables`** (both are literally `not in_macrostrat_mode` today) |
 
-Net new config: `identity_strategy`, `boundary_table` (name), `manage_data_tables`.
+Net new config: `identity_strategy`, `boundary_table` (name), and `create_data_tables`
+(an optional host callable on the context; `manage_data_tables` is the derived
+`create_data_tables is None`).
 
 ## The IdentityStrategy contract
 
@@ -71,10 +73,11 @@ the plumbing.
 
 ```
 IdentityStrategy (dataclass)
-├─ key: str                      # descriptive label, e.g. "search", "direct"
-├─ identity_column: (name, type) # contract member; type is on a glide path to removal
-├─ install(ctx) -> None          # install the strategy's SQL functions into topo_schema
-└─ combinator: "or" | "and"      # reserved; hardcoded OR for now
+├─ key: str                # descriptive label, e.g. "search", "direct"
+├─ identity_column: str    # column NAME only; the column (type, FK) is created by
+│                          #   data-table creation, since it references a data table
+├─ install(ctx) -> None    # install the strategy's SQL functions into topo_schema
+└─ combinator: "or" | "and" # reserved; hardcoded OR for now
 ```
 
 `install(ctx)` must leave these four functions defined in `topo_schema` (every
@@ -100,20 +103,22 @@ existing call site already routes through these names, so nothing downstream cha
 ## Concrete changes
 
 1. **config.py** — add the `IdentityStrategy` dataclass + the default
-   `SEARCH_STRATEGY`; add `identity_strategy`, `boundary_table`, `manage_data_tables`;
-   remove `in_macrostrat_mode`. Derive `face_identity_column` from the strategy.
-2. **create_tables.py** — `ctx.identity_strategy.install(ctx)` explicitly (always);
-   gate the `data-tables`/`polygon-triggers` skips on `not manage_data_tables`; add the
-   identity **column DDL** here, driven by the strategy's `(name, type)`, against the
-   library-owned `map_face`/`face_identity` tables (`00.2-topology-tables.sql`). Hosts
-   no longer `ALTER … ADD COLUMN` the identity column themselves.
+   `SEARCH_STRATEGY`; add `identity_strategy`, `boundary_table`, `create_data_tables`
+   (with `manage_data_tables` a derived property); remove `in_macrostrat_mode`. Derive
+   `face_identity_column` from the strategy's column name.
+2. **create_tables.py** — read `ctx.create_data_tables` (no longer an argument); at the
+   data-table stage, call it (host) or run the library data-table fixture (default), then
+   run `ctx.identity_strategy.install(ctx)`. The identity column is **not** added here —
+   it is created by data-table creation. Skips `data-tables`/`polygon-triggers` when a
+   host callable is supplied.
 3. **clean_topology.py / update_composite_layers.py** — read `boundary_table` /
    `manage_data_tables` instead of `in_macrostrat_mode`.
-4. **Fixtures** — split the four functions out of `01.2-data-tables-identity.sql` into
-   the reference strategy's install SQL; the leftover data-table column DDL stays. The
-   test's `tests/map_areas/fixtures/03-identity-management.sql` becomes the install SQL
-   of a **host-supplied strategy** (`direct`), passed to `create_context`, rather than
-   injected via the data-tables callback — the live proof the override works.
+4. **Fixtures** — the four functions live in the reference strategy's install SQL
+   (`fixtures/identity/search.sql`); the **identity column DDL lives with data-table
+   creation** (`unit_id` in `01.1-data-tables.sql`; a host adds its own, e.g. `map_id`
+   in the test's `01-create-tables.sql`). The test's `03-identity-management.sql` is the
+   install SQL of a **host-supplied strategy** (`direct`) passed via
+   `create_context(create_data_tables=...)` — the live proof the override works.
 5. **Cleanup** — fix the hardcoded `unit_id` alias in the shared view
    `04-topology-views.sql:111` → `{face_identity_column}`.
 

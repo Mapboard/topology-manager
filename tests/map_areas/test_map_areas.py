@@ -37,7 +37,7 @@ def _install_direct_strategy(ctx: TopologyContext):
 # passes it to create_context — no global registration needed.
 DIRECT_STRATEGY = IdentityStrategy(
     key="direct",
-    identity_column=("map_id", "integer REFERENCES {data_schema}.map_area (id)"),
+    identity_column="map_id",
     install=_install_direct_strategy,
 )
 
@@ -56,10 +56,10 @@ def ctx(empty_db):
         tolerance=0.0001,
         identity_strategy=DIRECT_STRATEGY,
         boundary_table="map_area",
-        manage_data_tables=False,
+        create_data_tables=create_data_tables,
         notify_triggers=False,
     )
-    create_tables(ctx, create_data_tables=create_data_tables)
+    create_tables(ctx)
     yield ctx
 
 

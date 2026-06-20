@@ -52,6 +52,14 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
   PRIMARY KEY (map_layer, map_id)
 );
 
+/* Identity column for the "direct" strategy: the covering map_area. It is defined
+here, as part of data-table creation, because it references map_area; the strategy
+only names it (map_id). */
+ALTER TABLE map_bounds_topology.map_face
+  ADD COLUMN IF NOT EXISTS map_id integer REFERENCES map_bounds.map_area(id);
+ALTER TABLE map_bounds_topology.face_identity
+  ADD COLUMN IF NOT EXISTS map_id integer REFERENCES map_bounds.map_area(id);
+
 
 CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
   RETURNS integer AS $$

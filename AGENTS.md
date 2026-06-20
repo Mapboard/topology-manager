@@ -16,23 +16,27 @@ independent signals (there is no single "mode" flag):
   (identity *derived* by area-weighting the typed-polygon table; column `unit_id`).
   A host supplies, e.g., a `direct` strategy for footprints (identity *held* on the
   face/feature via the covering `map_area`, disambiguated by `map_priority`; column
-  `map_id`). A strategy declares its identity column (name + type) and an
+  `map_id`). A strategy only *names* its identity column and provides an
   `install(ctx)` that defines four SQL functions (`identity_for_area`,
-  `identity_for_face`, `faces_are_joinable`, `map_face_is_identified`). See
+  `identity_for_face`, `faces_are_joinable`, `map_face_is_identified`); the column
+  itself is created by data-table creation (it references a data table). See
   `docs/design/identity-strategy.md`.
 - `boundary_table` — the table holding the boundary features that drive the
   topology (`linework` for lines / edge-based topogeoms; `map_area` for polygons /
   face-based topogeoms). Lineal-vs-areal is discoverable at runtime via
   `topology.layer.feature_type` (cf. `__boundary_is_lineal()`).
-- `manage_data_tables` — whether the library creates the feature tables (and the
-  `data-tables`/`polygon-triggers` fixtures + composite type/boundary management
-  run). When `False`, the host provides those tables.
+- `create_data_tables` — an optional callable. When `None`, the library creates its
+  default data tables (the `data-tables`/`polygon-triggers` fixtures run, and they add
+  the default `unit_id` identity column). When supplied, the host creates the data
+  tables and the identity column, and those fixtures are skipped. `ctx.manage_data_tables`
+  is just the derived `create_data_tables is None` (it also gates composite type/boundary
+  management).
 
-`identity_strategy` derives `face_identity_column`; `create_tables` adds the
-identity column to `map_face`/`face_identity` from the strategy and runs its
-`install`. Most SQL is written against template vars (`{boundary_table}`,
-`{face_identity_column}`), so it works for both edge- and face-based topogeometries.
-When touching shared SQL, check it holds for **both** types.
+`identity_strategy` derives `face_identity_column`; `create_tables` calls
+`create_data_tables` (or the default fixtures) — which add the identity column — then
+runs `identity_strategy.install`. Most SQL is written against template vars
+(`{boundary_table}`, `{face_identity_column}`), so it works for both edge- and
+face-based topogeometries. When touching shared SQL, check it holds for **both** types.
 
 ## Running tests
 
