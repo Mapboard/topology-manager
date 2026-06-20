@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   replacing the per-dirty-face graph rebuild.
 - `incremental` face updates now mean *checkpointed persistence* (commit per
   dissolve group), decoupling persistence from the adjacency join graph
+- Add a post-installation setup check (`check_topology_setup` /
+  `assert_topology_setup`, run by `create_tables`) that verifies the identity
+  column, identity functions, and boundary table/topogeometry exist — surfacing a
+  misconfigured host strategy or `create_data_tables` callable immediately
 
 ## `[4.0.0]` - 2024-03
 

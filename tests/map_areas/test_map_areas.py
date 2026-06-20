@@ -36,7 +36,6 @@ def _install_direct_strategy(ctx: TopologyContext):
 # covering map_area, disambiguated by priority). The host just constructs it and
 # passes it to create_context — no global registration needed.
 DIRECT_STRATEGY = IdentityStrategy(
-    key="direct",
     identity_column="map_id",
     install=_install_direct_strategy,
 )

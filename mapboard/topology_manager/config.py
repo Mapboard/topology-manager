@@ -25,15 +25,13 @@ class IdentityStrategy:
     See ``docs/design/identity-strategy.md``.
     """
 
-    # Selection key (e.g. "search", "direct").
-    key: str
     # The identity column name on map_face / face_identity. The column is defined
     # by data-table creation (default or host); this is just its name, used to
     # build the {face_identity_column} template variable.
     identity_column: str
     # Install the strategy's SQL functions into a context's topo schema. Must
-    # leave identity_for_area / identity_for_face / faces_are_joinable /
-    # map_face_is_identified defined afterward.
+    # define identity_for_area / identity_for_face / faces_are_joinable /
+    # map_face_is_identified.
     install: Callable[["TopologyContext"], None]
     # How identity combines with the contact barrier in get_adjacent_faces_core.
     # Reserved: the SQL currently hardcodes "or"; "and" is for the future
@@ -57,7 +55,6 @@ def _install_search_strategy(ctx: "TopologyContext") -> None:
 
 
 SEARCH_STRATEGY = IdentityStrategy(
-    key="search",
     identity_column="unit_id",
     install=_install_search_strategy,
 )

@@ -73,7 +73,6 @@ the plumbing.
 
 ```
 IdentityStrategy (dataclass)
-├─ key: str                # descriptive label, e.g. "search", "direct"
 ├─ identity_column: str    # column NAME only; the column (type, FK) is created by
 │                          #   data-table creation, since it references a data table
 ├─ install(ctx) -> None    # install the strategy's SQL functions into topo_schema

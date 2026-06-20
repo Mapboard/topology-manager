@@ -34,9 +34,14 @@ independent signals (there is no single "mode" flag):
 
 `identity_strategy` derives `face_identity_column`; `create_tables` calls
 `create_data_tables` (or the default fixtures) — which add the identity column — then
-runs `identity_strategy.install`. Most SQL is written against template vars
-(`{boundary_table}`, `{face_identity_column}`), so it works for both edge- and
-face-based topogeometries. When touching shared SQL, check it holds for **both** types.
+runs `identity_strategy.install` *after* the core topology functions exist (the
+identity functions depend on `__map_face_layer_id` from `03-topology-functions`) and
+before the `04+` fixtures that consume them. Finally it runs `assert_topology_setup`
+(see `commands/check_setup.py`) to fail fast if a host strategy / `create_data_tables`
+left the identity column, identity functions, or boundary topogeometry missing — pass
+`check=False` to skip. Most SQL is written against template vars (`{boundary_table}`,
+`{face_identity_column}`), so it works for both edge- and face-based topogeometries.
+When touching shared SQL, check it holds for **both** types.
 
 ## Running tests
 
