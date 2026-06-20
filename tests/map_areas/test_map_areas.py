@@ -2,7 +2,7 @@ from pathlib import Path
 
 from geoalchemy2.shape import from_shape
 from macrostrat.database import Database
-from psycopg.sql import SQL
+from psycopg.sql import SQL, Identifier
 from pytest import fixture
 from shapely.geometry import Point
 
@@ -11,18 +11,6 @@ from mapboard.topology_manager.commands.update import _update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from mapboard.topology_manager.config import create_context, TopologyContext
 from ..helpers import TopologyInspector
-
-
-def create_topo_context(db: Database):
-    return create_context(
-        db,
-        data_schema="map_bounds",
-        topo_schema="map_bounds_topology",
-        srid=4326,
-        tolerance=0.0001,
-        in_macrostrat_mode=True,
-        notify_triggers=False,
-    )
 
 
 def create_data_tables(ctx: TopologyContext):
@@ -35,9 +23,26 @@ def geom(_shape, srid=4326):
 
 @fixture(scope="class")
 def ctx(empty_db):
-    ctx = create_topo_context(empty_db)
+    ctx = create_context(
+        empty_db,
+        data_schema="map_bounds",
+        topo_schema="map_bounds_topology",
+        srid=4326,
+        tolerance=0.0001,
+        in_macrostrat_mode=True,
+        notify_triggers=False,
+    )
     create_tables(ctx, create_data_tables=create_data_tables)
     yield ctx
+
+def row_count(db, table, schema=None):
+    if schema is None:
+        if "." in table:
+            schema, table = table.split(".")
+    tbl = Identifier(table)
+    if schema is not None:
+        tbl = Identifier(schema, table)
+    return db.run_query("SELECT count(*) FROM {table}", dict(table=tbl)).scalar()
 
 
 class TestMapTopology:
@@ -55,19 +60,12 @@ class TestMapTopology:
 
         _update(ctx)
         # Check that we have two maps in the map_area table
-        assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
+        assert row_count(db, "map_bounds.map_area") == 2
+        assert row_count(db, "map_bounds.map_priority") == 2
 
     def test_topology_is_valid(self, ctx):
         insp = TopologyInspector(ctx)
         assert insp.is_valid()
-
-    def test_map_priority(self, ctx):
-        db = ctx.database
-
-        # Check that we have two maps in the priority table
-        assert (
-            db.run_query("SELECT count(*) FROM map_bounds.map_priority").scalar() == 2
-        )
 
     def test_process_maps(self, ctx):
         # Check that we have the appropriate number of faces
@@ -78,6 +76,11 @@ class TestMapTopology:
         _update(ctx)
 
         assert insp.n_faces() == 2
+
+    def test_edge_relations(self, ctx):
+        insp = TopologyInspector(ctx)
+        assert insp.n_edges() == 2
+        assert insp.n_edge_relations() == 2
 
     def test_add_overlapping_map(self, ctx):
         """Add a face that overlaps the other two"""
