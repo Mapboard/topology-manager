@@ -15,13 +15,7 @@ reset_errors = sql("procedures/reset-linework-errors")
 log = get_logger(__name__)
 
 
-def update_contacts(fix_failed: bool = False):
-    """Update contacts"""
-    ctx = get_context()
-    _update_contacts(ctx, fix_failed)
-
-
-def _update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
+def update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
     """Update contacts, returning the number of lines processed."""
     db = ctx.database
     nlines = db.run_query(count).scalar()

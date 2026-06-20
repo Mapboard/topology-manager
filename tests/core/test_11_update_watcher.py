@@ -8,6 +8,7 @@ from ..helpers import insert_line, map_layer_id, square
 
 update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
 
+from mapboard.topology_manager.watcher import start_watcher
 
 class _TestLoop:
     def __init__(self, callback_runner):
@@ -66,7 +67,7 @@ def test_start_watcher_handles_real_linework_event(mgr_no_transaction, monkeypat
     monkeypatch.setattr(update_cmd.asyncio, "get_event_loop", lambda: test_loop)
 
     # Start the watch command
-    update_cmd._start_watcher(composite_layers=True)
+    start_watcher(composite_layers=True)
 
     assert test_loop.reader is not None
     assert len(update_calls) == 1

@@ -2,7 +2,8 @@ from rich.prompt import Confirm
 from typer import Option, Typer
 
 from .commands import create_tables, clean_topology, update_contacts, update_faces
-from .commands.update_topology import update, _start_watcher
+from .commands.update_topology import update
+from .watcher import start_watcher
 from .config import get_database, sql, create_context, get_context
 from .utilities import console
 
@@ -36,18 +37,6 @@ def _create_tables():
     create_tables(ctx)
 
 
-def _update_faces(**kwargs):
-    """Update faces"""
-    ctx = get_context()
-    update_faces(ctx, **kwargs)
-
-
-# The "Database" annotation cannot be used with Typer so we create a new set of annotations
-_update_faces.__annotations__ = {
-    k: v for k, v in update_faces.__annotations__.items() if k != "ctx"
-}
-
-
 @app.command(name="update")
 def _update(
     reset: bool = Option(False, help="Rebuild from scratch"),
@@ -73,19 +62,36 @@ def _update(
     )
 
     if watch:
-        _start_watcher(**kwargs)
+        start_watcher(**kwargs)
 
+
+@app.command(name="update-contacts")
+def _update_contacts(fix_failed: bool = False):
+    """Update contacts"""
+    ctx = get_context()
+    update_contacts(ctx, fix_failed)
+
+
+def _update_faces(**kwargs):
+    """Update faces"""
+    ctx = get_context()
+    update_faces(ctx, **kwargs)
+
+
+# The "Database" annotation cannot be used with Typer so we create a new set of annotations
+_update_faces.__annotations__ = {
+    k: v for k, v in update_faces.__annotations__.items() if k != "ctx"
+}
 
 app.add_command(_update_faces, name="update-faces", help="Update faces")
 
-
-app.add_command(update_contacts)
 
 @app.command(name="clean-topology")
 def _clean_topology():
     """Clean the topology"""
     ctx = get_context()
     clean_topology(ctx)
+
 
 def _operation_command(name):
     # Prompt user for confirmation

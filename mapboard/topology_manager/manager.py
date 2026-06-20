@@ -2,7 +2,7 @@
 
 from .config import TopologyContext
 from .commands.update_topology import update
-from .commands.update_contacts import _update_contacts
+from .commands.update_contacts import update_contacts
 from .commands.clean_topology import clean_topology
 from .commands.update_faces import update_faces
 from .commands.update_composite_layers import update_composite_layers
@@ -50,7 +50,7 @@ class TopologyManager:
 
     def update_contacts(self, **kwargs):
         """Recalculate linework contacts."""
-        _update_contacts(self._ctx, **kwargs)
+        update_contacts(self._ctx, **kwargs)
 
     def update_faces(self, **kwargs):
         """Recalculate map faces."""
