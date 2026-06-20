@@ -245,6 +245,7 @@ version = "5.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "addict" },
+    { name = "geoalchemy2" },
     { name = "macrostrat-database" },
     { name = "macrostrat-utils" },
     { name = "pytest-profiling" },
@@ -264,6 +265,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "addict", specifier = ">=2.4.0,<3" },
+    { name = "geoalchemy2", specifier = ">=0.20.0" },
     { name = "macrostrat-database", specifier = ">=4.3.1,<5" },
     { name = "macrostrat-utils", specifier = ">=1.2.1,<2" },
     { name = "pytest-profiling", specifier = ">=1.7.0,<2" },

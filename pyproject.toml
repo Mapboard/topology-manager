@@ -25,6 +25,7 @@ dependencies = [
     "python-dotenv>=1.0.1,<2",
     "pytest-profiling>=1.7.0,<2",
     "addict>=2.4.0,<3",
+    "geoalchemy2>=0.20.0",
 ]
 
 [project.scripts]
