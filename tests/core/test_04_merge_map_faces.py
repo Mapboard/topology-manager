@@ -2,6 +2,7 @@
 
 from macrostrat.utils import get_logger
 
+from mapboard.topology_manager import update
 from ..helpers import (
     insert_line,
     map_layer_id,
@@ -26,23 +27,23 @@ def test_simple_edge_relationships(mgr, db):
 
     # Insert a line
     insert_line(db, [(0, 0), (3, 0)], type="bedrock", map_layer=lyr)
-    mgr.update()
+    update()
 
     # Check that we have the expected number of edges
     assert n_edges(db) == 1
 
     # Divide the line into two segments
     insert_line(db, [(1, -1), (1, 1)], type="bedrock", map_layer=lyr)
-    mgr.update()
+    update()
     assert n_edges(db) == 4
 
     _id = insert_line(db, [(2, -1), (2, 1)], type="bedrock", map_layer=lyr)
-    mgr.update()
+    update()
     assert n_edges(db) == 7
 
     # Delete the last edge
     db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
-    mgr.update()
+    update()
     assert n_edges(db) == 4
 
 
@@ -73,7 +74,7 @@ def test_find_adjacent_faces(mgr, db, layers):
     assert db.run_query("SELECT face_id FROM {topo_schema}.face").scalar() == 0
     # Insert a square into the child layer
     insert_line(db, square(2, center=(0, 0)), type="bedrock", map_layer=layers["child"])
-    mgr.update()
+    update()
     assert n_faces(db) == 1
     # Get the face that intersects 0,0
     face_id = db.run_query(
@@ -99,7 +100,7 @@ class TestMergeMapFaces:
 
         # Insert a square in the parent layer
         insert_line(db, square(2, (1, 1)), type="bedrock", map_layer=parent_lyr)
-        mgr.update()
+        update()
         assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
 
@@ -121,7 +122,7 @@ class TestMergeMapFaces:
         mgr.clean_topology()
         assert n_edges(db) == 5
 
-        mgr.update()
+        update()
 
         assert (
             n_edges(db) == 5
@@ -136,7 +137,7 @@ class TestMergeMapFaces:
 
         insert_line(db, [(-1, 1), (3, 1)], type="bedrock", map_layer=child_lyr)
 
-        mgr.update()
+        update()
 
         assert n_face_primitives(db) == 4
         assert n_edges(db) == 12
@@ -152,7 +153,7 @@ class TestMergeMapFaces:
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(-1,1), :srid))",
             {"map_layer": child_lyr},
         )
-        mgr.update()
+        update()
 
         # Should be a single line in the child layer
         n_lines = db.run_query(
@@ -180,7 +181,7 @@ class TestMergeMapFaces:
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
             {"map_layer": child_lyr},
         )
-        mgr.update()
+        update()
 
         assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
@@ -194,7 +195,7 @@ class TestMergeMapFaces:
             "UPDATE {data_schema}.linework SET map_layer = :map_layer WHERE map_layer = :parent_lyr",
             {"map_layer": child_lyr, "parent_lyr": map_layer_id(db, "parent")},
         )
-        mgr.update()
+        update()
 
         # The parent layer should no longer have a face
         assert n_face_primitives(db) == 1
@@ -210,7 +211,7 @@ class TestMergeMapFaces:
 
         # Insert a square in the grandparent layer
         insert_line(db, square(4, (1, 1)), type="bedrock", map_layer=grandparent_lyr)
-        mgr.update()
+        update()
 
         # Check that we have the expected number of edges
         assert n_edges(db) == 2

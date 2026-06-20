@@ -1,6 +1,7 @@
 from pytest import mark
 from shapely.geometry import LineString
 
+from mapboard.topology_manager import update
 from ..helpers import (
     add_linework_type_to_layer,
     add_polygon_type_to_layer,
@@ -124,7 +125,7 @@ class TestNestedLayers:
         )
 
         # Solve the topology
-        mgr.update()
+        update()
 
         n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
         assert n_edges == 1
@@ -190,7 +191,7 @@ class TestNestedLayers:
         assert len(res) == 2
         assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 2
 
-        mgr.update()
+        update()
 
         res = adjacent_faces(db, "Tectonic Block")
         assert len(res) == 2
@@ -251,7 +252,7 @@ class TestNestedLayers:
         )
 
         # Solve the topology
-        mgr.update()
+        update()
 
         # Check that we have two identified map faces
 
@@ -310,7 +311,7 @@ def test_layer_with_child(mgr, db, topological):
     #     db, LineString(((3, 0), (3, 6))), type="bedrock", map_layer=bedrock_id
     # )
     # Solve the topology
-    mgr.update()
+    update()
 
     # Get all faces
     res = db.run_query(
@@ -411,7 +412,7 @@ class TestNestedLayersDisconnected:
         )
 
         # Solve the topology
-        mgr.update()
+        update()
 
         # There should be three faces in the topology now
         res = db.run_query(
@@ -432,7 +433,7 @@ class TestNestedLayersDisconnected:
         )
 
         # Solve the topology
-        mgr.update()
+        update()
 
         # There should be four faces in the topology now
         res = db.run_query(

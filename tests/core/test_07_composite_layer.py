@@ -3,6 +3,7 @@
 from addict import Dict
 from pytest import fixture
 
+from mapboard.topology_manager import update
 from ..helpers import (
     add_linework_type_to_layer,
     add_polygon_type_to_layer,
@@ -57,7 +58,7 @@ class TestCompositeLayers:
             dict(child_lyr=layers.paleozoic),
         )
 
-        mgr.update(composite_layers=False)
+        update(composite_layers=False)
 
         n_child_faces = grid_count_on_each_axis**2 + 1 - 4 + 1
 
@@ -68,7 +69,7 @@ class TestCompositeLayers:
         expected_n_primitives = grid_count_on_each_axis**2 - 3 + 1
         assert n_face_primitives(db) == expected_n_primitives
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
         assert n_face_primitives(db) == expected_n_primitives
         assert n_faces(db, map_layer=layers.paleozoic) == n_child_faces
         assert n_faces(db, map_layer=layers.composite) == 0
@@ -89,7 +90,7 @@ class TestCompositeLayers:
             map_layer=layers.paleozoic,
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
         assert n_faces(db, map_layer=layers.composite) == n_child_faces
 
     def test_create_surficial_face(self, mgr, db, layers):
@@ -98,7 +99,7 @@ class TestCompositeLayers:
             db, square(4, (4.5, 4.5)), type="bedrock", map_layer=layers.surficial
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         _bedrock_count = grid_count_on_each_axis**2 + 1 - 4 + 1
 
@@ -110,7 +111,7 @@ class TestCompositeLayers:
             db, square(1, (4.5, 4.5)), type="unit0", map_layer=layers.surficial
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         assert n_faces(db, map_layer=layers.composite) == _bedrock_count - 9 + 1
 
@@ -120,7 +121,7 @@ class TestCompositeLayers:
             dict(lyr=layers.surficial),
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         uid = db.run_query(
             "SELECT unit_id FROM {topo_schema}.map_face WHERE map_layer = :lyr",
@@ -163,13 +164,13 @@ class TestCompositeLayers:
             dict(lyr=layers.paleozoic),
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
         assert n_faces(db, map_layer=layers.paleozoic) == 1
         assert n_faces(db, map_layer=layers.composite) == 1
 
         create_grid(db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         bedrock_count = grid_count_on_each_axis**2 + 1
         assert n_faces(db, map_layer=layers.composite) == bedrock_count
@@ -185,7 +186,7 @@ class TestCompositeLayers:
         assert n_dirty_faces(db, map_layer=layers.surficial) > 0
         assert n_faces(db, map_layer=layers.surficial) == 0
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         assert n_dirty_faces(db) == 0
         assert n_faces(db, map_layer=layers.surficial) == 1
@@ -195,7 +196,7 @@ class TestCompositeLayers:
             db, square(1, (4.1, 4.1)), type="unit0", map_layer=layers.surficial
         )
 
-        mgr.update(composite_layers=True)
+        update(composite_layers=True)
 
         uid = db.run_query(
             """

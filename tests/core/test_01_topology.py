@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from mapboard.topology_manager import update
 from ..helpers import (
     n_faces,
     square,
@@ -63,7 +64,7 @@ class TestTopology:
 
     def test_solve_topology(self, mgr, db):
         """Solve topology and check that we have a map face"""
-        mgr.update()
+        update()
         assert n_faces(db) == 1
 
         assert n_edge_relations(db) > 0
@@ -83,7 +84,7 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        mgr.update()
+        update()
         assert n_faces(db) == 1
 
     def test_change_line_layer(self, mgr, db):
@@ -105,7 +106,7 @@ class TestTopology:
         ).fetchall()
         assert len(res) == 1
 
-        mgr.update()
+        update()
         assert n_faces(db) == 0
 
 
@@ -132,7 +133,7 @@ def test_create_and_delete_line(mgr, db):
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    mgr.update()
+    update()
 
     assert n_faces(db) == 1
 
@@ -144,7 +145,7 @@ def test_create_and_delete_line(mgr, db):
 
     assert db.run_query("SELECT count(*) FROM {data_schema}.linework").scalar() == 0
 
-    mgr.update()
+    update()
     assert n_faces(db) == 0
 
 
@@ -153,12 +154,12 @@ def test_update_line_geometry(mgr, db):
     bedrock_id = map_layer_id(db, "bedrock")
     line_id = insert_line(db, square(1, (0, 0)), type="bedrock", map_layer=bedrock_id)
 
-    mgr.update()
+    update()
     assert n_faces(db) == 1
 
     assert get_geometry_hash(db, line_id) is not None
 
-    mgr.update()
+    update()
 
     # Update the geometry
     db.run_query(
@@ -179,7 +180,7 @@ def test_update_line_geometry(mgr, db):
 
     assert get_geometry_hash(db, line_id) is None
 
-    mgr.update()
+    update()
 
     assert n_faces(db) == 1
 
@@ -191,7 +192,7 @@ def test_update_line_geometry(mgr, db):
         {"id": line_id},
     )
 
-    mgr.update()
+    update()
     assert n_faces(db) == 0
 
 

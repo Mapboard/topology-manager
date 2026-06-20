@@ -2,7 +2,7 @@ from time import perf_counter
 
 from rich.progress import Progress
 
-from ..config import TopologyContext
+from ..config import TopologyContext, get_context
 from ..database import Database, get_database, sql
 from ..utilities import console
 from .clean_topology import _clean_topology
@@ -17,8 +17,8 @@ log = get_logger(__name__)
 
 def update_contacts(fix_failed: bool = False):
     """Update contacts"""
-    db = get_database()
-    _update_contacts(db, fix_failed)
+    ctx = get_context()
+    _update_contacts(ctx, fix_failed)
 
 
 def _update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:

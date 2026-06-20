@@ -1,5 +1,6 @@
 from pytest import mark
 
+from mapboard.topology_manager import update
 from ..helpers import (
     add_linework_type_to_layer,
     insert_line,
@@ -27,7 +28,7 @@ def test_topo_face_no_identifier(db, mgr):
         type="bedrock",
         map_layer=map_layer_id(db, "bedrock"),
     )
-    mgr.update()
+    update()
     assert n_faces(db) == 1
 
 
@@ -48,7 +49,7 @@ def test_new_layer(mgr, db):
         type="bedrock",
         map_layer=lyr.id,
     )
-    mgr.update()
+    update()
     assert n_faces(db) == 1
 
 
@@ -81,7 +82,7 @@ def basic_polys(mgr, db, layers):
     insert_polygon(db, square(1, center=(3, 3)), type="terrace", map_layer=surficial_id)
 
     # Solve the topology
-    mgr.update()
+    update()
 
 
 class TestMultiLayers:
@@ -129,7 +130,7 @@ class TestMultiLayers:
                 "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
                 {"map_layer": layers["surficial"]},
             )
-            mgr.update()
+            update()
             assert n_faces(db) == 0
 
 
@@ -168,8 +169,8 @@ def _test_internals(mgr, layers):
     # )
     # db.run_sql(sql("procedures/post-update-contacts"))
 
-    mgr.update()
-    mgr.update()
+    update()
+    update()
 
     # We should also have deleted all edge relationships
     res = db.run_query(
@@ -214,7 +215,7 @@ def test_mixed_edge_winding(mgr, db, layers):
         db, ((-1, -1), (1, -1), (1, 1)), type="bedrock", map_layer=layers["bedrock"]
     )
 
-    mgr.update()
+    update()
 
     assert n_faces(db) == 1
 
@@ -235,14 +236,14 @@ def test_incremental_face_updates(mgr, db, layers, incremental):
     for i in range(5):
         _insert_lines(i)
 
-    mgr.update(incremental=incremental)
+    update(incremental=incremental)
 
     assert n_faces(db) == 16
 
     for i in range(6):
         _insert_lines(i + 5)
 
-    mgr.update(incremental=incremental)
+    update(incremental=incremental)
 
     assert n_faces(db) == 100
     assert n_lines(db) == 22
@@ -258,7 +259,7 @@ def test_incremental_face_updates(mgr, db, layers, incremental):
         dict(eraser=prepare_geometry(eraser, srid=32612), map_layer=lyr),
     )
 
-    mgr.update(incremental=incremental)
+    update(incremental=incremental)
     # We should have four lines in the database
     assert n_lines(db) == 4
     assert n_faces(db) == 1

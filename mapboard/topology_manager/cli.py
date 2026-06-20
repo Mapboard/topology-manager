@@ -1,8 +1,9 @@
 from rich.prompt import Confirm
 from typer import Option, Typer
 
-from .commands import add_all_commands
-from .config import get_database, sql, create_context
+from .commands import create_tables, clean_topology, update_contacts, update_faces
+from .commands.update_topology import update, _start_watcher
+from .config import get_database, sql, create_context, get_context
 from .utilities import console
 
 
@@ -28,7 +29,58 @@ def main(
         create_context(database)
 
 
-add_all_commands(app)
+@app.command(name="create-tables")
+def _create_tables():
+    """Create tables"""
+    ctx = get_context()
+    create_tables(ctx)
+
+
+def _update_faces(**kwargs):
+    """Update faces"""
+    ctx = get_context()
+    update_faces(ctx, **kwargs)
+
+
+# The "Database" annotation cannot be used with Typer so we create a new set of annotations
+_update_faces.__annotations__ = {
+    k: v for k, v in update_faces.__annotations__.items() if k != "ctx"
+}
+
+
+@app.command(name="update")
+def _update(
+    reset: bool = Option(False, help="Rebuild from scratch"),
+    fill_holes: bool = Option(False, help="Try to fill all holes"),
+    watch: bool = Option(False, help="Watch for changes"),
+    fix_failed: bool = Option(False, help="Fix failed contacts"),
+    composite_layers: bool = Option(False, help="Update composite layers"),
+):
+    """Update the topology"""
+
+    ctx = get_context()
+
+    kwargs = dict(
+        composite_layers=composite_layers,
+    )
+
+    update(
+        ctx,
+        reset=reset,
+        fill_holes=fill_holes,
+        fix_failed=fix_failed,
+        **kwargs,
+    )
+
+    if watch:
+        _start_watcher(**kwargs)
+
+
+app.add_command(_update_faces, name="update-faces", help="Update faces")
+
+
+app.add_command(update_contacts)
+app.add_command(clean_topology)
 
 
 def _operation_command(name):

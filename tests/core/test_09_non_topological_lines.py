@@ -1,3 +1,4 @@
+from mapboard.topology_manager import update
 from ..helpers import (
     insert_line,
     map_layer_id,
@@ -33,13 +34,13 @@ def test_non_topological_lines(mgr, db):
         map_layer=lyr,
     )
 
-    mgr.update()
+    update()
     assert n_faces(db) == 1
 
     # Add a bisecting line
     insert_line(db, ((-1, 1), (3, 1)), type="test0", map_layer=lyr)
 
-    mgr.update()
+    update()
 
     # Check that the face is still the same
     assert n_faces(db) == 1
@@ -80,7 +81,7 @@ def test_non_topological_polygons(mgr, db):
         map_layer=lyr,
     )
 
-    mgr.update()
+    update()
 
     # Check that the face isn't identified
     assert n_faces(db, identified=True) == 0
@@ -93,7 +94,7 @@ def test_non_topological_polygons(mgr, db):
         map_layer=lyr,
     )
 
-    mgr.update()
+    update()
 
     assert n_faces(db, identified=True) == 1
 

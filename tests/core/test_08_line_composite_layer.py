@@ -3,6 +3,7 @@
 from pytest import fixture
 from addict import Dict
 
+from mapboard.topology_manager import update
 from ..helpers import (
     add_linework_type_to_layer,
     create_composite_layer,
@@ -85,7 +86,7 @@ def test_lines_in_composite_layer(layers, mgr, db):
     insert_polygon(db, square(1, (1, 1)), map_layer=layers.basement, type="unit0")
 
     # Update faces
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
 
     # Check that the composite layer has two faces
     assert n_face_primitives(db) == 3
@@ -157,7 +158,7 @@ def test_non_topological_lines_in_composite_layer(layers, mgr, db):
         map_layer=layers.basement,
     )
 
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
     # Check that the line is in the composite layer
     assert n_lines(db, map_layer=layers.composite) == 1
     assert n_lines(db, map_layer=layers.basement) == 1
@@ -171,7 +172,7 @@ def test_non_topological_lines_in_composite_layer(layers, mgr, db):
         dict(layer=layers.basement),
     )
 
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
 
     # Check that the line is removed from the composite layer
     assert n_lines(db, map_layer=layers.composite) == 0
@@ -187,14 +188,14 @@ def test_lines_removed_from_composite_layer(layers, mgr, db):
         type="bedrock",
         map_layer=layers.surficial,
     )
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
     # Check that we have a single face primitive
     assert n_face_primitives(db) == 1
 
     insert_line(db, square(2, (1, 1)), map_layer=layers.basement, type="bedrock")
 
     # Update faces
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
 
     # Check that the composite layer has two faces
     assert n_face_primitives(db) == 3
@@ -215,7 +216,7 @@ def test_lines_removed_from_composite_layer(layers, mgr, db):
 
     assert n_lines(db, map_layer=layers.external) == 1
 
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
 
     assert n_lines(db, map_layer=layers.composite) == 1
 
@@ -242,7 +243,7 @@ def test_non_topological_lines_removed_from_composite_layer(layers, mgr, db):
         map_layer=layers.basement,
     )
 
-    mgr.update(composite_layers=True)
+    update(composite_layers=True)
     # Check that the line is in the composite layer
     assert n_lines(db, map_layer=layers.composite) == 1
     _count = db.run_query(

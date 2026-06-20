@@ -6,7 +6,7 @@ import pytest
 
 from ..helpers import insert_line, map_layer_id, square
 
-update_cmd = importlib.import_module("mapboard.topology_manager.commands.update")
+update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
 
 
 class _TestLoop:
@@ -60,7 +60,7 @@ def test_start_watcher_handles_real_linework_event(mgr_no_transaction, monkeypat
 
     monkeypatch.setattr(
         update_cmd,
-        "_update",
+        "update",
         lambda passed_ctx, **kwargs: update_calls.append((passed_ctx, kwargs)),
     )
     monkeypatch.setattr(update_cmd.asyncio, "get_event_loop", lambda: test_loop)

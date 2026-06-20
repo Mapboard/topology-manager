@@ -7,7 +7,7 @@ from pytest import fixture
 from shapely.geometry import Point
 
 from mapboard.topology_manager.commands import create_tables
-from mapboard.topology_manager.commands.update import _update
+from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from mapboard.topology_manager.config import create_context, TopologyContext
 from ..helpers import TopologyInspector
@@ -35,6 +35,7 @@ def ctx(empty_db):
     create_tables(ctx, create_data_tables=create_data_tables)
     yield ctx
 
+
 def row_count(db, table, schema=None):
     if schema is None:
         if "." in table:
@@ -58,7 +59,7 @@ class TestMapTopology:
         add_map(db, "ST_MakeEnvelope(0, 0, 2, 2)", "large")
         add_map(db, "ST_MakeEnvelope(3, 0, 5, 2)", "large")
 
-        _update(ctx)
+        update(ctx)
         # Check that we have two maps in the map_area table
         assert row_count(db, "map_bounds.map_area") == 2
         assert row_count(db, "map_bounds.map_priority") == 2
@@ -73,7 +74,7 @@ class TestMapTopology:
         assert insp.n_face_primitives() == 2
 
         # Update topology faces
-        _update(ctx)
+        update(ctx)
 
         assert insp.n_faces() == 2
 
@@ -89,7 +90,7 @@ class TestMapTopology:
 
         insp = TopologyInspector(ctx)
 
-        _update(ctx, composite_layers=False)
+        update(ctx, composite_layers=False)
         assert insp.n_face_primitives() == 5
 
         # Get the face primitive in the center of the new face
@@ -124,7 +125,7 @@ class TestMapTopology:
         db = ctx.database
 
         add_map(db, "ST_Buffer(ST_MakePoint(2, 2), 6)", "medium")
-        _update(ctx, composite_layers=False)
+        update(ctx, composite_layers=False)
 
         insp = TopologyInspector(ctx)
         assert insp.n_faces() == 4
@@ -133,7 +134,7 @@ class TestMapTopology:
 
     def test_composite_layers(self, ctx):
 
-        _update(ctx, composite_layers=True)
+        update(ctx, composite_layers=True)
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1

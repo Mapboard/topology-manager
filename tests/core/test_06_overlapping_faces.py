@@ -4,6 +4,7 @@ from macrostrat.utils import get_logger
 from pytest import fixture, mark
 from addict import Dict
 
+from mapboard.topology_manager import update
 from ..helpers import (
     insert_line,
     add_linework_type_to_layer,
@@ -55,7 +56,7 @@ def test_faces_sharing_common_edge(mgr, db, layers):
     insert_line(db, square(1, (0.5, 0.5)), type="bedrock", map_layer=layers.child)
     insert_line(db, square(1, (1.5, 0.5)), type="bedrock", map_layer=layers.child)
 
-    mgr.update()
+    update()
 
     assert n_faces(db, map_layer=layers.child) == 2
 
@@ -76,7 +77,7 @@ def test_faces_sharing_common_edge_multilayer(mgr, db, layers):
     assert n_faces(db, map_layer=layers.child) == 0
     assert n_faces(db, map_layer=layers.overlay) == 0
 
-    mgr.update()
+    update()
 
     assert n_faces(db, map_layer=layers.child) == 2
     assert n_faces(db, map_layer=layers.overlay) == 1
@@ -87,7 +88,7 @@ def test_faces_sharing_common_edge_multilayer(mgr, db, layers):
 def test_multistage_face_management(mgr, db, layers, square_center):
     """Remove the surficial face and add a smaller one."""
     create_grid(db, layers.child, cells_on_each_axis=grid_count_on_each_axis)
-    mgr.update()
+    update()
 
     assert n_face_primitives(db) == grid_count_on_each_axis**2
 
@@ -97,7 +98,7 @@ def test_multistage_face_management(mgr, db, layers, square_center):
 
     assert n_dirty_faces(db, map_layer=layers.overlay) > 1
 
-    mgr.update()
+    update()
 
     assert n_faces(db, map_layer=layers.overlay) == 1
     assert n_faces(db, map_layer=layers.child) == grid_count_on_each_axis**2

@@ -1,7 +1,7 @@
 """TopologyManager: a convenient object-oriented interface to the topology manager."""
 
-from .config import TopologyContext, create_context
-from .commands.update import _update
+from .config import TopologyContext
+from .commands.update_topology import update
 from .commands.update_contacts import _update_contacts
 from .commands.clean_topology import _clean_topology
 from .commands.update_faces import update_faces
@@ -46,7 +46,7 @@ class TopologyManager:
 
     def update(self, **kwargs):
         """Run a full topology update (contacts → faces → clean → composite)."""
-        _update(self._ctx, **kwargs)
+        update(self._ctx, **kwargs)
 
     def update_contacts(self, **kwargs):
         """Recalculate linework contacts."""

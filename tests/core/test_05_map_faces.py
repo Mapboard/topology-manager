@@ -3,6 +3,7 @@
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
+from mapboard.topology_manager import update
 from ..helpers import (
     insert_line,
     map_layer_id,
@@ -62,7 +63,7 @@ class TestMapFaces:
             Timer.add_step("insert-lines")
 
             # Solve the faces
-            mgr.update()
+            update()
 
             Timer.add_step("update")
 
@@ -88,7 +89,7 @@ class TestMapFaces:
         insert_line(db, coords, type="bedrock", map_layer=parent_lyr)
 
         # Solve the topology
-        mgr.update()
+        update()
 
         # Check that we have 102 map faces and one fewer primitive.
         # - The child layer now has 101 faces including the ring outside the 10x10 grid
@@ -114,7 +115,7 @@ class TestMapFaces:
             dict(child_lyr=_child_layer),
         )
 
-        mgr.update()
+        update()
 
         # We should have merged 4 faces into 1 in the child layer
         # - 101-4+1=98 faces in child layer
@@ -140,7 +141,7 @@ def test_change_map_face_type(mgr, db):
         type="bedrock",
         map_layer=bedrock_layer,
     )
-    mgr.update()
+    update()
 
     # Check that we have one face in the bedrock layer
     assert n_faces(db, map_layer=bedrock_layer) == 1
@@ -153,7 +154,7 @@ def test_change_map_face_type(mgr, db):
         map_layer=bedrock_layer,
     )
 
-    mgr.update()
+    update()
 
     # Check that the face type has changed
     assert n_faces(db, map_layer=bedrock_layer) == 1
@@ -165,7 +166,7 @@ def test_change_map_face_type(mgr, db):
         "UPDATE {data_schema}.polygon SET type = 'basement' WHERE map_layer = :layer RETURNING type",
         {"layer": bedrock_layer},
     )
-    mgr.update()
+    update()
     _check_face_type(db, "basement")
 
 

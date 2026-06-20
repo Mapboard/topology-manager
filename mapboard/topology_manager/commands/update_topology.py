@@ -3,8 +3,6 @@ from contextvars import ContextVar
 from time import perf_counter
 from json import loads, JSONDecodeError
 
-from typer import Option
-
 from ..config import TopologyContext, get_context
 from ..utilities import console, print_step
 from .clean_topology import _clean_topology
@@ -16,34 +14,7 @@ verbose = True
 
 
 def update(
-    reset: bool = Option(False, help="Rebuild from scratch"),
-    fill_holes: bool = Option(False, help="Try to fill all holes"),
-    watch: bool = Option(False, help="Watch for changes"),
-    fix_failed: bool = Option(False, help="Fix failed contacts"),
-    composite_layers: bool = Option(False, help="Update composite layers"),
-):
-    """Update the topology"""
-
-    ctx = get_context()
-
-    kwargs = dict(
-        composite_layers=composite_layers,
-    )
-
-    _update(
-        ctx,
-        reset=reset,
-        fill_holes=fill_holes,
-        fix_failed=fix_failed,
-        **kwargs,
-    )
-
-    if watch:
-        _start_watcher(**kwargs)
-
-
-def _update(
-    ctx: TopologyContext,
+    ctx: TopologyContext = None,
     *,
     reset: bool = False,
     fill_holes: bool = False,
@@ -52,6 +23,9 @@ def _update(
     composite_layers: bool = False,
 ):
     """Update the topology"""
+    if ctx is None:
+        ctx = get_context()
+
     t_start = perf_counter()
 
     console.print("Updating boundaries", style="header")
@@ -110,7 +84,7 @@ def _start_watcher(**kwargs):
         needs_update.set(False)
         # Do the update
         console.print("Updating topology", style="header")
-        _update(ctx, **kwargs)
+        update(ctx, **kwargs)
         update_in_progress.set(False)
         ctx.database.session.close()
 
@@ -162,5 +136,3 @@ def _start_watcher(**kwargs):
         loop.run_forever()
     finally:
         sa_conn.close()
-
-

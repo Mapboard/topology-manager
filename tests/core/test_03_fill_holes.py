@@ -1,3 +1,4 @@
+from mapboard.topology_manager import update
 from ..helpers import (
     insert_line,
     insert_polygon,
@@ -45,7 +46,7 @@ class TestFillHoles:
         lyr = map_layer_id(db, "bedrock")
         insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=lyr)
         insert_line(db, square(2, center=(3, 3)), type="bedrock", map_layer=lyr)
-        mgr.update()
+        update()
 
         # Check that we have no identified map faces
         assert n_faces(db) == 2
@@ -62,7 +63,7 @@ class TestFillHoles:
             type="upper-omkyk",
             map_layer=map_layer_id(db, "bedrock"),
         )
-        mgr.update()
+        update()
         # Check that we have one identified map face
         assert n_faces(db, identified=True) == 1
 
@@ -73,7 +74,7 @@ class TestFillHoles:
             type="terrace",
             map_layer=map_layer_id(db, "surficial"),
         )
-        mgr.update()
+        update()
         # Check that we still only have one map face
         assert n_faces(db, identified=True) == 1
 
@@ -84,7 +85,7 @@ class TestFillHoles:
             type="lower-omkyk",
             map_layer=map_layer_id(db, "bedrock"),
         )
-        mgr.update()
+        update()
         # Check that we now have two map faces
         assert n_faces(db, identified=True) == 2
 
@@ -98,7 +99,7 @@ class TestFillHoles:
 
     def test_remove_identifiers(self, mgr, db):
         db.run_query("DELETE FROM test_map_data.polygon WHERE type = 'lower-omkyk'")
-        mgr.update()
+        update()
         assert n_faces(db, identified=True) == 1
         assert n_faces(db) == 2
 
@@ -112,7 +113,7 @@ class TestFillHoles:
         n = db.run_query("SELECT count(*) FROM test_map_data.linework").scalar()
         assert n == 1
 
-        mgr.update()
+        update()
 
         points = _test_points(db, _bedrock)
         expanded = get_adjacent_faces(db, points[0].face_id, _bedrock)
