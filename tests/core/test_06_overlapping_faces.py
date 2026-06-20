@@ -13,7 +13,7 @@ from .helpers import (
     create_grid,
     n_face_primitives,
 )
-from ..commands.update_faces import n_dirty_faces
+from mapboard.topology_manager.commands.update_faces import n_dirty_faces
 
 log = get_logger(__name__)
 

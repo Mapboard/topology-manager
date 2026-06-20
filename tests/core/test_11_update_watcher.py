@@ -5,7 +5,6 @@ import time
 import pytest
 
 from .helpers import insert_line, map_layer_id, square
-from ..config import _side_effects
 
 update_cmd = importlib.import_module("mapboard.topology_manager.commands.update")
 

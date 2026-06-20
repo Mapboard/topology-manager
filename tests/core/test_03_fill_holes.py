@@ -7,8 +7,10 @@ from .helpers import (
     square,
     get_face_id,
 )
-from ..database import sql
-from ..commands.update_faces.helpers import containing_map_faces, get_adjacent_faces
+from mapboard.topology_manager.commands.update_faces.helpers import (
+    containing_map_faces,
+    get_adjacent_faces,
+)
 from pydantic import BaseModel
 from typing import Optional
 

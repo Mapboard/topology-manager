@@ -13,7 +13,7 @@ def create_demo_units(db):
             db,
             root / "defs" / f"{type}-types.csv",
             f"tmp_{type}_type",
-        )
+            )
 
 
     db.run_sql(root / "procedures" / "03-add-to-map.sql")

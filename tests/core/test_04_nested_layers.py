@@ -12,7 +12,6 @@ from .helpers import (
     square,
     n_edge_relations,
 )
-from ..database import sql
 
 
 class TestNestedLayers:

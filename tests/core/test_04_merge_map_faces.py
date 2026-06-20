@@ -14,7 +14,7 @@ from .helpers import (
     point,
 )
 from .test_03_fill_holes import get_face_info
-from ..commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from pytest import fixture
 
 log = get_logger(__name__)

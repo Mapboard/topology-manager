@@ -12,7 +12,6 @@ from sqlalchemy import text
 
 import threading
 import time
-from select import select
 
 log = get_logger(__name__)
 
@@ -52,11 +51,14 @@ def listen_notify(engine, channel: str, timeout: float = 2.0):
             if notification.channel == channel:
                 return notification
 
+
 def test_listen_notify_psycopg(empty_db):
     channel = "test_channel"
     message = "hello_world"
     # Start the notifier in a background thread
-    notifier = threading.Thread(target=send_notify, args=(empty_db.engine, channel, message))
+    notifier = threading.Thread(
+        target=send_notify, args=(empty_db.engine, channel, message)
+    )
     notifier.start()
 
     # Listen for notification

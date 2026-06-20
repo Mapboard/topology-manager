@@ -5,8 +5,8 @@ from macrostrat.database import Database
 from pytest import fixture
 from macrostrat.utils import get_logger
 
-from ...config import create_context
-from ...manager import TopologyManager
+from mapboard.topology_manager.config import create_context
+from mapboard.topology_manager.manager import TopologyManager
 from .demo_units import create_demo_units
 
 testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")

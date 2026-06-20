@@ -14,7 +14,7 @@ from .helpers import (
     prepare_geometry,
 )
 from shapely.geometry import Polygon
-from ..commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 
 from pytest import fixture
 

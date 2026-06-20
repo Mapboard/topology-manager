@@ -1,9 +1,14 @@
 from dotenv import load_dotenv
 import logging
+from importlib import import_module
 
 load_dotenv()
 
-from mapboard.topology_manager.tests.fixtures import *
+# Append the directory containing the file
+from tests.core.fixtures import * #noqa
+
+
+import_module("mapboard.topology_manager.config")
 
 disable_loggers = ["macrostrat.database.utils"]
 # INFO log level

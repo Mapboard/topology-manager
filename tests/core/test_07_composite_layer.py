@@ -15,7 +15,7 @@ from .helpers import (
     n_faces,
     square,
 )
-from ..commands.update_faces import n_dirty_faces
+from mapboard.topology_manager.commands.update_faces import n_dirty_faces
 
 grid_count_on_each_axis = 7
 
@@ -293,9 +293,7 @@ def create_composite_layers(db):
 
 
 def build_bedrock_grid(mgr, layers):
-    create_grid(
-        mgr.db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis
-    )
+    create_grid(mgr.db, layers.paleozoic, cells_on_each_axis=grid_count_on_each_axis)
     mgr.update(composite_layers=False)
 
 
