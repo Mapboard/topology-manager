@@ -1,17 +1,16 @@
-from ..core.helpers import TopologyInspector
-from mapboard.topology_manager.commands.update import _update
-from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
-from pytest import fixture
-from psycopg.sql import SQL
-from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
-
 from pathlib import Path
 
+from geoalchemy2.shape import from_shape
 from macrostrat.database import Database
-from mapboard.topology_manager.commands import create_tables
-from mapboard.topology_manager.config import create_context, TopologyContext
+from psycopg.sql import SQL
+from pytest import fixture
+from shapely.geometry import Point
 
+from mapboard.topology_manager.commands import create_tables
+from mapboard.topology_manager.commands.update import _update
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager.config import create_context, TopologyContext
+from ..helpers import TopologyInspector
 
 
 def create_topo_context(db: Database):
@@ -25,11 +24,14 @@ def create_topo_context(db: Database):
         notify_triggers=False,
     )
 
+
 def create_data_tables(ctx: TopologyContext):
     ctx.database.run_fixtures(Path(__file__).parent / "fixtures")
 
+
 def geom(_shape, srid=4326):
     return str(from_shape(_shape, srid, extended=True))
+
 
 @fixture(scope="class")
 def ctx(empty_db):
@@ -137,7 +139,10 @@ class TestMapTopology:
         assert insp.n_faces(map_layer="Carto small") == 0
         assert insp.n_faces() == 4 + 4 + 1
 
-def add_map(db: Database, geometry: str, layer: str, *, srid: int = 4326, priority=0) -> int:
+
+def add_map(
+    db: Database, geometry: str, layer: str, *, srid: int = 4326, priority=0
+) -> int:
     """Add a face that overlaps the other two"""
     map_id = db.run_query(
         """

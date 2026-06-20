@@ -1,12 +1,11 @@
 from dotenv import load_dotenv
 import logging
 from importlib import import_module
-
-load_dotenv()
-
-# Append the directory containing the file
-from tests.core.fixtures import * #noqa
-
+from pathlib import Path
+from macrostrat.database.utils import temporary_database
+from macrostrat.database import Database
+import os
+from pytest import fixture
 
 import_module("mapboard.topology_manager.config")
 
@@ -40,3 +39,21 @@ def pytest_addoption(parser):
         default=False,
         help="Commit the database after tests",
     )
+
+@fixture(scope="session")
+def empty_db(pytestconfig):
+
+    envfile = Path(__file__).parent.parent / ".env"
+    if envfile.exists():
+        load_dotenv(envfile)
+    testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
+    if testing_db is None:
+        raise RuntimeError("TOPO_TESTING_DATABASE_URL not set")
+
+    # Check if we are dropping the database after tests
+    drop = not pytestconfig.getoption("--no-drop")
+
+    with temporary_database(testing_db, drop=False, ensure_empty=True) as engine:
+        database = Database(engine.url)
+        yield database
+

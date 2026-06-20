@@ -1,12 +1,11 @@
 """Tests to ensure efficient calculations of map faces with overlays."""
 
-from pytest import fixture, mark
+from pytest import fixture
 from addict import Dict
 
-from .helpers import (
+from ..helpers import (
     add_linework_type_to_layer,
     create_composite_layer,
-    create_grid,
     add_polygon_type_to_layer,
     create_map_layer,
     insert_line,

@@ -1,7 +1,7 @@
 from pytest import mark
 from shapely.geometry import LineString
 
-from .helpers import (
+from ..helpers import (
     add_linework_type_to_layer,
     add_polygon_type_to_layer,
     insert_line,

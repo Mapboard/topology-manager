@@ -1,6 +1,6 @@
 from pytest import mark
 
-from .helpers import (
+from ..helpers import (
     add_linework_type_to_layer,
     insert_line,
     insert_polygon,

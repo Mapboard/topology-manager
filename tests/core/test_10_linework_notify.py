@@ -5,13 +5,14 @@ Test that the topology manager correctly notifies the 'events' channel when line
 from json import loads
 
 import pytest
-from .helpers import square, insert_line, map_layer_id
 from macrostrat.utils import get_logger
 from sqlalchemy import text
 
-
 import threading
 import time
+
+from ..helpers import square, insert_line, map_layer_id
+
 
 log = get_logger(__name__)
 

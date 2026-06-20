@@ -14,19 +14,7 @@ log = get_logger(__name__)
 
 
 @fixture(scope="session")
-def empty_db(pytestconfig):
-    testing_db = os.getenv("TOPO_TESTING_DATABASE_URL")
-
-    # Check if we are dropping the database after tests
-    drop = not pytestconfig.getoption("--no-drop")
-
-    with temporary_database(testing_db, drop=False, ensure_empty=True) as engine:
-        database = Database(engine.url)
-        yield database
-
-
-@fixture(scope="session")
-def empty_mgr(empty_db):
+def base_mgr(empty_db):
     ctx = create_context(
         empty_db,
         topo_schema="test_topology",
@@ -35,14 +23,9 @@ def empty_mgr(empty_db):
         tolerance=0.1,
     )
     manager = TopologyManager(ctx)
+    manager.create_tables()
+    create_demo_units(manager.db)
     yield manager
-
-
-@fixture(scope="session")
-def base_mgr(empty_mgr):
-    empty_mgr.create_tables()
-    create_demo_units(empty_mgr.db)
-    yield empty_mgr
 
 
 @fixture(scope="session")

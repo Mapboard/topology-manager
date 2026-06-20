@@ -2,7 +2,7 @@
 
 from macrostrat.utils import get_logger
 
-from .helpers import (
+from ..helpers import (
     insert_line,
     map_layer_id,
     add_linework_type_to_layer,

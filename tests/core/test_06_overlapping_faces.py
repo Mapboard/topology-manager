@@ -4,7 +4,7 @@ from macrostrat.utils import get_logger
 from pytest import fixture, mark
 from addict import Dict
 
-from .helpers import (
+from ..helpers import (
     insert_line,
     add_linework_type_to_layer,
     n_faces,

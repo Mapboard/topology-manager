@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .helpers import (
+from ..helpers import (
     n_faces,
     square,
     map_layer_id,
@@ -10,7 +10,7 @@ from .helpers import (
 )
 from shapely.geometry import LineString
 
-proc = Path(__file__).parent / "fixtures" / "procedures"
+proc = Path(__file__).parent / "procedures"
 
 
 def table_exists(db, schema, table):

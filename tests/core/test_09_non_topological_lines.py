@@ -1,4 +1,4 @@
-from .helpers import (
+from ..helpers import (
     insert_line,
     map_layer_id,
     n_faces,

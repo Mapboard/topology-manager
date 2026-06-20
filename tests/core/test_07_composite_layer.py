@@ -3,7 +3,7 @@
 from addict import Dict
 from pytest import fixture
 
-from .helpers import (
+from ..helpers import (
     add_linework_type_to_layer,
     add_polygon_type_to_layer,
     create_composite_layer,
