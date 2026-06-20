@@ -18,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "macrostrat.database>=4.2.1,<5",
+    "macrostrat.database>=4.3.1,<5",
     "macrostrat.utils>=1.2.1,<2",
     "typer>=0.25.0,<0.27.0",
     "rich>=14.0.0,<16",

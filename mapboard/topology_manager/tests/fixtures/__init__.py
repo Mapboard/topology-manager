@@ -4,7 +4,6 @@ from macrostrat.database.utils import temporary_database
 from macrostrat.database import Database
 from pytest import fixture
 from macrostrat.utils import get_logger
-from psycopg.sql import Identifier
 
 from ...config import create_context
 from ...manager import TopologyManager
@@ -31,17 +30,6 @@ def empty_mgr(pytestconfig):
         )
         manager = TopologyManager(ctx)
         yield manager
-        if drop:
-            # Drop the database with force
-            url = engine.url
-            database_name = url.database
-            url.set(database=None)
-            user_db = Database(url)
-            user_db.run_sql(
-                "DROP DATABASE {database} WITH (FORCE)",
-                dict(database=Identifier(database_name)),
-                use_transaction=False,
-            )
 
 
 @fixture(scope="session")
