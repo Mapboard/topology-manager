@@ -8,6 +8,23 @@ solving a PostGIS topology. The core logic lives in SQL
 (`mapboard/topology_manager/fixtures/` and `procedures/`); the Python module
 wraps it for CLI and programmatic use.
 
+**Two boundary modes.** The boundary features that drive the topology can be
+either *lines* or *polygons*, selected by `in_macrostrat_mode` in
+`create_context` (`config.py`):
+- **Linework mode** (default) — boundaries are edits to a `linework` table whose
+  topogeometries are *edge-based* (`element_type = 2`). Faces are identified by
+  `unit_id`. This is the classic geologic-map case.
+- **Map-area mode** (`in_macrostrat_mode=True`) — boundaries are polygons in a
+  `map_area` table whose topogeometries are *face-based* (`element_type = 3`).
+  Faces are identified by `map_id`, and overlapping areas are resolved by
+  priority (`map_priority`). This manages topology for sets of identified
+  polygons (e.g. map footprints/compilations).
+
+The mode determines `boundary_table` and `face_identity_column` (see
+`config.py`); most SQL is written against these template variables so it works
+for both. When touching shared SQL, check it holds for **both** topogeometry
+types, not just linework.
+
 ## Running tests
 
 ```bash
@@ -15,9 +32,17 @@ uv run pytest
 ```
 
 Tests require a running PostgreSQL+PostGIS database. The connection URL is read
-from the `TOPO_TEST_DATABASE_URL` environment variable. Each test session creates
-and tears down its own schema, so tests are safe to run against a shared dev
-database.
+from the `TOPO_TESTING_DATABASE_URL` environment variable (see `.env`). Each test
+session creates and tears down its own schema, so tests are safe to run against a
+shared dev database.
+
+Two suites exercise the two boundary modes:
+- `tests/core/` — linework (edge-based) topology
+- `tests/map_areas/` — map-area (face-based) topology, with its own fixtures
+  under `tests/map_areas/fixtures/` that define the `map_area`/`map_priority`
+  tables and `map_id`-based identity functions
+
+Run both when changing shared `fixtures/` SQL.
 
 ## Key architecture
 
@@ -33,11 +58,11 @@ database.
 
 **Performance-critical paths:**
 - `toTopoGeom` (in `update_boundary_topo`) — most expensive per-line operation; modifies topology primitives
-- `get_adjacent_faces_core` (`fixtures/07-get-adjacent-faces.sql`) — recursive CTE that expands outward from a dirty face
+- `get_adjacent_faces_core` (`fixtures/07-get-adjacent-faces.sql`) — recursive CTE that expands outward from a dirty face. An edge is crossable when `layers_are_joinable(...) OR faces_are_joinable(...)`: linework relies on the first term (a contact line blocks the join), map-area mode on the second (faces sharing a resolved identity join even across another map's footprint edge). The default `faces_are_joinable` (`fixtures/01.2-data-tables-identity.sql`) returns **false** so linework reduces to `layers_are_joinable` alone; the map-area override compares `map_id` identities.
 - `RemoveUnusedPrimitives` — scans the whole topology; avoid calling when no contacts changed (already gated)
 - `createTopoGeom` (`procedures/update-faces/insert-face-topogeom.sql`) — cheap reference assembly; uses `__map_face_layer_id()` IMMUTABLE function
 
-**`__edge_relation` table** — a materialized, trigger-maintained mapping of topology edges → linework → map layers. It exists purely for query performance; the triggers in `fixtures/04-edge-relations-table.sql` keep it in sync.
+**`__edge_relation` table** — a materialized, trigger-maintained mapping of topology edges → boundary feature → map layers. It exists purely for query performance; the triggers in `fixtures/04-edge-relations-table.sql` keep it in sync, and the `__edge_relation_dynamic` view is the authoritative definition the table must match. The `__topogeom_edges()` helper normalizes both topogeometry types: edge-based boundaries contribute their edges directly, while face-based boundaries contribute only the **exterior** bounding edges of their faces (interior edges that merely subdivide one area are excluded). Edge-relation rows act as join barriers *only* for lineal boundaries — for map areas, dissolves are gated by identity instead (see `get_adjacent_faces_core` above).
 
 **Dirty face tracking** — when a line's topogeometry changes, `mark_surrounding_faces()` inserts affected face IDs into `dirty_face`. The update pipeline drains this table.
 
