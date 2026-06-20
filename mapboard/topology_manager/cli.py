@@ -2,6 +2,7 @@ from rich.prompt import Confirm
 from typer import Option, Typer
 
 from .commands import create_tables, clean_topology, update_contacts, update_faces
+from .commands.edge_relations import rebuild_edge_relations
 from .commands.update_topology import update
 from .watcher import start_watcher
 from .config import get_database, sql, create_context, get_context
@@ -91,6 +92,13 @@ def _clean_topology():
     """Clean the topology"""
     ctx = get_context()
     clean_topology(ctx)
+
+
+@app.command(name="rebuild-edge-relations")
+def _rebuild_edge_relations():
+    """Rebuild the cached __edge_relation table (repair out-of-sync triggers)"""
+    ctx = get_context()
+    rebuild_edge_relations(ctx)
 
 
 def _operation_command(name):

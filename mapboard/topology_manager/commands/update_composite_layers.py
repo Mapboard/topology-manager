@@ -28,7 +28,7 @@ def _update_composite_layer(
     db = ctx.database
 
     # Ensure that the composite layer has all the necessary linework/polygon types
-    if not ctx.in_macrostrat_mode:
+    if ctx.manage_data_tables:
         add_composite_layer_types(db, map_layer, layers)
 
     # We can now trust that the composite layer is populated for each constituent layer.
@@ -39,7 +39,7 @@ def _update_composite_layer(
     # Insert the topmost layer's faces into the composite layer
     reversed_layers = list(reversed(layers))
 
-    manage_boundaries = not ctx.in_macrostrat_mode
+    manage_boundaries = ctx.manage_data_tables
 
     if manage_boundaries:
         # Delete stray lines that have been dereferenced for some reason

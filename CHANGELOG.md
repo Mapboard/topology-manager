@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Switch to UV
 - Incorporate composite map layers
+- Support managing topology for sets of identified polygons (map areas) using
+  face-based topogeometries, alongside the existing linework mode
+- Make face identity a pluggable strategy: `create_context` now takes an
+  `identity_strategy` (default `SEARCH_STRATEGY`), `boundary_table`, and
+  `manage_data_tables`, replacing the `in_macrostrat_mode` flag
+- Fix `__edge_relation` maintenance for face-based topogeometries (record the
+  exterior bounding edges of each area)
+- Add `rebuild-edge-relations` (and a `validate_edge_relations` API) to repair the
+  `__edge_relation` cache if its triggers fall out of sync
 
 ## `[4.0.0]` - 2024-03
 

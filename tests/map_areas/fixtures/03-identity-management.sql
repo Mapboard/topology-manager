@@ -1,7 +1,10 @@
-ALTER TABLE map_bounds_topology.map_face
-  ADD COLUMN map_id integer REFERENCES map_bounds.map_area(id);
-ALTER TABLE map_bounds_topology.face_identity
-  ADD COLUMN map_id integer REFERENCES map_bounds.map_area(id);
+/* Identity strategy: "direct" (host-registered)
+
+Each face carries its own identity: the covering map_area, disambiguated by
+map_priority. The `map_id` identity column is added by `create_tables` from the
+strategy's declared column metadata; this file installs only the resolution
+functions.
+*/
 
 /*
 Get the map face that defines a polygon for a specific topology

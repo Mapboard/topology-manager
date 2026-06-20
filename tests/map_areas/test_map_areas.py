@@ -6,15 +6,40 @@ from psycopg.sql import SQL, Identifier
 from pytest import fixture
 from shapely.geometry import Point
 
-from mapboard.topology_manager.commands import create_tables
+from mapboard.topology_manager.commands import (
+    create_tables,
+    rebuild_edge_relations,
+    validate_edge_relations,
+)
 from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
-from mapboard.topology_manager.config import create_context, TopologyContext
+from mapboard.topology_manager.config import (
+    create_context,
+    TopologyContext,
+    IdentityStrategy,
+)
 from ..helpers import TopologyInspector
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def create_data_tables(ctx: TopologyContext):
-    ctx.database.run_fixtures(Path(__file__).parent / "fixtures")
+    # The host owns only the feature tables; identity is installed by the strategy.
+    ctx.database.run_sql(FIXTURES / "01-create-tables.sql")
+
+
+def _install_direct_strategy(ctx: TopologyContext):
+    ctx.database.run_sql(FIXTURES / "03-identity-management.sql")
+
+
+# A host-supplied identity strategy: each face carries its own identity (the
+# covering map_area, disambiguated by priority). The host just constructs it and
+# passes it to create_context — no global registration needed.
+DIRECT_STRATEGY = IdentityStrategy(
+    key="direct",
+    identity_column=("map_id", "integer REFERENCES {data_schema}.map_area (id)"),
+    install=_install_direct_strategy,
+)
 
 
 def geom(_shape, srid=4326):
@@ -29,7 +54,9 @@ def ctx(empty_db):
         topo_schema="map_bounds_topology",
         srid=4326,
         tolerance=0.0001,
-        in_macrostrat_mode=True,
+        identity_strategy=DIRECT_STRATEGY,
+        boundary_table="map_area",
+        manage_data_tables=False,
         notify_triggers=False,
     )
     create_tables(ctx, create_data_tables=create_data_tables)
@@ -82,6 +109,24 @@ class TestMapTopology:
         insp = TopologyInspector(ctx)
         assert insp.n_edges() == 2
         assert insp.n_edge_relations() == 2
+
+    def test_rebuild_edge_relations(self, ctx):
+        """The triggers keep __edge_relation in sync; rebuild can repair drift."""
+        db = ctx.database
+
+        # Triggers should have kept the cache in sync
+        assert validate_edge_relations(ctx).in_sync
+
+        # Simulate the triggers falling out of sync
+        db.run_query("DELETE FROM {topo_schema}.__edge_relation WHERE true")
+        drift = validate_edge_relations(ctx)
+        assert not drift.in_sync
+        assert drift.missing == 2
+
+        # Rebuilding reports the prior drift and restores the cache
+        report = rebuild_edge_relations(ctx)
+        assert report.missing == 2
+        assert validate_edge_relations(ctx).in_sync
 
     def test_add_overlapping_map(self, ctx):
         """Add a face that overlaps the other two"""

@@ -8,22 +8,31 @@ solving a PostGIS topology. The core logic lives in SQL
 (`mapboard/topology_manager/fixtures/` and `procedures/`); the Python module
 wraps it for CLI and programmatic use.
 
-**Two boundary modes.** The boundary features that drive the topology can be
-either *lines* or *polygons*, selected by `in_macrostrat_mode` in
-`create_context` (`config.py`):
-- **Linework mode** (default) — boundaries are edits to a `linework` table whose
-  topogeometries are *edge-based* (`element_type = 2`). Faces are identified by
-  `unit_id`. This is the classic geologic-map case.
-- **Map-area mode** (`in_macrostrat_mode=True`) — boundaries are polygons in a
-  `map_area` table whose topogeometries are *face-based* (`element_type = 3`).
-  Faces are identified by `map_id`, and overlapping areas are resolved by
-  priority (`map_priority`). This manages topology for sets of identified
-  polygons (e.g. map footprints/compilations).
+**Configuration axes.** `create_context` (`config.py`) is parameterized by three
+independent signals (there is no single "mode" flag):
+- `identity_strategy` — how a face acquires its identity. An `IdentityStrategy`
+  object; defaults to `config.SEARCH_STRATEGY` and is overridden by passing your own
+  to `create_context` (no registry). The default `search` covers geologic mapping
+  (identity *derived* by area-weighting the typed-polygon table; column `unit_id`).
+  A host supplies, e.g., a `direct` strategy for footprints (identity *held* on the
+  face/feature via the covering `map_area`, disambiguated by `map_priority`; column
+  `map_id`). A strategy declares its identity column (name + type) and an
+  `install(ctx)` that defines four SQL functions (`identity_for_area`,
+  `identity_for_face`, `faces_are_joinable`, `map_face_is_identified`). See
+  `docs/design/identity-strategy.md`.
+- `boundary_table` — the table holding the boundary features that drive the
+  topology (`linework` for lines / edge-based topogeoms; `map_area` for polygons /
+  face-based topogeoms). Lineal-vs-areal is discoverable at runtime via
+  `topology.layer.feature_type` (cf. `__boundary_is_lineal()`).
+- `manage_data_tables` — whether the library creates the feature tables (and the
+  `data-tables`/`polygon-triggers` fixtures + composite type/boundary management
+  run). When `False`, the host provides those tables.
 
-The mode determines `boundary_table` and `face_identity_column` (see
-`config.py`); most SQL is written against these template variables so it works
-for both. When touching shared SQL, check it holds for **both** topogeometry
-types, not just linework.
+`identity_strategy` derives `face_identity_column`; `create_tables` adds the
+identity column to `map_face`/`face_identity` from the strategy and runs its
+`install`. Most SQL is written against template vars (`{boundary_table}`,
+`{face_identity_column}`), so it works for both edge- and face-based topogeometries.
+When touching shared SQL, check it holds for **both** types.
 
 ## Running tests
 
@@ -76,7 +85,7 @@ Run both when changing shared `fixtures/` SQL.
 
 - `fixtures/` SQL files — define the schema, triggers, and stored functions. Changes require re-running `topo create-tables` and may require a migration for existing deployments.
 - The `topology.layer` catalog — PostGIS topology metadata. Never delete or rename rows manually; use topology API functions.
-- `__edge_relation` triggers — if disabled for bulk loads, remember to re-enable and do a full refresh before running the update pipeline.
+- `__edge_relation` triggers — if disabled for bulk loads, remember to re-enable and rebuild the cache (`topo rebuild-edge-relations`, or `rebuild_edge_relations(ctx)` / `validate_edge_relations(ctx)`) before running the update pipeline.
 - Topology tolerance (`__topo_precision()`) — set at schema creation time; changing it on an existing topology will produce inconsistent results.
 
 ## Conventions

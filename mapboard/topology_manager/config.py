@@ -6,11 +6,62 @@ from sqlalchemy.sql.expression import TextClause
 from contextvars import ContextVar
 from sqlalchemy.dialects.postgresql import base as pg
 from pathlib import Path
+from typing import Callable
 
 
 class Database(BaseDatabase):
     def proc(self, name, params=None, **kwargs):
         return super().run_sql(sql(name), params, **kwargs)
+
+
+@dataclass
+class IdentityStrategy:
+    """Defines how a map face acquires its identity.
+
+    A strategy owns the *resolution logic* (a set of SQL functions) and *declares*
+    where identity is stored (the column). The library installs and consults it.
+    The two axes — identity source and boundary geometry — are independent.
+    See ``docs/design/identity-strategy.md``.
+    """
+
+    # Registration + selection key (e.g. "search", "direct").
+    key: str
+    # (column_name, column_type_spec). The type spec is everything after the
+    # column name in the DDL and may use template vars (e.g. ``{data_schema}``).
+    identity_column: tuple[str, str]
+    # Install the strategy's SQL functions into a context's topo schema. Must
+    # leave identity_for_area / identity_for_face / faces_are_joinable /
+    # map_face_is_identified defined afterward.
+    install: Callable[["TopologyContext"], None]
+    # How identity combines with the contact barrier in get_adjacent_faces_core.
+    # Reserved: the SQL currently hardcodes "or"; "and" is for the future
+    # direct-identity linework mode.
+    combinator: str = "or"
+
+
+# ---------------------------------------------------------------------------
+# Reference identity strategy: "search" (the default)
+#
+# Geologic mapping — a face has no identity of its own; it is derived by
+# searching the typed-polygon table (area-weighted dominant polygon_type).
+# Hosts override it simply by passing their own IdentityStrategy to
+# create_context (e.g. a "direct" strategy for footprints).
+# ---------------------------------------------------------------------------
+_fixtures_dir = Path(__file__).parent / "fixtures"
+
+
+def _install_search_strategy(ctx: "TopologyContext") -> None:
+    ctx.database.run_sql(_fixtures_dir / "identity" / "search.sql")
+
+
+SEARCH_STRATEGY = IdentityStrategy(
+    key="search",
+    identity_column=(
+        "unit_id",
+        "text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE",
+    ),
+    install=_install_search_strategy,
+)
 
 
 @dataclass
@@ -20,11 +71,16 @@ class TopologyContext:
     database: Database
     data_schema: str
     topo_schema: str
+    identity_strategy: IdentityStrategy
     srid: int = 4326
     tolerance: float = 0.0001
     create_extra_fields: bool = False
     composite_layers: bool = False
-    in_macrostrat_mode: bool = False
+    # The table holding boundary features (lines or polygons) that drive the topology.
+    boundary_table: str = "linework"
+    # Whether the library owns and creates the feature/data tables. When False, the
+    # host provides them and the data-tables / polygon-trigger fixtures are skipped.
+    manage_data_tables: bool = True
     # Whether to include listen/notify triggers for layer updates
     notify_triggers: bool = True
 
@@ -52,7 +108,9 @@ def create_context(
     *,
     create_extra_fields: bool = True,
     composite_layers: bool = True,
-    in_macrostrat_mode: bool = False,
+    identity_strategy: IdentityStrategy = None,
+    boundary_table: str = None,
+    manage_data_tables: bool = True,
     notify_triggers: bool = True,
     **kwargs,
 ) -> TopologyContext:
@@ -72,12 +130,11 @@ def create_context(
     data_schema = str(data_schema)
     topo_schema = str(topo_schema)
 
-    boundary_table_name = "linework"
-    face_identity_column = "unit_id"
-    if in_macrostrat_mode:
-        # A different table to store relevant boundaries
-        boundary_table_name = "map_area"
-        face_identity_column = "map_id"
+    if boundary_table is None:
+        boundary_table = env.get("MAPBOARD_BOUNDARY_TABLE", "linework")
+
+    strategy = identity_strategy or SEARCH_STRATEGY
+    face_identity_column = strategy.identity_column[0]
 
     _database = Database(database.engine)
     _database.instance_params = {
@@ -92,8 +149,8 @@ def create_context(
         "srid": srid,
         "srid_literal": Literal(srid),
         "tolerance": tolerance,
-        "boundary_table": Identifier(data_schema, boundary_table_name),
-        "boundary_table_literal": Literal(boundary_table_name),
+        "boundary_table": Identifier(data_schema, boundary_table),
+        "boundary_table_literal": Literal(boundary_table),
         "face_identity_column": Identifier(face_identity_column),
     }
 
@@ -101,11 +158,13 @@ def create_context(
         database=_database,
         data_schema=data_schema,
         topo_schema=topo_schema,
+        identity_strategy=strategy,
         srid=srid,
         tolerance=tolerance,
         create_extra_fields=create_extra_fields,
         composite_layers=composite_layers,
-        in_macrostrat_mode=in_macrostrat_mode,
+        boundary_table=boundary_table,
+        manage_data_tables=manage_data_tables,
         notify_triggers=notify_triggers,
     )
 

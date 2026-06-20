@@ -7,6 +7,7 @@ from .commands.clean_topology import clean_topology
 from .commands.update_faces import update_faces
 from .commands.update_composite_layers import update_composite_layers
 from .commands.create_tables import create_tables
+from .commands.edge_relations import rebuild_edge_relations, validate_edge_relations
 
 
 class TopologyManager:
@@ -67,3 +68,11 @@ class TopologyManager:
     def create_tables(self):
         """Create the topology schema tables from SQL fixtures."""
         create_tables(self._ctx)
+
+    def validate_edge_relations(self):
+        """Report drift between the cached __edge_relation table and its view."""
+        return validate_edge_relations(self._ctx)
+
+    def rebuild_edge_relations(self):
+        """Rebuild the cached __edge_relation table (repair out-of-sync triggers)."""
+        return rebuild_edge_relations(self._ctx)
