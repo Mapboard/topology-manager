@@ -3,7 +3,8 @@
 from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
-from .helpers import (
+from mapboard.topology_manager import update
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     map_layer_id,
     add_linework_type_to_layer,
@@ -13,7 +14,6 @@ from .helpers import (
     square,
     insert_polygon,
 )
-from ..commands.update import _update
 from pytest import mark
 
 log = get_logger(__name__)
@@ -38,7 +38,7 @@ class TestMapFaces:
         add_linework_type_to_layer(db, child_lyr, "bedrock")
 
     @mark.parametrize("count_on_each_axis", [1, 5, 10])
-    def test_create_faces_with_overlapping_lines(self, db, count_on_each_axis):
+    def test_create_faces_with_overlapping_lines(self, mgr, db, count_on_each_axis):
         """Create overlapping sets of lines to test face creation."""
         child_lyr = map_layer_id(db, "child")
         parent_lyr = map_layer_id(db, "parent")
@@ -63,7 +63,7 @@ class TestMapFaces:
             Timer.add_step("insert-lines")
 
             # Solve the faces
-            _update(db)
+            update()
 
             Timer.add_step("update")
 
@@ -73,7 +73,7 @@ class TestMapFaces:
 
         log.info(timer.server_timings())
 
-    def test_add_parent_layer(self, db):
+    def test_add_parent_layer(self, mgr, db):
         # Add a parent layer with encompassing faces
         parent_lyr = map_layer_id(db, "parent")
         add_linework_type_to_layer(db, parent_lyr, "bedrock")
@@ -89,7 +89,7 @@ class TestMapFaces:
         insert_line(db, coords, type="bedrock", map_layer=parent_lyr)
 
         # Solve the topology
-        _update(db)
+        update()
 
         # Check that we have 102 map faces and one fewer primitive.
         # - The child layer now has 101 faces including the ring outside the 10x10 grid
@@ -98,7 +98,7 @@ class TestMapFaces:
         assert n_face_primitives(db) == 101
         assert n_faces(db) == 102
 
-    def test_erase_and_consolidate_faces(self, db):
+    def test_erase_and_consolidate_faces(self, mgr, db):
         """Test the erasure and consolidation of faces."""
         _child_layer = map_layer_id(db, "child")
         _parent_lyr = map_layer_id(db, "parent")
@@ -115,7 +115,7 @@ class TestMapFaces:
             dict(child_lyr=_child_layer),
         )
 
-        _update(db)
+        update()
 
         # We should have merged 4 faces into 1 in the child layer
         # - 101-4+1=98 faces in child layer
@@ -129,7 +129,7 @@ class TestMapFaces:
         assert n_face_primitives(db) == 98
 
 
-def test_change_map_face_type(db):
+def test_change_map_face_type(mgr, db):
     """Test changing the type of a map face."""
 
     # Create a face in the 'bedrock' layer
@@ -141,7 +141,7 @@ def test_change_map_face_type(db):
         type="bedrock",
         map_layer=bedrock_layer,
     )
-    _update(db)
+    update()
 
     # Check that we have one face in the bedrock layer
     assert n_faces(db, map_layer=bedrock_layer) == 1
@@ -154,7 +154,7 @@ def test_change_map_face_type(db):
         map_layer=bedrock_layer,
     )
 
-    _update(db)
+    update()
 
     # Check that the face type has changed
     assert n_faces(db, map_layer=bedrock_layer) == 1
@@ -166,7 +166,7 @@ def test_change_map_face_type(db):
         "UPDATE {data_schema}.polygon SET type = 'basement' WHERE map_layer = :layer RETURNING type",
         {"layer": bedrock_layer},
     )
-    _update(db)
+    update()
     _check_face_type(db, "basement")
 
 

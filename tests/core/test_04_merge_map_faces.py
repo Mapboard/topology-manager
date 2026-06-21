@@ -2,7 +2,8 @@
 
 from macrostrat.utils import get_logger
 
-from .helpers import (
+from mapboard.topology_manager import update
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     map_layer_id,
     add_linework_type_to_layer,
@@ -14,36 +15,35 @@ from .helpers import (
     point,
 )
 from .test_03_fill_holes import get_face_info
-from ..commands.update import _update, _update_contacts, _clean_topology
-from ..commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from pytest import fixture
 
 log = get_logger(__name__)
 
 
-def test_simple_edge_relationships(db):
+def test_simple_edge_relationships(mgr, db):
     lyr = create_map_layer(db, "base")
     add_linework_type_to_layer(db, lyr, "bedrock")
 
     # Insert a line
     insert_line(db, [(0, 0), (3, 0)], type="bedrock", map_layer=lyr)
-    _update(db)
+    update()
 
     # Check that we have the expected number of edges
     assert n_edges(db) == 1
 
     # Divide the line into two segments
     insert_line(db, [(1, -1), (1, 1)], type="bedrock", map_layer=lyr)
-    _update(db)
+    update()
     assert n_edges(db) == 4
 
     _id = insert_line(db, [(2, -1), (2, 1)], type="bedrock", map_layer=lyr)
-    _update(db)
+    update()
     assert n_edges(db) == 7
 
     # Delete the last edge
     db.run_query("DELETE FROM {data_schema}.linework WHERE id = :id", {"id": _id})
-    _update(db)
+    update()
     assert n_edges(db) == 4
 
 
@@ -69,12 +69,12 @@ def layers(db):
     }
 
 
-def test_find_adjacent_faces(db, layers):
+def test_find_adjacent_faces(mgr, db, layers):
     # There should only be the global face
     assert db.run_query("SELECT face_id FROM {topo_schema}.face").scalar() == 0
     # Insert a square into the child layer
     insert_line(db, square(2, center=(0, 0)), type="bedrock", map_layer=layers["child"])
-    _update(db)
+    update()
     assert n_faces(db) == 1
     # Get the face that intersects 0,0
     face_id = db.run_query(
@@ -93,14 +93,14 @@ def test_find_adjacent_faces(db, layers):
 
 
 class TestMergeMapFaces:
-    def test_create_overlapping_faces(self, db, layers):
+    def test_create_overlapping_faces(self, mgr, db, layers):
         """Create overlapping sets of lines to test face creation."""
         child_lyr = layers["child"]
         parent_lyr = layers["parent"]
 
         # Insert a square in the parent layer
         insert_line(db, square(2, (1, 1)), type="bedrock", map_layer=parent_lyr)
-        _update(db)
+        update()
         assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
 
@@ -113,18 +113,16 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=child_lyr) == 1
         assert n_faces(db) == 2
 
-    def test_insert_child_line(self, db, layers):
+    def test_insert_child_line(self, mgr, db, layers):
         # Insert crossing lines in the child layer
         child_lyr = layers["child"]
 
         insert_line(db, [(1, -1), (1, 3)], type="bedrock", map_layer=child_lyr)
-        db.session.commit()
-
-        _update_contacts(db)
-        _clean_topology(db)
+        mgr.update_contacts()
+        mgr.clean_topology()
         assert n_edges(db) == 5
 
-        _update(db)
+        update()
 
         assert (
             n_edges(db) == 5
@@ -133,20 +131,20 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=child_lyr) == 2
         assert n_faces(db) == 3
 
-    def test_insert_another_line(self, db, layers):
+    def test_insert_another_line(self, mgr, db, layers):
         """Insert another line in the child layer."""
         child_lyr = layers["child"]
 
         insert_line(db, [(-1, 1), (3, 1)], type="bedrock", map_layer=child_lyr)
 
-        _update(db)
+        update()
 
         assert n_face_primitives(db) == 4
         assert n_edges(db) == 12
         assert n_faces(db, map_layer=child_lyr) == 4
         assert n_faces(db) == 5
 
-    def test_merge_faces(self, db, layers):
+    def test_merge_faces(self, mgr, db, layers):
         # Delete one of the lines from the child layer
         child_lyr = layers["child"]
         parent_lyr = layers["parent"]
@@ -155,7 +153,7 @@ class TestMergeMapFaces:
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer AND ST_Touches(geometry, ST_SetSRID(ST_MakePoint(-1,1), :srid))",
             {"map_layer": child_lyr},
         )
-        _update(db)
+        update()
 
         # Should be a single line in the child layer
         n_lines = db.run_query(
@@ -176,20 +174,20 @@ class TestMergeMapFaces:
         assert n_faces(db, map_layer=parent_lyr) == 1
         assert n_faces(db) == 3
 
-    def test_merge_faces_again(self, db, layers):
+    def test_merge_faces_again(self, mgr, db, layers):
         child_lyr = layers["child"]
 
         db.run_query(
             "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
             {"map_layer": child_lyr},
         )
-        _update(db)
+        update()
 
         assert n_edges(db) == 1
         assert n_face_primitives(db) == 1
         assert n_faces(db) == 2
 
-    def test_move_line_to_child_layer(self, db, layers):
+    def test_move_line_to_child_layer(self, mgr, db, layers):
         child_lyr = layers["child"]
 
         # Move the line to the child layer
@@ -197,13 +195,13 @@ class TestMergeMapFaces:
             "UPDATE {data_schema}.linework SET map_layer = :map_layer WHERE map_layer = :parent_lyr",
             {"map_layer": child_lyr, "parent_lyr": map_layer_id(db, "parent")},
         )
-        _update(db)
+        update()
 
         # The parent layer should no longer have a face
         assert n_face_primitives(db) == 1
         assert n_faces(db) == 1
 
-    def test_grandparent_layer(self, db, layers):
+    def test_grandparent_layer(self, mgr, db, layers):
         grandparent_lyr = layers["grandparent"]
 
         # Check that the grandparent layer has no faces
@@ -213,7 +211,7 @@ class TestMergeMapFaces:
 
         # Insert a square in the grandparent layer
         insert_line(db, square(4, (1, 1)), type="bedrock", map_layer=grandparent_lyr)
-        _update(db)
+        update()
 
         # Check that we have the expected number of edges
         assert n_edges(db) == 2

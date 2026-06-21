@@ -55,12 +55,12 @@ $$ LANGUAGE SQL IMMUTABLE;
 all map layers when an edge is updated.
 */
 CREATE OR REPLACE FUNCTION {topo_schema}.update_map_face()
-RETURNS {topo_schema}.__dirty_face AS $$
+RETURNS {topo_schema}.dirty_face AS $$
 DECLARE
   __topo_elements integer[][];
   __topo topology.topogeometry;
   __geometry geometry;
-  __face {topo_schema}.__dirty_face;
+  __face {topo_schema}.dirty_face;
   __precision integer;
   __dissolved_faces integer[];
   __is_global boolean;
@@ -70,7 +70,7 @@ DECLARE
   __srid integer;
 BEGIN
 
-SELECT * INTO __face FROM {topo_schema}.__dirty_face LIMIT 1;
+SELECT * INTO __face FROM {topo_schema}.dirty_face LIMIT 1;
 
 SELECT srid
 INTO __srid
@@ -91,7 +91,7 @@ RAISE NOTICE 'Face ID: %, topology: %', __face.id, __face.map_layer;
    remove the global face from the "dirty" table */
 IF (__face.id = 0) THEN
   DELETE
-  FROM {topo_schema}.__dirty_face df
+  FROM {topo_schema}.dirty_face df
   WHERE df.map_layer = __face.map_layer
     AND df.id = 0;
   RETURN __face;
@@ -126,7 +126,7 @@ __dissolved_faces := array_remove(__dissolved_faces,0);
 --- Escape before topogeometry creation if global
 IF (__is_global) THEN
   DELETE
-  FROM {topo_schema}.__dirty_face df
+  FROM {topo_schema}.dirty_face df
   WHERE df.map_layer = __face.map_layer
     AND (
       id = ANY(__dissolved_faces) OR id = 0
@@ -156,13 +156,13 @@ WHERE id IN (
   );
 
 DELETE
-FROM {topo_schema}.__dirty_face df
+FROM {topo_schema}.dirty_face df
 WHERE df.map_layer = __face.map_layer
   AND id = ANY(__dissolved_faces);
 
 IF (__is_global) THEN
   DELETE
-  FROM {topo_schema}.__dirty_face df
+  FROM {topo_schema}.dirty_face df
   WHERE df.map_layer = __face.map_layer
     AND id = 0;
   RETURN __face;
@@ -171,7 +171,7 @@ END IF;
 INSERT INTO {topo_schema}.map_face
   (unit_id, topo, map_layer, geometry)
 SELECT
-  {topo_schema}.unitForArea(
+  {topo_schema}.identity_for_area(
     __geometry,
     __face.map_layer
   ) unit_id,
@@ -180,7 +180,7 @@ SELECT
   __geometry;
 
 DELETE
-FROM {topo_schema}.__dirty_face df
+FROM {topo_schema}.dirty_face df
 WHERE df.map_layer = __face.map_layer
   AND id = ANY(__dissolved_faces);
 
@@ -194,7 +194,7 @@ RETURNS void AS $$
 BEGIN
 
 -- Loop throug table of dirty linework
-WHILE EXISTS (SELECT * FROM {topo_schema}.__dirty_face)
+WHILE EXISTS (SELECT * FROM {topo_schema}.dirty_face)
 LOOP
   PERFORM {topo_schema}.update_map_face();
 END LOOP;

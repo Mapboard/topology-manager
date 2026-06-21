@@ -5,14 +5,14 @@ Test that the topology manager correctly notifies the 'events' channel when line
 from json import loads
 
 import pytest
-from .helpers import square, insert_line, map_layer_id
 from macrostrat.utils import get_logger
 from sqlalchemy import text
 
-
 import threading
 import time
-from select import select
+
+from mapboard.topology_manager.test_helpers import square, insert_line, map_layer_id
+
 
 log = get_logger(__name__)
 
@@ -52,11 +52,14 @@ def listen_notify(engine, channel: str, timeout: float = 2.0):
             if notification.channel == channel:
                 return notification
 
+
 def test_listen_notify_psycopg(empty_db):
     channel = "test_channel"
     message = "hello_world"
     # Start the notifier in a background thread
-    notifier = threading.Thread(target=send_notify, args=(empty_db.engine, channel, message))
+    notifier = threading.Thread(
+        target=send_notify, args=(empty_db.engine, channel, message)
+    )
     notifier.start()
 
     # Listen for notification

@@ -2,10 +2,10 @@ from collections import defaultdict
 from time import perf_counter
 
 from macrostrat.database import Database
+from macrostrat.database.query import OutputMode
 from macrostrat.utils import get_logger
 from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
-from functools import lru_cache
 
 from ...database import sql
 
@@ -125,6 +125,7 @@ def delete_map_faces(db: Database, faces: list[int]):
         WHERE id = ANY (:map_faces)
         """,
         dict(map_faces=faces),
+        output_mode=OutputMode.NONE,
     )
 
 
@@ -139,6 +140,35 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
             topo_element_array=topo_element_array,
         ),
     )
+
+
+def dissolve_dirty_faces(db: Database, dirty_faces) -> list["FaceUpdateResult"]:
+    """Compute every dissolve group for a batch of dirty faces.
+
+    The connected-components work runs server-side (``dissolve_groups``): per map
+    layer the joinable graph is built once and each component expanded with a
+    recursive walk, so we transfer only the resulting groups (and the map_faces
+    they replace) rather than the whole edge list. Valid when the topology is
+    static for the operation (the default, write-deferred path). Returns one
+    FaceUpdateResult per group.
+    """
+    layers = {face.map_layer for face in dirty_faces}
+
+    results: list[FaceUpdateResult] = []
+    for map_layer in layers:
+        groups = db.run_query(
+            "SELECT faces, existing_map_faces FROM {topo_schema}.dissolve_groups(:map_layer)",
+            dict(map_layer=map_layer),
+        ).all()
+        for group in groups:
+            results.append(
+                FaceUpdateResult(
+                    dissolved_faces=list(group.faces),
+                    existing_map_faces=list(group.existing_map_faces or []),
+                    map_layer=map_layer,
+                )
+            )
+    return results
 
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
@@ -161,17 +191,17 @@ def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
 def _unmark_dirty_faces_for_layer(db, map_layer, faces):
     db.run_sql(
         """DELETE
-           FROM {topo_schema}.__dirty_face df
+           FROM {topo_schema}.dirty_face df
            WHERE
                df.map_layer = :map_layer
              AND (id = ANY(:dissolved_faces)
               OR id = 0)
         """,
         dict(map_layer=map_layer, dissolved_faces=faces),
+        output_mode=OutputMode.NONE,
     )
 
 
-@lru_cache(maxsize=None)
 def get_topolayer_id(db: Database, table_name: str, feature_column: str):
     return db.run_query(
         """

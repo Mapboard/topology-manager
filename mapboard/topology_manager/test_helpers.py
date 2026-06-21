@@ -3,6 +3,53 @@ from psycopg.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
 from macrostrat.database import Database
 
+from .config import TopologyContext
+from .commands.update_faces.helpers import get_adjacent_faces
+
+
+class TopologyInspector:
+    ctx: TopologyContext
+    db: Database
+
+    def __init__(self, ctx: TopologyContext):
+        self.ctx = ctx
+        self.db = ctx.database
+
+    def n_faces(self, **kwargs):
+        return n_faces(self.db, **kwargs)
+
+    def n_lines(self, **kwargs):
+        return n_lines(self.db, **kwargs)
+
+    def n_edges(self):
+        return n_edges(self.db)
+
+    def n_face_primitives(self, include_global=False):
+        return n_face_primitives(self.db, include_global=include_global)
+
+    def n_edge_relations(self):
+        return n_edge_relations(self.db)
+
+    def get_face_id(self, _point):
+        return get_face_id(self.db, _point)
+
+    def intersecting_faces(self, geom):
+        return intersecting_faces(self.db, geom)
+
+    def map_layer_id(self, name: str):
+        return map_layer_id(self.db, name)
+
+    def is_valid(self):
+        return (
+            self.db.run_query(
+                "SELECT count(*) FROM topology.ValidateTopology(:topo_name);"
+            ).scalar()
+            == 0
+        )
+
+    def get_adjacent_faces(self, face_id: int, map_layer: int):
+        return get_adjacent_faces(self.db, face_id, map_layer)
+
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
     if isinstance(map_layer, str):
@@ -66,8 +113,10 @@ def n_faces(db, *, identified=False, map_layer=None, source_layer=None):
     where = []
     params = {}
     if identified:
-        where.append("unit_id IS NOT NULL")
+        where.append("{face_identity_column} IS NOT NULL")
     if map_layer is not None:
+        if isinstance(map_layer, str):
+            map_layer = map_layer_id(db, map_layer)
         where.append("map_layer = :map_layer")
         params["map_layer"] = map_layer
     if source_layer is not None:
@@ -79,11 +128,12 @@ def n_faces(db, *, identified=False, map_layer=None, source_layer=None):
 
 
 def n_lines(db, *, map_layer=None):
-    sql = "SELECT count(*) FROM {data_schema}.linework"
+    sql = "SELECT count(*) FROM {boundary_table}"
+    params = dict()
     if map_layer is not None:
         sql += " WHERE map_layer = :map_layer"
-        return db.run_query(sql, {"map_layer": map_layer}).scalar()
-    return db.run_query(sql).scalar()
+        params["map_layer"] = map_layer
+    return db.run_query(sql, params).scalar()
 
 
 def n_edges(db):

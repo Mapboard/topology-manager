@@ -85,7 +85,7 @@ CREATE OR REPLACE VIEW {topo_schema}.seed_face AS
 SELECT mf.id,
   mf.map_layer,
   coalesce(mf.source_layer, mf.map_layer) source_layer,
-  sub.face_id                             seed_face_id
+  sub.face_id seed_face_id
 FROM {topo_schema}.map_face mf
 JOIN LATERAL (
     SELECT element_id face_id
@@ -108,7 +108,7 @@ SELECT
   f1.source_layer,
   f1.parent_layer,
   ml.name parent_layer_name,
-  {topo_schema}.unitforface(f1.seed_face_id, parent_layer) unit_id
+  {topo_schema}.identity_for_face(f1.seed_face_id, parent_layer) {face_identity_column}
 FROM f1
 JOIN {data_schema}.map_layer ml
   ON f1.parent_layer = ml.id;

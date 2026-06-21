@@ -1,7 +1,7 @@
 from pytest import mark
 
-from ..commands.update import _update
-from .helpers import (
+from mapboard.topology_manager import update
+from mapboard.topology_manager.test_helpers import (
     add_linework_type_to_layer,
     insert_line,
     insert_polygon,
@@ -15,12 +15,12 @@ from .helpers import (
     prepare_geometry,
 )
 from shapely.geometry import Polygon
-from ..commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 
 from pytest import fixture
 
 
-def test_topo_face_no_identifier(db):
+def test_topo_face_no_identifier(db, mgr):
     """Test that a face with no identifier is created"""
     insert_line(
         db,
@@ -28,11 +28,11 @@ def test_topo_face_no_identifier(db):
         type="bedrock",
         map_layer=map_layer_id(db, "bedrock"),
     )
-    _update(db)
+    update()
     assert n_faces(db) == 1
 
 
-def test_new_layer(db):
+def test_new_layer(mgr, db):
     MapLayer = db.model.test_map_data_map_layer
     lyr = MapLayer(name="Test1", topological=True, parent=None)
     db.session.add(lyr)
@@ -49,7 +49,7 @@ def test_new_layer(db):
         type="bedrock",
         map_layer=lyr.id,
     )
-    _update(db)
+    update()
     assert n_faces(db) == 1
 
 
@@ -65,7 +65,7 @@ def layers(db):
 
 
 @fixture(scope="class")
-def basic_polys(db, layers):
+def basic_polys(mgr, db, layers):
     bedrock_id = layers["bedrock"]
     surficial_id = layers["surficial"]
     # Insert a square
@@ -82,7 +82,7 @@ def basic_polys(db, layers):
     insert_polygon(db, square(1, center=(3, 3)), type="terrace", map_layer=surficial_id)
 
     # Solve the topology
-    _update(db)
+    update()
 
 
 class TestMultiLayers:
@@ -108,18 +108,18 @@ class TestMultiLayers:
         assert has_bedrock
         assert has_surficial
 
-    def test_remove_bedrock(self, db, layers, basic_polys):
+    def test_remove_bedrock(self, mgr, db, layers, basic_polys):
         assert n_faces(db) == 2
         assert n_faces(db, map_layer=layers["bedrock"]) == 1
 
         # This works with savepoints but not nested transactions
         with db.savepoint(rollback="always"):
-            _test_internals(db, layers)
+            _test_internals(mgr, layers)
 
-    def test_remove_bedrock_no_nested_transaction(self, db, layers, basic_polys):
-        _test_internals(db, layers)
+    def test_remove_bedrock_no_nested_transaction(self, mgr, layers, basic_polys):
+        _test_internals(mgr, layers)
 
-    def test_remove_surficial(self, db, layers, basic_polys):
+    def test_remove_surficial(self, mgr, db, layers, basic_polys):
         assert n_faces(db) == 1
         faces = intersecting_faces(db, point(3, 3))
         assert len(faces) == 1
@@ -130,11 +130,12 @@ class TestMultiLayers:
                 "DELETE FROM {data_schema}.linework WHERE map_layer = :map_layer",
                 {"map_layer": layers["surficial"]},
             )
-            _update(db)
+            update()
             assert n_faces(db) == 0
 
 
-def _test_internals(db, layers):
+def _test_internals(mgr, layers):
+    db = mgr.database
     bedrock_id = layers["bedrock"]
     assert n_faces(db) == 2
     db.run_sql(
@@ -168,8 +169,8 @@ def _test_internals(db, layers):
     # )
     # db.run_sql(sql("procedures/post-update-contacts"))
 
-    _update(db)
-    _update(db)
+    update()
+    update()
 
     # We should also have deleted all edge relationships
     res = db.run_query(
@@ -199,7 +200,7 @@ def _test_internals(db, layers):
     assert n_faces(db) == 1
 
 
-def test_mixed_edge_winding(db, layers):
+def test_mixed_edge_winding(mgr, db, layers):
     """Test that faces and edges can be negatively/differently wound"""
 
     assert n_faces(db) == 0
@@ -214,13 +215,13 @@ def test_mixed_edge_winding(db, layers):
         db, ((-1, -1), (1, -1), (1, 1)), type="bedrock", map_layer=layers["bedrock"]
     )
 
-    _update(db)
+    update()
 
     assert n_faces(db) == 1
 
 
 @mark.parametrize("incremental", [False, True])
-def test_incremental_face_updates(db, layers, incremental):
+def test_incremental_face_updates(mgr, db, layers, incremental):
     """Test that we can incrementally update faces without deleting them"""
 
     assert n_faces(db) == 0
@@ -235,14 +236,14 @@ def test_incremental_face_updates(db, layers, incremental):
     for i in range(5):
         _insert_lines(i)
 
-    _update(db, incremental=incremental)
+    update(incremental=incremental)
 
     assert n_faces(db) == 16
 
     for i in range(6):
         _insert_lines(i + 5)
 
-    _update(db, incremental=incremental)
+    update(incremental=incremental)
 
     assert n_faces(db) == 100
     assert n_lines(db) == 22
@@ -258,7 +259,7 @@ def test_incremental_face_updates(db, layers, incremental):
         dict(eraser=prepare_geometry(eraser, srid=32612), map_layer=lyr),
     )
 
-    _update(db, incremental=incremental)
+    update(incremental=incremental)
     # We should have four lines in the database
     assert n_lines(db) == 4
     assert n_faces(db) == 1

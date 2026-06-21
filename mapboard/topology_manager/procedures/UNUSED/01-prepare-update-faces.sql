@@ -22,7 +22,7 @@ WITH edge_relation AS (
 ), v1 AS (
 SELECT DISTINCT ON (ef.face_id) *
 FROM {topo_schema}.edge_face ef
-JOIN {topo_schema}.face_type ft ON ef.face_id = ft.face_id
+JOIN {topo_schema}.face_identity ft ON ef.face_id = ft.face_id
 WHERE ef.edge_id NOT IN (
     SELECT edge_id
     FROM edge_relation er
@@ -38,6 +38,6 @@ WHERE v1.map_face = f.id;
 This is needed because we currently have a bit of a disconnected process.
  */
 
-INSERT INTO {topo_schema}.__dirty_face
-SELECT id, {topo_schema}.parent_map_layers(map_layer) FROM {topo_schema}.__dirty_face
+INSERT INTO {topo_schema}.dirty_face
+SELECT id, {topo_schema}.parent_map_layers(map_layer) FROM {topo_schema}.dirty_face
 ON CONFLICT DO NOTHING;

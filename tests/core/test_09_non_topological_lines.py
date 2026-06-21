@@ -1,15 +1,15 @@
-from .helpers import (
+from mapboard.topology_manager import update
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     map_layer_id,
     n_faces,
     square,
     insert_polygon,
 )
-from ..commands.update import _update
 from pytest import mark
 
 
-def test_non_topological_lines(db):
+def test_non_topological_lines(mgr, db):
     """Test that a face with no identifier is created"""
 
     lyr = map_layer_id(db, "bedrock")
@@ -34,19 +34,19 @@ def test_non_topological_lines(db):
         map_layer=lyr,
     )
 
-    _update(db)
+    update()
     assert n_faces(db) == 1
 
     # Add a bisecting line
     insert_line(db, ((-1, 1), (3, 1)), type="test0", map_layer=lyr)
 
-    _update(db)
+    update()
 
     # Check that the face is still the same
     assert n_faces(db) == 1
 
 
-def test_non_topological_polygons(db):
+def test_non_topological_polygons(mgr, db):
     """Test that a face with no identifier is created"""
 
     lyr = map_layer_id(db, "bedrock")
@@ -81,7 +81,7 @@ def test_non_topological_polygons(db):
         map_layer=lyr,
     )
 
-    _update(db)
+    update()
 
     # Check that the face isn't identified
     assert n_faces(db, identified=True) == 0
@@ -94,7 +94,7 @@ def test_non_topological_polygons(db):
         map_layer=lyr,
     )
 
-    _update(db)
+    update()
 
     assert n_faces(db, identified=True) == 1
 

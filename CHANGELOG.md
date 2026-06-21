@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Switch to UV
 - Incorporate composite map layers
+- Support managing topology for sets of identified polygons (map areas) using
+  face-based topogeometries, alongside the existing linework mode
+- Make face identity a pluggable strategy: `create_context` now takes an
+  `identity_strategy` (default `SEARCH_STRATEGY`), `boundary_table`, and
+  `manage_data_tables`, replacing the `in_macrostrat_mode` flag
+- Fix `__edge_relation` maintenance for face-based topogeometries (record the
+  exterior bounding edges of each area)
+- Add `rebuild-edge-relations` (and a `validate_edge_relations` API) to repair the
+  `__edge_relation` cache if its triggers fall out of sync
+- Speed up face dissolving: connected components are computed server-side
+  (PL/pgSQL `dissolve_groups`) over a joinable face graph built once per layer,
+  replacing the per-dirty-face graph rebuild.
+- `incremental` face updates now mean *checkpointed persistence* (commit per
+  dissolve group), decoupling persistence from the adjacency join graph
+- Add a post-installation setup check (`check_topology_setup` /
+  `assert_topology_setup`, run by `create_tables`) that verifies the identity
+  column, identity functions, and boundary table/topogeometry exist — surfacing a
+  misconfigured host strategy or `create_data_tables` callable immediately
 
 ## `[4.0.0]` - 2024-03
 

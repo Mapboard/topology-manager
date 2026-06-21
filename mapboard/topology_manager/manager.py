@@ -1,0 +1,83 @@
+"""TopologyManager: a convenient object-oriented interface to the topology manager."""
+
+from .config import TopologyContext
+from .commands.update_topology import update
+from .commands.update_contacts import update_contacts
+from .commands.clean_topology import clean_topology
+from .commands.update_faces import update_faces
+from .commands.update_composite_layers import update_composite_layers
+from .commands.create_tables import create_tables
+from .commands.check_setup import check_topology_setup
+from .commands.edge_relations import rebuild_edge_relations, validate_edge_relations
+
+
+class TopologyManager:
+    """Wraps a TopologyContext and exposes topology operations as methods,
+    eliminating the need to pass ``ctx`` to every function call."""
+
+    def __init__(self, ctx: TopologyContext):
+        self._ctx = ctx
+
+    # ------------------------------------------------------------------
+    # Convenience accessors
+    # ------------------------------------------------------------------
+
+    @property
+    def db(self):
+        """The underlying Database instance."""
+        return self._ctx.database
+
+    @property
+    def database(self):
+        """Alias for :attr:`db` for backward compatibility."""
+        return self._ctx.database
+
+    @database.setter
+    def database(self, value):
+        """Allow replacing the underlying database (e.g. in tests)."""
+        self._ctx.database = value
+
+    @property
+    def ctx(self) -> TopologyContext:
+        """The underlying TopologyContext (for use with lower-level APIs)."""
+        return self._ctx
+
+    # ------------------------------------------------------------------
+    # Commands
+    # ------------------------------------------------------------------
+
+    def update(self, **kwargs):
+        """Run a full topology update (contacts → faces → clean → composite)."""
+        update(self._ctx, **kwargs)
+
+    def update_contacts(self, **kwargs):
+        """Recalculate linework contacts."""
+        update_contacts(self._ctx, **kwargs)
+
+    def update_faces(self, **kwargs):
+        """Recalculate map faces."""
+        update_faces(self._ctx, **kwargs)
+
+    def clean_topology(self):
+        """Remove empty topogeometries and unused primitives."""
+        clean_topology(self._ctx)
+
+    def update_composite_layers(self):
+        """Rebuild all composite layers from their source layers."""
+        update_composite_layers(self._ctx)
+
+    def create_tables(self, *, check: bool = True):
+        """Create the topology schema tables from SQL fixtures."""
+        create_tables(self._ctx, check=check)
+
+    def check_setup(self) -> list[str]:
+        """Return any setup problems (missing identity column/functions, boundary table)."""
+        return check_topology_setup(self._ctx)
+
+    def validate_edge_relations(self):
+        """Report drift between the cached __edge_relation table and its view."""
+        return validate_edge_relations(self._ctx)
+
+    def rebuild_edge_relations(self):
+        """Rebuild the cached __edge_relation table (repair out-of-sync triggers)."""
+        return rebuild_edge_relations(self._ctx)

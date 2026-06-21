@@ -2,9 +2,10 @@ from time import perf_counter
 
 from rich.progress import Progress
 
+from ..config import TopologyContext, get_context
 from ..database import Database, get_database, sql
 from ..utilities import console
-from .clean_topology import _clean_topology
+from .clean_topology import clean_topology
 from macrostrat.utils import get_logger
 
 count = sql("procedures/count-contact")
@@ -14,26 +15,23 @@ reset_errors = sql("procedures/reset-linework-errors")
 log = get_logger(__name__)
 
 
-def update_contacts(fix_failed: bool = False):
-    """Update contacts"""
-    db = get_database()
-    _update_contacts(db, fix_failed)
-
-
-def _update_contacts(db: Database, fix_failed: bool = False):
+def update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
+    """Update contacts, returning the number of lines processed."""
+    db = ctx.database
     nlines = db.run_query(count).scalar()
 
     if fix_failed:
         db.run_sql(reset_errors)
 
     if nlines == 0:
-        console.print("No contacts to update")
+        console.print("No boundaries to update")
 
     res = db.run_query(get_contacts).all()
     remaining = len(res)
     if remaining == 0:
-        return
+        return 0
 
+    total_updated = 0
     with Progress() as progress:
         bar = progress.add_task("Updating lines", total=nlines)
         nops = 0
@@ -43,7 +41,9 @@ def _update_contacts(db: Database, fix_failed: bool = False):
             #    _clean_topology(db)
 
             t0 = perf_counter()
-            rows = db.run_query(sql("procedures/update-contact"), {"n": batch_size}).all()
+            rows = db.run_query(
+                sql("procedures/update-contact"), {"n": batch_size}
+            ).all()
             db.session.commit()
             t1 = perf_counter()
             nrows = len(rows)
@@ -52,6 +52,7 @@ def _update_contacts(db: Database, fix_failed: bool = False):
                     console.print(f"[dim]{row.id}[/dim]: [error]{row.err}[/error]")
             progress.update(bar, advance=nrows)
             remaining -= nrows
+            total_updated += nrows
             duration = t1 - t0
             log.info("Updated %s lines in %.2f seconds", nrows, duration)
             # Dynamically adjust batch size
@@ -63,3 +64,5 @@ def _update_contacts(db: Database, fix_failed: bool = False):
             #     log.info("Slowing down, using batch size %s", batch_size)
 
             nops += 1
+
+    return total_updated

@@ -1,8 +1,8 @@
 from pytest import mark
 from shapely.geometry import LineString
 
-from ..commands.update import _update, _update_contacts
-from .helpers import (
+from mapboard.topology_manager import update
+from mapboard.topology_manager.test_helpers import (
     add_linework_type_to_layer,
     add_polygon_type_to_layer,
     insert_line,
@@ -13,7 +13,6 @@ from .helpers import (
     square,
     n_edge_relations,
 )
-from ..database import sql
 
 
 class TestNestedLayers:
@@ -110,7 +109,7 @@ class TestNestedLayers:
             assert res[1][0] == map_layer_id(db, "Tectonic Block")
             assert res[2][0] == map_layer_id(db, "Map Region")
 
-    def test_insert_child_layers(self, db):
+    def test_insert_child_layers(self, mgr, db):
         # Insert a square in the bedrock layer
         # Truncate linework table
         db.run_query("TRUNCATE {data_schema}.linework CASCADE")
@@ -126,7 +125,7 @@ class TestNestedLayers:
         )
 
         # Solve the topology
-        _update(db)
+        update()
 
         n_edges = db.run_query("SELECT count(*) FROM {topo_schema}.edge").scalar()
         assert n_edges == 1
@@ -135,15 +134,13 @@ class TestNestedLayers:
         res = n_edge_relations(db)
         assert res == 1
 
-        res = db.run_query(
-            "SELECT * FROM {topo_schema}.__edge_relation"
-        ).fetchall()
+        res = db.run_query("SELECT * FROM {topo_schema}.__edge_relation").fetchall()
 
         # The tectonic block layer should have:
         # - Two edges for the outer part of the square
         assert len([r for r in res if r.map_layer == lyr_id]) == 1
 
-    def test_insert_child_layers_with_bisecting_line(self, db):
+    def test_insert_child_layers_with_bisecting_line(self, mgr, db):
         """
         Insert a bisecting line in the child layer, starting
         at the geometry wrap point of the enclosing square
@@ -160,7 +157,7 @@ class TestNestedLayers:
             map_layer=map_layer_id(db, "bedrock"),
         )
 
-        _update_contacts(db)
+        mgr.update_contacts()
 
         # Two nodes
         n_nodes = db.run_query("SELECT count(*) FROM {topo_schema}.node").scalar()
@@ -187,14 +184,14 @@ class TestNestedLayers:
             == 2
         )
 
-    def test_correct_face_count(self, db):
+    def test_correct_face_count(self, mgr, db):
 
-        # Check that we have three potential faces in the __dirty_face table
+        # Check that we have three potential faces in the dirty_face table
         res = dirty_faces(db)
         assert len(res) == 2
         assert len([r for r in res if r.map_layer == map_layer_id(db, "bedrock")]) == 2
 
-        _update(db)
+        update()
 
         res = adjacent_faces(db, "Tectonic Block")
         assert len(res) == 2
@@ -228,7 +225,7 @@ class TestNestedLayers:
         )
         assert len(res) == 2
 
-    def test_add_face_identity(self, db):
+    def test_add_face_identity(self, mgr, db):
         # Create a new polygon type
         PolygonType = db.model.test_map_data_polygon_type
         poly = PolygonType(name="Tectonic Block 1", id="tectonic-block-1")
@@ -255,7 +252,7 @@ class TestNestedLayers:
         )
 
         # Solve the topology
-        _update(db)
+        update()
 
         # Check that we have two identified map faces
 
@@ -280,7 +277,7 @@ class TestNestedLayers:
 
 def dirty_faces(db):
     return db.run_query(
-        "SELECT * FROM {topo_schema}.__dirty_face",
+        "SELECT * FROM {topo_schema}.dirty_face",
     ).fetchall()
 
 
@@ -292,10 +289,7 @@ def adjacent_faces(db, map_layer):
 
 
 @mark.parametrize("topological", [False, True])
-def test_layer_with_child(
-    db,
-    topological,
-):
+def test_layer_with_child(mgr, db, topological):
     """Test that faces are created for a layer with a child layer."""
     MapLayer = db.model.test_map_data_map_layer
 
@@ -317,7 +311,7 @@ def test_layer_with_child(
     #     db, LineString(((3, 0), (3, 6))), type="bedrock", map_layer=bedrock_id
     # )
     # Solve the topology
-    _update(db)
+    update()
 
     # Get all faces
     res = db.run_query(
@@ -341,7 +335,7 @@ def test_layer_with_child(
 
 
 class TestNestedLayersDisconnected:
-    def test_insert_multi_layers(self, db):
+    def test_insert_multi_layers(self, mgr, db):
         """Insert two overlapping models that belong to nested layers"""
         # Check if map layer is integer
 
@@ -397,7 +391,7 @@ class TestNestedLayersDisconnected:
         assert len(res.with_parents) == 1
         assert res.with_parents[0] == map_layer_id(db, "Surficial")
 
-    def test_disconnected_child_layer(self, db):
+    def test_disconnected_child_layer(self, mgr, db):
         """Create a feature in a layer disconnected from the main topology"""
 
         bedrock_id = map_layer_id(db, "bedrock")
@@ -418,7 +412,7 @@ class TestNestedLayersDisconnected:
         )
 
         # Solve the topology
-        _update(db)
+        update()
 
         # There should be three faces in the topology now
         res = db.run_query(
@@ -439,7 +433,7 @@ class TestNestedLayersDisconnected:
         )
 
         # Solve the topology
-        _update(db)
+        update()
 
         # There should be four faces in the topology now
         res = db.run_query(

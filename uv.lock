@@ -119,7 +119,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -207,7 +207,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.1.1"
+version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -221,9 +221,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/7a/1cf3e3cd59da4fa59bc0ed417115ee4a6dfba5535959a0e3159d2570c87e/macrostrat_database-4.1.1.tar.gz", hash = "sha256:1a2f1da90057335187652ebb6452ff5b0104c6291e3130648f39b30759b14eec", size = 19323, upload-time = "2026-06-12T07:20:59.183Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/86/fa97c358b6c8129f0dfb3e2c202ae28152790807610ffac6d05c0f8c85b2/macrostrat_database-4.3.1.tar.gz", hash = "sha256:f824974a215dfac5a1190f67c48b47e940422de469a7fadd4d5af6a7199e37d0", size = 23962, upload-time = "2026-06-19T21:18:42.903Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/b6/cea3528186a386c20a2199fa3d019bf9fb58ab088f439da70cbf649dede4/macrostrat_database-4.1.1-py3-none-any.whl", hash = "sha256:f13f11fd39339593760217ef519aede2ac4b815927dd9adcf0abc8667d8afb37", size = 25843, upload-time = "2026-06-12T07:20:58.096Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/d7/9e4281144c359c09f3d80edc9e1d9c90e82dc7c61aaaea471c8e66bf174b/macrostrat_database-4.3.1-py3-none-any.whl", hash = "sha256:74a41bc695490dfca459a4075204f1a2df913ee370398714c8c6f4e89910d055", size = 31193, upload-time = "2026-06-19T21:18:41.947Z" },
 ]
 
 [[package]]
@@ -245,8 +245,10 @@ version = "5.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "addict" },
+    { name = "geoalchemy2" },
     { name = "macrostrat-database" },
     { name = "macrostrat-utils" },
+    { name = "pydantic" },
     { name = "pytest-profiling" },
     { name = "python-dotenv" },
     { name = "rich" },
@@ -264,12 +266,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "addict", specifier = ">=2.4.0,<3" },
-    { name = "macrostrat-database", specifier = ">=4.1.1,<5" },
+    { name = "geoalchemy2", specifier = ">=0.19.0" },
+    { name = "macrostrat-database", specifier = ">=4.3.1,<5" },
     { name = "macrostrat-utils", specifier = ">=1.2.1,<2" },
+    { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pytest-profiling", specifier = ">=1.7.0,<2" },
     { name = "python-dotenv", specifier = ">=1.0.1,<2" },
-    { name = "rich", specifier = ">=13.7.1,<16" },
-    { name = "typer", specifier = ">=0.12.0,<0.27.0" },
+    { name = "rich", specifier = ">=14.0.0,<16" },
+    { name = "typer", specifier = ">=0.25.0,<0.27.0" },
 ]
 
 [package.metadata.requires-dev]

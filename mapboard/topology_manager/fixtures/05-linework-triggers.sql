@@ -5,35 +5,17 @@ to `map_topology.map_face`
 
 /* Util functions */
 
-/** Get the topology for a line */
-CREATE OR REPLACE FUNCTION {topo_schema}.get_topological_map_layer(_line {data_schema}.linework)
-RETURNS integer AS $$
-SELECT ml.id
-FROM {data_schema}.map_layer ml,
-     {data_schema}.linework_type lt
-WHERE ml.id = $1.map_layer
-  AND ml.composited_from IS NULL
-  AND lt.id = $1.type
-  AND coalesce(lt.topological, true)
-  AND ml.topological;
-$$ LANGUAGE SQL IMMUTABLE;
-
 CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(geom geometry)
 RETURNS uuid AS $$
 SELECT md5(ST_AsBinary(geom))::uuid;
 $$ LANGUAGE SQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION {topo_schema}.hash_geometry(_line {data_schema}.linework)
-RETURNS uuid AS $$
-SELECT {topo_schema}.hash_geometry(_line.geometry);
-$$ LANGUAGE SQL IMMUTABLE;
-
-CREATE OR REPLACE FUNCTION {topo_schema}.__linework_layer_id()
+CREATE OR REPLACE FUNCTION {topo_schema}.boundary_layer_id()
 RETURNS integer AS $$
 SELECT layer_id
 FROM topology.layer
 WHERE schema_name={data_schema_name_literal}
-  AND table_name='linework'
+  AND table_name={boundary_table_literal}
   AND feature_column='topo';
 $$ LANGUAGE SQL IMMUTABLE;
 
@@ -41,16 +23,48 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__topo_precision()
 RETURNS numeric AS $$
 SELECT precision::numeric
   FROM topology.topology
-  WHERE name={topo_name_literal} ;
+  WHERE name={topo_name_literal};
 $$ LANGUAGE SQL IMMUTABLE;
+
+/** Adjacent faces (lines) or overlapping faces (polygons) for a given topogeometry */
+CREATE OR REPLACE FUNCTION {topo_schema}.relevant_faces(topo topogeometry) RETURNS integer[] AS $$
+WITH topo_primitives AS (
+  SELECT topology.GetTopoGeomElements(topo) primitives
+),
+edge_faces AS (
+  SELECT
+    left_face,
+    right_face
+  FROM topo_primitives tp
+  JOIN {topo_schema}.edge_data e1
+    ON (
+      (e1.edge_id = tp.primitives[1] AND tp.primitives[2] = 2)
+      OR
+      (left_face = tp.primitives[1] AND tp.primitives[2] = 3)
+      OR
+      (right_face = tp.primitives[1] AND tp.primitives[2] = 3)
+    )
+),
+faces AS (
+  SELECT left_face f FROM edge_faces
+  UNION
+  SELECT right_face f FROM edge_faces
+),
+unique_faces AS (
+  SELECT DISTINCT f FROM faces
+)
+SELECT array_agg(f)
+FROM unique_faces;
+$$
+LANGUAGE SQL IMMUTABLE;
+
 
 /*
 When `map_topology.contact` table is updated, changes should propagate
 to `map_topology.map_face`
 */
-
 CREATE OR REPLACE FUNCTION {topo_schema}.mark_surrounding_faces(
-  line {data_schema}.linework)
+  line {boundary_table})
 RETURNS void AS $$
 DECLARE
   __faces integer[];
@@ -59,31 +73,13 @@ BEGIN
     RETURN;
   END IF;
 
-  -- GET ADJACENT FACES
-  WITH edges AS (
-  SELECT (topology.GetTopoGeomElements(line.topo))[1] edge_id
-  ),
-  faces AS (
-  SELECT
-    left_face,
-    right_face
-  FROM edges e
-  JOIN {topo_schema}.edge_data e1
-    ON e.edge_id = e1.edge_id
-  ),
-  faces1 AS (
-  SELECT left_face f FROM faces
-  UNION
-  SELECT right_face f FROM faces
-  )
-  SELECT array_agg(f)
-  INTO __faces
-  FROM faces1;
+  SELECT {topo_schema}.relevant_faces(line.topo)
+  INTO __faces;
 
   WITH ml AS (
     SELECT {topo_schema}.child_map_layers(line.map_layer) id
   )
-  INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
+  INSERT INTO {topo_schema}.dirty_face (id, map_layer)
   SELECT
     unnest(__faces),
     ml.id
@@ -95,7 +91,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION {topo_schema}.linework_changed()
+CREATE OR REPLACE FUNCTION {topo_schema}.boundary_changed()
 RETURNS trigger AS $$
 DECLARE
   __edges integer[];
@@ -169,31 +165,31 @@ $$ LANGUAGE plpgsql;
 /*
 Function to update topogeometry of linework
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.update_linework_topo(line {data_schema}.linework)
+CREATE OR REPLACE FUNCTION {topo_schema}.update_boundary_topo(line {boundary_table})
 RETURNS text AS
 $$
 BEGIN
-  IF ({topo_schema}.hash_geometry(line) = line.geometry_hash) THEN
+  IF ({topo_schema}.hash_geometry(line.geometry) = line.geometry_hash) THEN
     -- We already have a valid topogeometry representation
     RETURN null;
   END IF;
   -- Actually set topogeometry
   BEGIN
     -- Set topogeometry
-    UPDATE {data_schema}.linework l
+    UPDATE {boundary_table} l
     SET
       topo = topology.toTopoGeom(
         line.geometry,
         {topo_name_literal},
-        {topo_schema}.__linework_layer_id(),
+        {topo_schema}.boundary_layer_id(),
         {topo_schema}.__topo_precision()
       ),
-      geometry_hash = {topo_schema}.hash_geometry(l),
+      geometry_hash = {topo_schema}.hash_geometry(l.geometry),
       topology_error = null
     WHERE l.id = line.id;
     RETURN null;
   EXCEPTION WHEN others THEN
-    UPDATE {data_schema}.linework l
+    UPDATE {boundary_table} l
     SET
       topology_error = SQLERRM
     WHERE l.id = line.id;
@@ -206,7 +202,7 @@ $$ LANGUAGE plpgsql;
 
 -- Trigger to create a non-topogeometry representation for
 -- storage on each row (for speed of lookup)
-DROP TRIGGER IF EXISTS map_topology_linework_trigger ON {data_schema}.linework;
-CREATE TRIGGER map_topology_linework_trigger
-BEFORE INSERT OR UPDATE OR DELETE ON {data_schema}.linework
-FOR EACH ROW EXECUTE PROCEDURE {topo_schema}.linework_changed();
+DROP TRIGGER IF EXISTS map_topology_boundary_trigger ON {boundary_table};
+CREATE TRIGGER map_topology_boundary_trigger
+BEFORE INSERT OR UPDATE OR DELETE ON {boundary_table}
+FOR EACH ROW EXECUTE PROCEDURE {topo_schema}.boundary_changed();

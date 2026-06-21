@@ -24,7 +24,7 @@ GROUP BY element_id, map_layer
 with referential integrity). Perhaps should add a
 CHECK constraint to bring this forward. */
 v2 AS (
-INSERT INTO {topo_schema}.__dirty_face (id, map_layer)
+INSERT INTO {topo_schema}.dirty_face (id, map_layer)
 SELECT element_id, map_layer
 FROM v1
 WHERE count > 1
