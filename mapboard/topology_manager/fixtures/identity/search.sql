@@ -1,12 +1,16 @@
-/** Map face identifiers:
-  links map_face to polygon_type identifier for geologic maps
-  This could be changed if we wanted to use a different type of identification (e.g., for columns etc.)
+/** Identity strategy: "search" (reference implementation)
+
+Geologic mapping with polygon units. A face has no identity of its own; it is
+*derived by searching another table* — the dominant `polygon_type` underneath the
+face, area-weighted. Faces dissolve freely (gated only by contacts) and are
+labeled afterward; `faces_are_joinable` is therefore a no-op.
+
+The identity column (`unit_id`) is added by `create_tables` from the strategy's
+declared column metadata; this file only installs the resolution functions.
 */
-ALTER TABLE {topo_schema}.map_face ADD COLUMN unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
-ALTER TABLE {topo_schema}.face_identity ADD COLUMN unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
 
 /*
-Get the map face that defines a polygon for a specific topology
+Get the polygon-type identifier for a face, by greatest overlapping polygon area.
 */
 CREATE OR REPLACE FUNCTION {topo_schema}.identity_for_area(
   face geometry,
@@ -65,12 +69,10 @@ $$ LANGUAGE SQL IMMUTABLE;
 /** Helper function that allows us to check whether two faces should be joined
 on the basis of a shared identity.
 
-This default (linework) implementation returns false: linework faces carry no
-intrinsic identity, so whether two faces dissolve together is governed entirely
-by `layers_are_joinable` (i.e. whether a contact separates them). The
-face-identity-based variant used for map-area mode overrides this to compare the
-faces' resolved identities. See the join condition in `get_adjacent_faces_core`,
-which combines the two with OR. */
+This (search) strategy returns false: faces carry no intrinsic identity, so
+whether two faces dissolve together is governed entirely by `layers_are_joinable`
+(i.e. whether a contact separates them). See the join condition in
+`get_adjacent_faces_core`, which combines the two with OR. */
 CREATE OR REPLACE FUNCTION {topo_schema}.faces_are_joinable(
   f1 integer, f2 integer, _map_layer integer
 ) RETURNS boolean

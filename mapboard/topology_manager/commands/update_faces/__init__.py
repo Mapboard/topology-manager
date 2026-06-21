@@ -11,7 +11,12 @@ from typing import Optional
 from rich.progress import Progress
 
 from ...config import TopologyContext, sql, get_context
-from .helpers import update_map_face_python, persist_map_face_updates, log
+from .helpers import (
+    persist_map_face_updates,
+    persist_map_face_updates_simple,
+    dissolve_dirty_faces,
+    log,
+)
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
 
@@ -62,7 +67,6 @@ def update_faces(
     log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
     t0 = perf_counter()
-    niter = 0
 
     dirty_faces = db.run_query(
         "SELECT id, map_layer FROM {topo_schema}.dirty_face"
@@ -74,42 +78,26 @@ def update_faces(
         "Dirty faces in layers: %s",
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
-    results = []
-    with Progress() as progress:
-        bar = progress.add_task("Updating faces", total=init_n_faces)
 
-        while len(dirty_faces) > 0:
-            log.info(
-                "%s dirty faces remaining",
-                len(dirty_faces),
-            )
-            prev_len = len(dirty_faces)
-            # Extract one face
-            face = dirty_faces.pop(0)
+    # Dissolve groups are computed server-side over a graph that is static for the
+    # whole run (writes are deferred), so we compute them once up front.
+    results = dissolve_dirty_faces(db, dirty_faces)
+    niter = len(results)
 
-            res = update_map_face_python(db, face, write=incremental)
-            results.append(res)
-
-            # Filter dirty faces to remove the ones that have been dissolved into the current face
-            dirty_faces = [
-                d
-                for d in dirty_faces
-                if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
-            ]
-            niter += 1
-
-            progress.update(bar, completed=init_n_faces - len(dirty_faces))
-            # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
-            if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
-                log.warning(
-                    "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
-                    niter,
-                )
-                break
-
-        ## Delete old topogeoms
-        if not incremental:
-            persist_map_face_updates(db, results)
+    if incremental:
+        # Checkpoint: persist and commit one group at a time, so an interrupted run
+        # keeps the groups already written (and their dirty faces stay unmarked).
+        # Safe because persisting a map face does not change the dissolve graph.
+        with Progress() as progress:
+            bar = progress.add_task("Persisting map faces", total=len(results))
+            for res in results:
+                persist_map_face_updates_simple(db, [res])
+                db.session.commit()
+                progress.update(bar, advance=1)
+    else:
+        # Persist everything in one batch, then commit once. Fastest, but an
+        # interruption loses the whole run's face calculations.
+        persist_map_face_updates(db, results)
 
     t1 = perf_counter()
     log.info(

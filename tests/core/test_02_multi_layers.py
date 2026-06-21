@@ -1,7 +1,7 @@
 from pytest import mark
 
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     add_linework_type_to_layer,
     insert_line,
     insert_polygon,

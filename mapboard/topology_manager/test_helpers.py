@@ -3,7 +3,8 @@ from psycopg.sql import Identifier
 from shapely.geometry import LineString, Point, Polygon
 from macrostrat.database import Database
 
-from mapboard.topology_manager.config import TopologyContext
+from .config import TopologyContext
+from .commands.update_faces.helpers import get_adjacent_faces
 
 
 class TopologyInspector:
@@ -45,6 +46,9 @@ class TopologyInspector:
             ).scalar()
             == 0
         )
+
+    def get_adjacent_faces(self, face_id: int, map_layer: int):
+        return get_adjacent_faces(self.db, face_id, map_layer)
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):

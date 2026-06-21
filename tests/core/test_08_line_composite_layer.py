@@ -4,7 +4,7 @@ from pytest import fixture
 from addict import Dict
 
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     add_linework_type_to_layer,
     create_composite_layer,
     add_polygon_type_to_layer,

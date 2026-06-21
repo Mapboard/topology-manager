@@ -4,12 +4,13 @@ import time
 
 import pytest
 
-from ..helpers import insert_line, map_layer_id, square
+from mapboard.topology_manager.test_helpers import insert_line, map_layer_id, square
 
-#update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
+# update_cmd = importlib.import_module("mapboard.topology_manager.commands.update_topology")
 watcher_cmd = importlib.import_module("mapboard.topology_manager.watcher")
 
 from mapboard.topology_manager.watcher import start_watcher
+
 
 class _TestLoop:
     def __init__(self, callback_runner):

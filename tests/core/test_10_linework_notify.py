@@ -11,7 +11,7 @@ from sqlalchemy import text
 import threading
 import time
 
-from ..helpers import square, insert_line, map_layer_id
+from mapboard.topology_manager.test_helpers import square, insert_line, map_layer_id
 
 
 log = get_logger(__name__)

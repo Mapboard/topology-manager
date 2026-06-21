@@ -5,7 +5,7 @@ from pytest import fixture, mark
 from addict import Dict
 
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     add_linework_type_to_layer,
     n_faces,
