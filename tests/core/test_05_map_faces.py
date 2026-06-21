@@ -4,7 +4,7 @@ from macrostrat.utils.timer import Timer
 from macrostrat.utils import get_logger
 
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     map_layer_id,
     add_linework_type_to_layer,

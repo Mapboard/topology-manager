@@ -266,7 +266,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "addict", specifier = ">=2.4.0,<3" },
-    { name = "geoalchemy2", specifier = ">=0.20.0" },
+    { name = "geoalchemy2", specifier = ">=0.19.0" },
     { name = "macrostrat-database", specifier = ">=4.3.1,<5" },
     { name = "macrostrat-utils", specifier = ">=1.2.1,<2" },
     { name = "pydantic", specifier = ">=2.13.4" },

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     n_faces,
     square,
     map_layer_id,

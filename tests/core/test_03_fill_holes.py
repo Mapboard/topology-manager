@@ -1,5 +1,5 @@
 from mapboard.topology_manager import update
-from ..helpers import (
+from mapboard.topology_manager.test_helpers import (
     insert_line,
     insert_polygon,
     map_layer_id,

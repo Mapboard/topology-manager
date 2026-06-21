@@ -13,12 +13,12 @@ from mapboard.topology_manager.commands import (
 )
 from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
-from mapboard.topology_manager.config import (
+from mapboard.topology_manager import (
     create_context,
     TopologyContext,
     IdentityStrategy,
+    TopologyInspector,
 )
-from ..helpers import TopologyInspector
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
