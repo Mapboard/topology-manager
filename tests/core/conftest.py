@@ -45,8 +45,8 @@ def mgr(base_mgr, pytestconfig):
 
     commit = pytestconfig.getoption("--commit")
     rollback = "never" if commit else "always"
-    with base_db.transaction(rollback=rollback):
-        log.info("Starting database transaction")
+    with base_db.savepoint(rollback=rollback):
+        log.info("Starting savepoint")
         yield base_mgr
         if rollback == "always":
             log.info("Rolling back database transaction")

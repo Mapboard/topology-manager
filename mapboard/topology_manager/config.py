@@ -138,7 +138,7 @@ def create_context(
     strategy = identity_strategy or SEARCH_STRATEGY
     face_identity_column = strategy.identity_column
 
-    _database = Database(database.engine)
+    _database = Database(database.engine.url)
     _database.instance_params = {
         "data_schema": Identifier(data_schema),
         "topo_schema": Identifier(topo_schema),

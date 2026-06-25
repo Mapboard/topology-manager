@@ -86,6 +86,16 @@ ON {topo_schema}.__edge_relation (map_layer);
 CREATE INDEX IF NOT EXISTS edge_relation_edge_id_idx
 ON {topo_schema}.__edge_relation (edge_id);
 
+/** Face-based topogeometries whose cached edge relations are stale and need
+recomputing. Populated cheaply (O(1) per row) by the deferred
+`update_face_edge_relation` trigger and drained by
+`rebuild_dirty_edge_relations()`. */
+CREATE TABLE IF NOT EXISTS {topo_schema}.__edge_relation_dirty (
+  topogeo_id integer NOT NULL,
+  topolayer_id integer NOT NULL,
+  PRIMARY KEY (topogeo_id, topolayer_id)
+);
+
 /** Initial population of the table (mirrors __edge_relation_dynamic) */
 INSERT INTO {topo_schema}.__edge_relation (
   line_id,
@@ -170,33 +180,56 @@ FOR EACH ROW
 WHEN (OLD.element_type = 2)
 EXECUTE FUNCTION {topo_schema}.update_edge_relation();
 
-/** Keep edge relations in sync for *face-based* topogeometries.
+/** Keep edge relations in sync for *face-based* topogeometries — deferred.
 
 A face-based relation row references a face, not an edge, and the edges that
-bound a face change as the topology is edited (faces split/merge). Rather than
-track edges individually, we recompute the full set of edge relations for any
-boundary feature whose topogeometry was touched. This runs AFTER the change so
-the `relation` table already reflects its final state when we read it back. */
+bound a face depend on the topology as a whole, so the affected boundary
+feature's relations must be recomputed from scratch. But `toTopoGeom` inserts
+one relation row per face a feature covers — thousands for a large map — so
+recomputing per row is O(N²) and dominates bulk topology population.
+
+Instead, this trigger only records the touched topogeometry in
+`__edge_relation_dirty` (O(1) per row); `rebuild_dirty_edge_relations()` does
+the scoped recompute once per affected topogeometry. Callers run that function
+after a batch of edits (e.g. at the end of adding a map). The `__edge_relation`
+cache is thus eventually consistent — briefly stale between an edit and the
+rebuild. */
 CREATE OR REPLACE FUNCTION {topo_schema}.update_face_edge_relation()
 RETURNS trigger AS $$
-DECLARE
-  _topogeo_id integer;
-  _topolayer_id integer;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    _topogeo_id := OLD.topogeo_id;
-    _topolayer_id := OLD.layer_id;
-  ELSE
-    _topogeo_id := NEW.topogeo_id;
-    _topolayer_id := NEW.layer_id;
+    INSERT INTO {topo_schema}.__edge_relation_dirty (topogeo_id, topolayer_id)
+    VALUES (OLD.topogeo_id, OLD.layer_id)
+    ON CONFLICT DO NOTHING;
+    RETURN OLD;
   END IF;
 
-  -- Clear existing relations for any boundary feature using this topogeometry
+  INSERT INTO {topo_schema}.__edge_relation_dirty (topogeo_id, topolayer_id)
+  VALUES (NEW.topogeo_id, NEW.layer_id)
+  ON CONFLICT DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+/** Recompute cached edge relations for every topogeometry marked dirty by
+`update_face_edge_relation`, then clear the dirty set. This is the deferred,
+batched form of the old per-row recompute: identical logic, but run once per
+affected topogeometry instead of once per relation row. It touches only the
+dirty boundary features (unlike rebuild-edge-relations.sql, which rebuilds the
+whole table). Returns the number of dirty topogeometries processed. */
+CREATE OR REPLACE FUNCTION {topo_schema}.rebuild_dirty_edge_relations()
+RETURNS integer AS $$
+DECLARE
+  _n integer;
+BEGIN
+  SELECT count(*) INTO _n FROM {topo_schema}.__edge_relation_dirty;
+
+  -- Clear existing relations for any boundary feature using a dirty topogeometry
   DELETE FROM {topo_schema}.__edge_relation er
-  USING {boundary_table} l
+  USING {boundary_table} l, {topo_schema}.__edge_relation_dirty d
   WHERE er.line_id = l.id
-    AND (l.topo).id = _topogeo_id
-    AND (l.topo).layer_id = _topolayer_id;
+    AND (l.topo).id = d.topogeo_id
+    AND (l.topo).layer_id = d.topolayer_id;
 
   -- Recompute them from the current topology
   INSERT INTO {topo_schema}.__edge_relation (
@@ -212,20 +245,19 @@ BEGIN
     e.edge_id,
     (l.topo).id topogeo_id,
     (l.topo).layer_id topolayer_id
-  FROM {boundary_table} l
+  FROM {topo_schema}.__edge_relation_dirty d
+  JOIN {boundary_table} l
+    ON (l.topo).id = d.topogeo_id
+   AND (l.topo).layer_id = d.topolayer_id
   JOIN {data_schema}.map_layer ml
     ON l.map_layer = ml.id
   CROSS JOIN LATERAL {topo_schema}.__topogeom_edges((l.topo).id, (l.topo).layer_id) e
   WHERE l.topo IS NOT null
     AND ml.topological
-    AND (l.topo).id = _topogeo_id
-    AND (l.topo).layer_id = _topolayer_id
   ON CONFLICT DO NOTHING;
 
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  RETURN NEW;
+  DELETE FROM {topo_schema}.__edge_relation_dirty;
+  RETURN _n;
 END;
 $$ LANGUAGE plpgsql;
 

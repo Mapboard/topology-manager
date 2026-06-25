@@ -207,7 +207,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.3.1"
+version = "4.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -221,9 +221,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/86/fa97c358b6c8129f0dfb3e2c202ae28152790807610ffac6d05c0f8c85b2/macrostrat_database-4.3.1.tar.gz", hash = "sha256:f824974a215dfac5a1190f67c48b47e940422de469a7fadd4d5af6a7199e37d0", size = 23962, upload-time = "2026-06-19T21:18:42.903Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/ff/db51282210e655dd7b13e3ae3ef2f157724cc1bf3403956bacd31b3415dd/macrostrat_database-4.4.0.tar.gz", hash = "sha256:51b150c5256f21cfeba8373ac687d0384840b86839a5ed7b45519f7cfd0052cc", size = 24180, upload-time = "2026-06-24T08:42:55.314Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/d7/9e4281144c359c09f3d80edc9e1d9c90e82dc7c61aaaea471c8e66bf174b/macrostrat_database-4.3.1-py3-none-any.whl", hash = "sha256:74a41bc695490dfca459a4075204f1a2df913ee370398714c8c6f4e89910d055", size = 31193, upload-time = "2026-06-19T21:18:41.947Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/16/9c3193e0621d20f407f86224cb6e278fd46da4c4afb1c55a15c37f92c339/macrostrat_database-4.4.0-py3-none-any.whl", hash = "sha256:c2ea2b1713ffd267f4b97ba5b1054964ed0e40b3e7698a74a270f0f2d4307b0e", size = 31408, upload-time = "2026-06-24T08:42:54.476Z" },
 ]
 
 [[package]]
@@ -267,7 +267,7 @@ dev = [
 requires-dist = [
     { name = "addict", specifier = ">=2.4.0,<3" },
     { name = "geoalchemy2", specifier = ">=0.19.0" },
-    { name = "macrostrat-database", specifier = ">=4.3.1,<5" },
+    { name = "macrostrat-database", specifier = ">=4.4.0,<5" },
     { name = "macrostrat-utils", specifier = ">=1.2.1,<2" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pytest-profiling", specifier = ">=1.7.0,<2" },
