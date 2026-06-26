@@ -110,140 +110,6 @@ AS $$
 $$ LANGUAGE SQL STABLE;
 
 
-CREATE OR REPLACE FUNCTION {topo_schema}.get_adjacent_faces_core(
-  face_id integer,
-  _map_layer integer,
-  _barrier_layers integer[] DEFAULT ARRAY[]::integer[]
-)
-RETURNS {topo_schema}.face_group
-AS $$
-WITH RECURSIVE
-  je AS (
-    SELECT left_face, right_face
-    FROM {topo_schema}.joinable_face_edges(_map_layer, _barrier_layers)
-  ),
-  face_adjacency AS (
-    SELECT left_face this_face, right_face opp_face FROM je
-    UNION
-    SELECT right_face, left_face FROM je
-  ),
-  r(faces, edge_faces, depth) AS (
-    /** This recursive query works outwards as a 'wave',
-    * starting from the given face_id and moving outwards
-      accumulating adjacent faces in a given map layer
-      until there are no more to find.
-
-      We should stop when we reach the global face, but we don't do this now.
-
-      This works on face primitives but a similar approach
-      could accumulate based on child topogeometries, for layers
-      with child topological layers...
-     */
-    SELECT
-      ARRAY[]::integer[] AS faces,
-      ARRAY[face_id] edge_faces,
-      0 AS depth
-    UNION ALL
-    SELECT
-      r.faces || r.edge_faces faces,
-      array(
-        SELECT opp_face
-        FROM face_adjacency fa
-        WHERE fa.this_face = ANY(r.edge_faces)
-        AND NOT fa.opp_face = ANY(r.faces || r.edge_faces)
-      ) AS edge_faces,
-      r.depth + 1
-    FROM r
-    WHERE array_length(r.edge_faces, 1) > 0
-    GROUP BY r.faces, r.edge_faces, r.depth
-  )
-SELECT faces, depth niter, _map_layer map_layer
-FROM r
-ORDER BY depth DESC
-LIMIT 1;
-$$ LANGUAGE SQL STABLE;
-
-
-/** Get faces that can be dissolved into a given map layer */
-CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
-  face_id integer,
-  _map_layer integer
-)
-RETURNS integer[]
-AS $$
-  SELECT ({topo_schema}.get_adjacent_faces_core(face_id, _map_layer)).faces
-$$ LANGUAGE SQL STABLE;
-
-
-/** Dissolve groups for every dirty face in a map layer.
-
-Returns one row per connected component (in the joinable face graph) that
-contains a dirty face: the full set of primitive faces in the group, and the
-existing map_faces those primitives currently belong to (which the caller
-replaces). The joinable adjacency is built once into an indexed temp table and
-each component is expanded with a recursive walk, so the cost is O(edges) for the
-whole layer rather than O(edges x groups) — the per-seed graph rebuild is gone.
-*/
-CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_groups(
-  _map_layer integer,
-  _barrier_layers integer[] DEFAULT ARRAY[]::integer[]
-)
-RETURNS TABLE (faces integer[], existing_map_faces integer[])
-AS $$
-DECLARE
-  _seed integer;
-  _component integer[];
-BEGIN
-  -- Joinable adjacency for the layer, computed once (both directions, indexed).
-  DROP TABLE IF EXISTS _dissolve_adj;
-  CREATE TEMP TABLE _dissolve_adj AS
-    SELECT j.left_face AS this_face, j.right_face AS opp_face
-      FROM {topo_schema}.joinable_face_edges(_map_layer, _barrier_layers) j
-    UNION
-    SELECT j.right_face, j.left_face
-      FROM {topo_schema}.joinable_face_edges(_map_layer, _barrier_layers) j;
-  CREATE INDEX ON _dissolve_adj (this_face);
-
-  -- Outstanding dirty faces for this layer.
-  DROP TABLE IF EXISTS _dissolve_todo;
-  CREATE TEMP TABLE _dissolve_todo AS
-    SELECT id FROM {topo_schema}.dirty_face WHERE map_layer = _map_layer;
-
-  LOOP
-    SELECT id INTO _seed FROM _dissolve_todo LIMIT 1;
-    EXIT WHEN NOT FOUND;
-
-    -- Connected component reachable from the seed.
-    WITH RECURSIVE walk(face) AS (
-      SELECT _seed
-      UNION
-      SELECT a.opp_face
-      FROM _dissolve_adj a
-      JOIN walk w ON a.this_face = w.face
-    )
-    SELECT array_agg(face) INTO _component FROM walk;
-
-    -- This group's dirty faces are now handled.
-    DELETE FROM _dissolve_todo WHERE id = ANY(_component);
-
-    faces := _component;
-    SELECT coalesce(array_agg(DISTINCT f.id), ARRAY[]::integer[])
-    INTO existing_map_faces
-    FROM {topo_schema}.map_face f
-    JOIN {topo_schema}.relation r
-      ON (f.topo).id = r.topogeo_id
-     AND r.layer_id = (f.topo).layer_id
-    WHERE r.element_id = ANY(_component)
-      AND r.element_type = 3
-      AND f.map_layer = _map_layer;
-    RETURN NEXT;
-  END LOOP;
-
-  DROP TABLE IF EXISTS _dissolve_adj;
-  DROP TABLE IF EXISTS _dissolve_todo;
-END;
-$$ LANGUAGE plpgsql;
-
 /** Dissolve a single joinable component, expanded lazily outward from a seed
 face. Unlike dissolve_groups (which builds the whole layer's adjacency up front),
 this touches only edges incident to faces already reached, so its cost is
@@ -328,3 +194,14 @@ BEGIN
     _map_layer map_layer;
 END;
 $$ LANGUAGE plpgsql;
+
+
+/** Get faces that can be dissolved into a given map layer */
+CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
+  face_id integer,
+  _map_layer integer
+)
+  RETURNS integer[]
+AS $$
+SELECT ({topo_schema}.dissolve_component(face_id, _map_layer)).faces
+$$ LANGUAGE SQL STABLE;

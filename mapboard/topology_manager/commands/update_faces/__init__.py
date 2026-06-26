@@ -13,8 +13,6 @@ from rich.progress import Progress
 from ...config import TopologyContext, sql, get_context
 from .helpers import (
     persist_map_face_updates,
-    persist_map_face_updates_simple,
-    dissolve_dirty_faces,
     log,
     FaceUpdateResult,
     update_map_face,

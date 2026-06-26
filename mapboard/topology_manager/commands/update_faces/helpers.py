@@ -77,22 +77,6 @@ def unmark_dirty_faces(db: Database, updates: list[FaceUpdateResult]):
         _unmark_dirty_faces_for_layer(db, lyr, list(set(faces)))
 
 
-def persist_map_face_updates_simple(db: Database, updates: list[FaceUpdateResult]):
-    """Persist updates to map faces to the database.
-
-    A simple version without batching updates.
-    """
-
-    for res in updates:
-        if len(res.existing_map_faces) > 0:
-            delete_map_faces(db, list(res.existing_map_faces))
-
-        if 0 not in res.dissolved_faces:
-            create_map_face(db, res.map_layer, res.dissolved_faces)
-
-        _unmark_dirty_faces_for_layer(db, res.map_layer, res.dissolved_faces)
-
-
 def delete_map_faces(db: Database, faces: list[int]):
     """Delete map faces"""
     db.run_query(
@@ -118,35 +102,6 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
         ),
     )
 
-
-
-def dissolve_dirty_faces(db: Database, dirty_faces) -> list["FaceUpdateResult"]:
-    """Compute every dissolve group for a batch of dirty faces.
-
-    The connected-components work runs server-side (``dissolve_groups``): per map
-    layer the joinable graph is built once and each component expanded with a
-    recursive walk, so we transfer only the resulting groups (and the map_faces
-    they replace) rather than the whole edge list. Valid when the topology is
-    static for the operation (the default, write-deferred path). Returns one
-    FaceUpdateResult per group.
-    """
-    layers = {face.map_layer for face in dirty_faces}
-
-    results: list[FaceUpdateResult] = []
-    for map_layer in layers:
-        groups = db.run_query(
-            "SELECT faces, existing_map_faces FROM {topo_schema}.dissolve_groups(:map_layer)",
-            dict(map_layer=map_layer),
-        ).all()
-        for group in groups:
-            results.append(
-                FaceUpdateResult(
-                    dissolved_faces=list(group.faces),
-                    existing_map_faces=list(group.existing_map_faces or []),
-                    map_layer=map_layer,
-                )
-            )
-    return results
 
 def _get_adjacent_faces_core(db: Database, face_id: int, map_layer: int) -> FaceUpdateResult:
     """Essentially a python wrapper around the get_adjacent_faces SQL function
@@ -227,37 +182,3 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
         ).scalars()
     )
 
-
-def get_face_primitives(db: Database, map_faces: list[int]) -> list[int]:
-    return list(
-        db.run_query(
-            """
-            SELECT DISTINCT ON (r.element_id)
-                r.element_id
-            FROM {topo_schema}.map_face f
-            JOIN {topo_schema}.relation r
-            ON (f.topo).id = r.topogeo_id
-                AND r.layer_id = (f.topo).layer_id
-            WHERE f.id = ANY(:map_faces)
-              AND r.element_type = 3
-            """,
-            dict(map_faces=map_faces),
-        ).scalars()
-    )
-
-
-def dissolve_adjacent_faces(faces: list[DirtyFace]) -> list[DirtyFace]:
-    """Dissolve adjacent faces"""
-    grouped_faces = []
-    for face in faces:
-        for group in grouped_faces:
-            # If the face shares an adjacent face with any face in the group, add it to the group
-            if (
-                group.adjacent_faces & face.adjacent_faces
-                and group.map_layer == face.map_layer
-            ):
-                group.adjacent_faces.update(face.adjacent_faces)
-                break
-        else:
-            grouped_faces.append(face)
-    return grouped_faces
