@@ -24,36 +24,13 @@ class FaceUpdateResult(BaseModel):
     map_layer: int
 
 
-def update_map_face_python(db: Database, face, *, write=False) -> FaceUpdateResult:
+def update_map_face(db: Database, face) -> FaceUpdateResult:
     face_id = face.id
     map_layer = face.map_layer
     t0 = perf_counter()
 
     log.info(f"Updating face {face_id} in layer {map_layer}")
-
-    face_list = get_adjacent_faces(db, face_id, map_layer)
-
-    log.debug("Adjacent faces: %s", face_list)
-
-    # Get map faces that contain any of the listed faces in the particular map layer
-    # we are looking at.
-    existing_map_faces = list(containing_map_faces(db, face_list, map_layer))
-
-    res = FaceUpdateResult(
-        dissolved_faces=face_list,
-        existing_map_faces=existing_map_faces,
-        map_layer=map_layer,
-    )
-
-    if write:
-        persist_map_face_updates(db, [res])
-
-    Timer.add_step("clean")
-
-    t2 = perf_counter()
-    log.info(f"Updated face {face_id} in {t2 - t0:.2f} seconds")
-
-    return res
+    return _get_adjacent_faces_core(db, face_id, map_layer)
 
 
 def persist_map_face_updates(
@@ -142,6 +119,7 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
     )
 
 
+
 def dissolve_dirty_faces(db: Database, dirty_faces) -> list["FaceUpdateResult"]:
     """Compute every dissolve group for a batch of dirty faces.
 
@@ -170,22 +148,32 @@ def dissolve_dirty_faces(db: Database, dirty_faces) -> list["FaceUpdateResult"]:
             )
     return results
 
-
-def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+def _get_adjacent_faces_core(db: Database, face_id: int, map_layer: int) -> FaceUpdateResult:
     """Essentially a python wrapper around the get_adjacent_faces SQL function
     TODO: get adjacent faces for multiple map layers at once.
     """
     t0 = perf_counter()
     res = db.run_query(
-        "SELECT * FROM {topo_schema}.get_adjacent_faces_core(:face_id, :map_layer)",
+        "SELECT * FROM {topo_schema}.dissolve_component(:face_id, :map_layer)",
         dict(face_id=face_id, map_layer=map_layer),
     ).one()
-    faces = list(set(res.faces))
+    faces = FaceUpdateResult(
+        dissolved_faces=list(set(res.faces)),
+        existing_map_faces=list(set(res.existing_map_faces or [])),
+        map_layer=map_layer,
+    )
     t1 = perf_counter()
     log.debug(
-        f"Found {len(faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
+        f"Found {len(faces.dissolved_faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
     )
     return faces
+
+def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
+    """Essentially a python wrapper around the get_adjacent_faces SQL function
+    TODO: get adjacent faces for multiple map layers at once.
+    """
+    res = _get_adjacent_faces_core(db, face_id, map_layer)
+    return res.dissolved_faces
 
 
 def _unmark_dirty_faces_for_layer(db, map_layer, faces):

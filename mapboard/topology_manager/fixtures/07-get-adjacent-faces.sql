@@ -243,3 +243,88 @@ BEGIN
   DROP TABLE IF EXISTS _dissolve_todo;
 END;
 $$ LANGUAGE plpgsql;
+
+/** Dissolve a single joinable component, expanded lazily outward from a seed
+face. Unlike dissolve_groups (which builds the whole layer's adjacency up front),
+this touches only edges incident to faces already reached, so its cost is
+proportional to the component, not the layer — the right shape for incremental,
+dirty-face-driven updates where the caller loops one component at a time. Returns
+the component's primitive faces and the existing map_faces they replace.
+Membership is held in indexed temp tables so large components stay efficient. */
+CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(
+  _seed integer,
+  _map_layer integer,
+  _barrier_layers integer[] DEFAULT ARRAY[]::integer[]
+)
+RETURNS TABLE (faces integer[], existing_map_faces integer[], niter integer, map_layer integer)
+AS $$
+DECLARE
+  _added integer;
+  _niter integer := 0;
+BEGIN
+  -- Session-scoped scratch sets, reused across calls (the caller commits per
+  -- component, so deliberately no ON COMMIT DROP).
+  CREATE TEMP TABLE IF NOT EXISTS _component     (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _frontier      (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _frontier_next (face_id integer PRIMARY KEY);
+  TRUNCATE _component, _frontier, _frontier_next;
+
+  INSERT INTO _component VALUES (_seed);
+  INSERT INTO _frontier  VALUES (_seed);
+
+  LOOP
+    -- Newly-reached joinable neighbors of the current frontier. The joins to
+    -- _frontier drive index scans on edge_data.left_face/right_face; the
+    -- anti-join against _component (PK) keeps us from revisiting.
+    TRUNCATE _frontier_next;
+    INSERT INTO _frontier_next (face_id)
+    SELECT DISTINCT j.opp_face
+    FROM (
+      SELECT fe.opp_face, fe.left_face, fe.right_face
+      FROM (
+        SELECT e.edge_id, e.left_face, e.right_face, e.right_face AS opp_face
+        FROM {topo_schema}.edge_data e
+        JOIN _frontier f ON e.left_face = f.face_id
+        WHERE e.left_face <> e.right_face
+        UNION ALL
+        SELECT e.edge_id, e.left_face, e.right_face, e.left_face AS opp_face
+        FROM {topo_schema}.edge_data e
+        JOIN _frontier f ON e.right_face = f.face_id
+        WHERE e.left_face <> e.right_face
+      ) fe
+      LEFT JOIN {topo_schema}.__edge_relation er ON er.edge_id = fe.edge_id
+      GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
+      HAVING {topo_schema}.layers_are_joinable(
+               ARRAY[_map_layer]::integer[] || _barrier_layers,
+               array_remove(array_agg(er.map_layer), null))
+          OR {topo_schema}.faces_are_joinable(fe.left_face, fe.right_face, _map_layer)
+    ) j
+    LEFT JOIN _component c ON c.face_id = j.opp_face
+    WHERE c.face_id IS NULL;
+
+    GET DIAGNOSTICS _added = ROW_COUNT;
+    EXIT WHEN _added = 0;
+
+    INSERT INTO _component (face_id) SELECT face_id FROM _frontier_next;
+    TRUNCATE _frontier;
+    INSERT INTO _frontier (face_id) SELECT face_id FROM _frontier_next;
+
+    _niter := _niter + 1;
+  END LOOP;
+
+  RETURN QUERY
+  SELECT
+    (SELECT array_agg(face_id) FROM _component) faces,
+    coalesce((
+      SELECT array_agg(DISTINCT f.id)
+      FROM {topo_schema}.map_face f
+      JOIN {topo_schema}.relation r
+        ON (f.topo).id = r.topogeo_id AND r.layer_id = (f.topo).layer_id
+      WHERE r.element_id IN (SELECT face_id FROM _component)
+        AND r.element_type = 3
+        AND f.map_layer = _map_layer
+    ), ARRAY[]::integer[]) existing_map_faces,
+    _niter niter,
+    _map_layer map_layer;
+END;
+$$ LANGUAGE plpgsql;

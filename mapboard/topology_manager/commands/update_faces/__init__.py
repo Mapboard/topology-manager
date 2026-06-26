@@ -16,6 +16,8 @@ from .helpers import (
     persist_map_face_updates_simple,
     dissolve_dirty_faces,
     log,
+    FaceUpdateResult,
+    update_map_face,
 )
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
@@ -46,8 +48,8 @@ def update_faces(
         help="Use Python or PL/pgSQL (not yet implemented)",
         envvar="TOPO_ENGINE",
     ),
-    composite_layers: bool = Option(False, help="Update composite layers"),
-    incremental: bool = Option(False, help="Incremental update of faces, vs. batch"),
+    incremental: bool = Option(True, help="Incremental update"),
+    persist_interval: int = 100,
 ):
     """Update faces"""
     log.info("Updating faces with engine %s", engine)
@@ -79,24 +81,44 @@ def update_faces(
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
 
-    # Dissolve groups are computed server-side over a graph that is static for the
-    # whole run (writes are deferred), so we compute them once up front.
-    results = dissolve_dirty_faces(db, dirty_faces)
-    niter = len(results)
+    results = []
+    with Progress() as progress:
+        bar = progress.add_task("Updating faces", total=init_n_faces)
+        niter = 0
+        while len(dirty_faces) > 0:
+            log.info(
+                "%s dirty faces remaining",
+                len(dirty_faces),
+            )
+            prev_len = len(dirty_faces)
+            # Extract one face
+            face = dirty_faces.pop(0)
 
-    if incremental:
-        # Checkpoint: persist and commit one group at a time, so an interrupted run
-        # keeps the groups already written (and their dirty faces stay unmarked).
-        # Safe because persisting a map face does not change the dissolve graph.
-        with Progress() as progress:
-            bar = progress.add_task("Persisting map faces", total=len(results))
-            for res in results:
-                persist_map_face_updates_simple(db, [res])
-                db.session.commit()
-                progress.update(bar, advance=1)
-    else:
-        # Persist everything in one batch, then commit once. Fastest, but an
-        # interruption loses the whole run's face calculations.
+            res = update_map_face(db, face)
+            results.append(res)
+
+            # Persist the updates if we've reached an interval
+            if niter % persist_interval == 0 and incremental:
+                persist_map_face_updates(db, results)
+                results = []
+
+            # Filter dirty faces to remove the ones that have been dissolved into the current face
+            dirty_faces = [
+                d
+                for d in dirty_faces
+                if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
+            ]
+            niter += 1
+
+            progress.update(bar, completed=init_n_faces - len(dirty_faces))
+            # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
+            if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
+                log.warning(
+                    "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
+                    niter,
+                )
+                break
+
         persist_map_face_updates(db, results)
 
     t1 = perf_counter()
