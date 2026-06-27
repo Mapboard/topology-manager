@@ -28,21 +28,21 @@ def update(
     n_contacts_updated = 0
 
     t_init = perf_counter()
-    t_step = t_init
+    t_start = t_init
 
     if boundaries:
         console.print("Updating boundaries", style="header")
         n_contacts_updated = update_contacts(ctx, fix_failed=fix_failed)
         t1 = perf_counter()
-        print_step("Update boundaries", t1 - t_step)
-        t_step = t1
+        print_step("Update boundaries", t1 - t_start)
+        t_start = t1
 
     if n_contacts_updated > 0:
         console.print("Cleaning topology (pre-faces)", style="header")
         clean_topology(ctx)
         t2 = perf_counter()
-        print_step("Clean topology (pre-faces)", t2 - t_step)
-        t_step = t2
+        print_step("Clean topology (pre-faces)", t2 - t_start)
+        t_start = t2
 
     if faces:
         console.print("Updating faces", style="header")
@@ -53,20 +53,20 @@ def update(
             incremental=incremental,
         )
         t3 = perf_counter()
-        print_step("Update faces", t3 - t_step)
-        t_step = t3
+        print_step("Update faces", t3 - t_start)
+        t_start = t3
 
     if boundaries or faces:
         console.print("Cleaning topology", style="header")
         clean_topology(ctx)
         t4 = perf_counter()
-        print_step("Clean topology", t4 - t_step)
-        t_step = t4
+        print_step("Clean topology", t4 - t_start)
+        t_start = t4
 
     if composite_layers:
         console.print("Updating composite layers", style="header")
         update_composite_layers(ctx)
         t5 = perf_counter()
-        print_step("Update composite layers", t5 - t_step)
+        print_step("Update composite layers", t5 - t_start)
 
-    print_step("Total", perf_counter() - t_step)
+    print_step("Total", perf_counter() - t_start)

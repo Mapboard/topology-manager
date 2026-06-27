@@ -4,7 +4,6 @@ from time import perf_counter
 from macrostrat.database import Database
 from macrostrat.database.query import OutputMode
 from macrostrat.utils import get_logger
-from macrostrat.utils.timer import Timer
 from pydantic import BaseModel
 
 from ...database import sql
@@ -103,7 +102,9 @@ def create_map_face(db: Database, map_layer: int, face_list: list[int]):
     )
 
 
-def _get_adjacent_faces_core(db: Database, face_id: int, map_layer: int) -> FaceUpdateResult:
+def _get_adjacent_faces_core(
+    db: Database, face_id: int, map_layer: int
+) -> FaceUpdateResult:
     """Essentially a python wrapper around the get_adjacent_faces SQL function
     TODO: get adjacent faces for multiple map layers at once.
     """
@@ -122,6 +123,7 @@ def _get_adjacent_faces_core(db: Database, face_id: int, map_layer: int) -> Face
         f"Found {len(faces.dissolved_faces)} adjacent faces in {t1 - t0:.2f} seconds ({res.niter} iterations)"
     )
     return faces
+
 
 def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
     """Essentially a python wrapper around the get_adjacent_faces SQL function
@@ -181,4 +183,3 @@ def containing_map_faces(db: Database, faces: list[int], map_layer: int) -> list
             dict(faces=faces, map_layer=map_layer),
         ).scalars()
     )
-
