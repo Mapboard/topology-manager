@@ -3,7 +3,7 @@ from time import perf_counter
 from psycopg.sql import Identifier
 
 from ..config import TopologyContext, get_context
-from ..database import  sql
+from ..database import sql
 from ..utilities import console, print_step
 from macrostrat.utils import get_logger
 
@@ -34,23 +34,39 @@ def _delete_edges(db):
 verbose = True
 
 
-def remove_empty_topogeometries(db, schema, table, column):
-    table_name = f"{schema}.{table}"
-    params = dict(
-        table=Identifier(schema, table),
-        table_name=table_name,
-        column=Identifier(column),
-        column_name=column,
-    )
+def remove_empty_topogeometries(db):
+    layers = db.run_query(
+        """
+      SELECT
+          l.topology_id,
+          l.layer_id,
+          l.schema_name,
+          l.table_name,
+          l.feature_column,
+          l.feature_type
+      FROM topology.layer l
+      JOIN topology.topology t ON t.id = l.topology_id
+      WHERE t.name = :topo_name
+    """
+    ).all()
 
-    with db.session.begin_nested():
-        res = db.run_query(
-            sql("procedures/clean-topology/remove-empty-topogeometries"), params
-        ).scalar()
-        db.session.commit()
-        console.print(
-            f"Removed {res} empty topogeometries for [cyan]{table_name}[/cyan][gray].{column}[/gray]"
-        )
+    for lyr in layers:
+        with db.session.begin_nested():
+            table_name = f"{lyr.schema_name}.{lyr.table_name}"
+            params = dict(
+                table=Identifier(lyr.schema_name, lyr.table_name),
+                feature_column=Identifier(lyr.feature_column),
+                layer_id=lyr.layer_id,
+                feature_type=lyr.feature_type,
+                topology_id=lyr.topology_id,
+            )
+
+            res = db.run_query(
+                sql("procedures/clean-topology/remove-empty-topogeometries"), params
+            ).scalar()
+            console.print(
+                f"Removed {res} empty topogeometries for [cyan]{table_name}[/cyan][gray].{lyr.feature_column}[/gray]"
+            )
 
 
 def clean_topology(ctx: TopologyContext):
@@ -62,8 +78,12 @@ def clean_topology(ctx: TopologyContext):
     data_layer = (ctx.boundary_table, "topo")
 
     t0 = perf_counter()
-    remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
-    remove_empty_topogeometries(db, ctx.topo_schema, "map_face", "topo")
+
+    # Is removing empty topogeometries still needed? Removing them from the data layer
+    # seems like overkill.
+    # remove_empty_topogeometries(db, ctx.data_schema, *data_layer)
+
+    remove_empty_topogeometries(db)
     print_step("remove empty topogeometries", perf_counter() - t0)
 
     db.session.commit()
