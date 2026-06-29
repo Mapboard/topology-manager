@@ -65,7 +65,7 @@ def remove_empty_topogeometries(db):
                 sql("procedures/clean-topology/remove-empty-topogeometries"), params
             ).scalar()
             console.print(
-                f"Removed {res} empty topogeometries for [cyan]{table_name}[/cyan][gray].{lyr.feature_column}[/gray]"
+                f"Removed {res} empty relations for [cyan]{table_name}[/cyan][dim].{lyr.feature_column}[/dim]"
             )
 
 
