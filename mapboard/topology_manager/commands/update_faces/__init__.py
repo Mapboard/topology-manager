@@ -72,7 +72,8 @@ def update_faces(
         "SELECT id, map_layer FROM {topo_schema}.dirty_face"
     ).all()
     init_n_faces = len(dirty_faces)
-    print(f"{init_n_faces} dirty faces to update")
+    map_layers = set(d.map_layer for d in dirty_faces)
+    print(f"{init_n_faces} dirty faces to update, across {len(map_layers)} layers")
     ix = get_dirty_faces_layer_index(dirty_faces)
     log.info(
         "Dirty faces in layers: %s",

@@ -69,4 +69,4 @@ def update(
         t5 = perf_counter()
         print_step("Update composite layers", t5 - t_start)
 
-    print_step("Total", perf_counter() - t_start)
+    print_step("Total", perf_counter() - t_init)

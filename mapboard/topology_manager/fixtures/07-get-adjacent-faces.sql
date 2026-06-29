@@ -127,6 +127,7 @@ AS $$
 DECLARE
   _added integer;
   _niter integer := 0;
+  _boundary_layers_with_parents integer[];
 BEGIN
   -- Session-scoped scratch sets, reused across calls (the caller commits per
   -- component, so deliberately no ON COMMIT DROP).
@@ -137,6 +138,11 @@ BEGIN
 
   INSERT INTO _component VALUES (_seed);
   INSERT INTO _frontier  VALUES (_seed);
+  _boundary_layers_with_parents := array(
+    SELECT DISTINCT p.id
+    FROM unnest(ARRAY[_map_layer]::integer[] || _barrier_layers) AS lyr(id)
+    CROSS JOIN LATERAL {topo_schema}.parent_map_layers(lyr.id) AS p(id)
+  );
 
   LOOP
     -- Newly-reached joinable neighbors of the current frontier. The joins to
@@ -146,7 +152,11 @@ BEGIN
     INSERT INTO _frontier_next (face_id)
     SELECT DISTINCT j.opp_face
     FROM (
-      SELECT fe.opp_face, fe.left_face, fe.right_face
+      SELECT
+        fe.opp_face,
+        fe.left_face,
+        fe.right_face,
+        array_remove(array_agg(er.map_layer), null) edge_layers
       FROM (
         SELECT e.edge_id, e.left_face, e.right_face, e.right_face AS opp_face
         FROM {topo_schema}.edge_data e
@@ -158,15 +168,17 @@ BEGIN
         JOIN _frontier f ON e.right_face = f.face_id
         WHERE e.left_face <> e.right_face
       ) fe
+      LEFT JOIN _component c ON c.face_id = fe.opp_face
       LEFT JOIN {topo_schema}.__edge_relation er ON er.edge_id = fe.edge_id
+      WHERE c.face_id IS NULL
       GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
-      HAVING {topo_schema}.layers_are_joinable(
-               ARRAY[_map_layer]::integer[] || _barrier_layers,
-               array_remove(array_agg(er.map_layer), null))
-          OR {topo_schema}.faces_are_joinable(fe.left_face, fe.right_face, _map_layer)
     ) j
-    LEFT JOIN _component c ON c.face_id = j.opp_face
-    WHERE c.face_id IS NULL;
+    WHERE (
+            NOT (j.edge_layers && _boundary_layers_with_parents)
+         OR array_length(j.edge_layers, 1) = 0
+         OR array_length(_boundary_layers_with_parents, 1) = 0
+          )
+       OR {topo_schema}.faces_are_joinable(j.left_face, j.right_face, _map_layer);
 
     GET DIAGNOSTICS _added = ROW_COUNT;
     EXIT WHEN _added = 0;

@@ -57,7 +57,7 @@ updated.
 Using source_layer also handles composite layers.
 */
 UPDATE {topo_schema}.map_face mf
-SET unit_id = {topo_schema}.identity_for_area(geometry, mf.map_layer)
+SET {face_identity_column} = {topo_schema}.identity_for_area(geometry, mf.map_layer)
 WHERE ST_Intersects(affected_area, geometry)
   AND (mf.map_layer = __topology OR mf.source_layer = __topology);
 
