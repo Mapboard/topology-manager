@@ -128,6 +128,20 @@ class TestMapFaces:
         assert n_faces(db) == 99
         assert n_face_primitives(db) == 98
 
+    def test_rebuild_relations(self, mgr, db):
+        """Test rebuilding the relations of a topolgy.
+
+        Note, this is somewhat arbitrary in terms of where in the test suite we run it,
+        but the point is to just ensure these functions work properly.
+        """
+        # Rebuild the relations
+        mgr.rebuild_edge_relations()
+        mgr.rebuild_layer_constraints()
+
+        # Check that we have the same number of faces and primitives
+        assert n_faces(db) == 99
+        assert n_face_primitives(db) == 98
+
 
 def test_change_map_face_type(mgr, db):
     """Test changing the type of a map face."""

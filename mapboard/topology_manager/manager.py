@@ -9,6 +9,7 @@ from .commands.update_composite_layers import update_composite_layers
 from .commands.create_tables import create_tables
 from .commands.check_setup import check_topology_setup
 from .commands.edge_relations import rebuild_edge_relations, validate_edge_relations
+from .commands.rebuild_layer_constraints import rebuild_layer_constraints
 
 
 class TopologyManager:
@@ -81,3 +82,7 @@ class TopologyManager:
     def rebuild_edge_relations(self):
         """Rebuild the cached __edge_relation table (repair out-of-sync triggers)."""
         return rebuild_edge_relations(self._ctx)
+
+    def rebuild_layer_constraints(self):
+        """Rebuild constraints on topology layers"""
+        return rebuild_layer_constraints(self._ctx)
