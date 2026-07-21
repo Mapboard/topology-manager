@@ -1,3 +1,4 @@
+from macrostrat.database import Database
 from rich.prompt import Confirm
 from typer import Option, Typer
 
@@ -28,7 +29,8 @@ def main(
     ),
 ):
     if database is not None:
-        create_context(database)
+        db = Database(database)
+        create_context(db)
 
 
 @app.command(name="create-tables")

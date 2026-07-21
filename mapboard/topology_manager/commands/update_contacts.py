@@ -49,19 +49,23 @@ def update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
             nrows = len(rows)
             for row in rows:
                 if row.err is not None:
-                    console.print(f"[dim]{row.id}[/dim]: [error]{row.err}[/error]")
+                    progress.console.print(
+                        f"[dim]{row.id}[/dim]: [error]{row.err}[/error]"
+                    )
             progress.update(bar, advance=nrows)
             remaining -= nrows
             total_updated += nrows
             duration = t1 - t0
             log.info("Updated %s lines in %.2f seconds", nrows, duration)
             # Dynamically adjust batch size
-            # if duration < 1:
-            #     batch_size = min(1000, batch_size * 10)
-            #     log.info("Speeding up, using batch size %s", batch_size)
-            # elif duration > 5:
-            #     batch_size = max(1, batch_size // 10)
-            #     log.info("Slowing down, using batch size %s", batch_size)
+            if duration < 1:
+                batch_size = min(1000, batch_size * 10)
+                progress.console.print(f"Batch size: {batch_size}")
+                log.info("Speeding up, using batch size %s", batch_size)
+            elif duration > 5:
+                batch_size = max(1, batch_size // 10)
+                progress.console.print(f"Batch size: {batch_size}")
+                log.info("Slowing down, using batch size %s", batch_size)
 
             nops += 1
 

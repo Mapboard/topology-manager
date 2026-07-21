@@ -52,6 +52,7 @@ def remove_empty_topogeometries(db):
 
     for lyr in layers:
         with db.session.begin_nested():
+            t0 = perf_counter()
             table_name = f"{lyr.schema_name}.{lyr.table_name}"
             params = dict(
                 table=Identifier(lyr.schema_name, lyr.table_name),
@@ -64,9 +65,8 @@ def remove_empty_topogeometries(db):
             res = db.run_query(
                 sql("procedures/clean-topology/remove-empty-topogeometries"), params
             ).scalar()
-            console.print(
-                f"Removed {res} empty relations for [cyan]{table_name}[/cyan][dim].{lyr.feature_column}[/dim]"
-            )
+            dt = perf_counter() - t0
+            print_step(f"  layer [cyan]{table_name}[/cyan]", dt)
 
 
 def clean_topology(ctx: TopologyContext):
