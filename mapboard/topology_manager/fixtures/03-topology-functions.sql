@@ -143,6 +143,50 @@ JOIN r
 SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;
 
+/** Every layer whose boundaries constrain a dissolve of `_map_layer`.
+
+  Two relations feed this, and they run in opposite directions:
+
+  - `map_layer.parent` -- a child inherits its ancestors' linework as barriers.
+  - `map_layer_composition` -- a composite layer draws its content from its
+    members, so its faces must not span a contact that exists in one of them.
+
+  Both are "from the current layer, reach the next one", so a single recursive
+  walk over the union of the two edge sets covers them (and picks up the
+  ancestors of composition members, which constrain those members in turn).
+
+  Until composite layers are solved by dissolving rather than filled by overlay,
+  the composition half is inert: only composite layers have members, and those
+  are never passed to the dissolve.
+*/
+CREATE OR REPLACE FUNCTION {topo_schema}.constraining_layers(
+  _map_layer integer,
+  _topological boolean DEFAULT true
+)
+RETURNS setof integer AS $$
+WITH RECURSIVE edges AS (
+  SELECT id AS src, parent AS dst
+  FROM {data_schema}.map_layer
+  WHERE parent IS NOT NULL
+  UNION ALL
+  SELECT parent_id AS src, member_id AS dst
+  FROM {data_schema}.map_layer_composition
+), r AS (
+  SELECT id
+  FROM {data_schema}.map_layer
+  WHERE id = _map_layer
+    AND CASE WHEN _topological THEN topological ELSE true END
+  UNION
+  SELECT ml.id
+  FROM r
+  JOIN edges e ON e.src = r.id
+  JOIN {data_schema}.map_layer ml
+    ON ml.id = e.dst
+   AND CASE WHEN _topological THEN ml.topological ELSE true END
+)
+SELECT id FROM r;
+$$ LANGUAGE SQL IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION {topo_schema}.child_map_layers(
   _map_layer integer,
   _topological boolean DEFAULT true

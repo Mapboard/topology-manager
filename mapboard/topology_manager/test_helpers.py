@@ -185,10 +185,9 @@ def create_composite_layer(
             "name",
             parent,
             topological,
-            editable,
-            composited_from
+            editable
         )
-        VALUES (:name, :parent, :topological, :editable, :composited_from)
+        VALUES (:name, :parent, :topological, :editable)
         RETURNING id
         """,
         {
@@ -196,9 +195,18 @@ def create_composite_layer(
             "topological": True,
             "editable": False,
             "parent": parent,
-            "composited_from": layers,
         },
     ).scalar()
+    # Members are bottom-to-top, matching the order the former `composited_from`
+    # array held; priority is the 1-based position, so the last member wins.
+    for priority, member in enumerate(layers, start=1):
+        db.run_query(
+            """
+            INSERT INTO {data_schema}.map_layer_composition (parent_id, member_id, priority)
+            VALUES (:parent_id, :member_id, :priority)
+            """,
+            {"parent_id": lyr, "member_id": member, "priority": priority},
+        )
     return lyr
 
 

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## `[Unreleased]`
+
+- Replace `map_layer.composited_from integer[]` with a `map_layer_composition` linking
+  table carrying an explicit `priority` (higher wins), plus `is_composite_layer()`
+  and `composite_layer_members()` helpers
+- Membership is foreign-keyed and cycle-checked; single-member composites are now
+  allowed, and one layer can sit at different priorities under different parents
+- Existing `composited_from` values are migrated on `create-tables` (array
+  ordinality becomes priority) and the column is dropped
+- Add `constraining_layers()`, replacing `parent_map_layers()` in the dissolve:
+  a layer's barriers are now its ancestors *and* its composition closure, so a
+  composite layer solved by dissolving cannot span a contact that exists in one
+  of its members
+
 ## `[5.0.0]` - 2026-06-11
 
 - Switch to UV

@@ -54,16 +54,16 @@ CREATE OR REPLACE FUNCTION {topo_schema}.layers_are_joinable(
 RETURNS boolean
 AS $$
 DECLARE
-  boundary_layers_with_parents integer[];
+  constraining integer[];
 BEGIN
-  boundary_layers_with_parents := array(
-    SELECT DISTINCT ON (id) {topo_schema}.parent_map_layers(lyr.id) AS id
+  constraining := array(
+    SELECT DISTINCT ON (id) {topo_schema}.constraining_layers(lyr.id) AS id
     FROM unnest(boundary_layers) AS lyr(id)
   );
 
-  RETURN NOT (edge_layers && boundary_layers_with_parents)
+  RETURN NOT (edge_layers && constraining)
       OR array_length(edge_layers, 1) = 0
-      OR array_length(boundary_layers_with_parents, 1) = 0;
+      OR array_length(constraining, 1) = 0;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -127,7 +127,7 @@ AS $$
 DECLARE
   _added integer;
   _niter integer := 0;
-  _boundary_layers_with_parents integer[];
+  _constraining integer[];
 BEGIN
   -- Session-scoped scratch sets, reused across calls (the caller commits per
   -- component, so deliberately no ON COMMIT DROP).
@@ -138,10 +138,10 @@ BEGIN
 
   INSERT INTO _component VALUES (_seed);
   INSERT INTO _frontier  VALUES (_seed);
-  _boundary_layers_with_parents := array(
+  _constraining := array(
     SELECT DISTINCT p.id
     FROM unnest(ARRAY[_map_layer]::integer[] || _barrier_layers) AS lyr(id)
-    CROSS JOIN LATERAL {topo_schema}.parent_map_layers(lyr.id) AS p(id)
+    CROSS JOIN LATERAL {topo_schema}.constraining_layers(lyr.id) AS p(id)
   );
 
   LOOP
@@ -174,9 +174,9 @@ BEGIN
       GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
     ) j
     WHERE (
-            NOT (j.edge_layers && _boundary_layers_with_parents)
+            NOT (j.edge_layers && _constraining)
          OR array_length(j.edge_layers, 1) = 0
-         OR array_length(_boundary_layers_with_parents, 1) = 0
+         OR array_length(_constraining, 1) = 0
           )
        OR {topo_schema}.faces_are_joinable(j.left_face, j.right_face, _map_layer);
 

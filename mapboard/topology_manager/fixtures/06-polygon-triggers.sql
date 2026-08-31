@@ -5,7 +5,10 @@ SELECT ml.id
 FROM {data_schema}.map_layer ml,
      {data_schema}.polygon_type pt
   WHERE ml.id = $1.map_layer
-    AND ml.composited_from IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM {data_schema}.map_layer_composition m
+      WHERE m.parent_id = ml.id
+    )
     AND pt.id = $1.type
     AND coalesce(pt.topological, true)
     AND ml.topological;
