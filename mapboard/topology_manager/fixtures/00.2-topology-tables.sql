@@ -26,6 +26,10 @@ CREATE INDEX IF NOT EXISTS face_identity_map_face_idx
   ON {topo_schema}.face_identity (map_face);
 CREATE INDEX IF NOT EXISTS map_face_source_id_idx
   ON {topo_schema}.map_face (source_id);
+/* `map_id` is a foreign key too, and unindexed it forces a sequential scan of the
+   whole face table whenever faces are looked up by the map that owns them. */
+CREATE INDEX IF NOT EXISTS map_face_map_id_idx
+  ON {topo_schema}.map_face ({face_identity_column});
 CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 /* Dissolving a component looks up the map_faces it replaces by joining `relation`
    on the topogeometry id. A composite field access cannot use an ordinary index,
