@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS {topo_schema}.face_identity (
   PRIMARY KEY (face_id, map_layer)
 );
 CREATE INDEX face_identity_ix ON {topo_schema}.face_identity (face_id);
+/* PostgreSQL does not index the *referencing* side of a foreign key, so without
+   these every `map_face` delete sequentially scans both tables to check its
+   `ON DELETE CASCADE` children -- ~23ms per deleted row on a real topology,
+   which dominates face replacement during an update. */
+CREATE INDEX IF NOT EXISTS face_identity_map_face_idx
+  ON {topo_schema}.face_identity (map_face);
+CREATE INDEX IF NOT EXISTS map_face_source_id_idx
+  ON {topo_schema}.map_face (source_id);
 CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 
 /* A table to hold dirty faces */
