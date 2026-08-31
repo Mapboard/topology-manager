@@ -12,10 +12,9 @@ from rich.progress import Progress
 
 from ...config import TopologyContext, sql, get_context
 from .helpers import (
-    persist_map_face_updates,
+    dissolve_layer_groups,
     log,
-    FaceUpdateResult,
-    update_map_face,
+    persist_map_face_updates,
 )
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
@@ -80,45 +79,40 @@ def update_faces(
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
 
-    results = []
+    # Dissolve is driven layer by layer, in batches: the database walks each
+    # component and returns a batch of them in one round trip, then the batch is
+    # persisted -- which unmarks its faces, so the next call sees a smaller dirty
+    # set. `persist_interval` is the batch size. Previously this loop made one
+    # round trip per dirty face, which left the database idle waiting on the
+    # client for roughly a third of a bulk update.
+    niter = 0
+    # `incremental` still means "checkpoint as you go": it is the batch size that
+    # provides it now, so a non-incremental run simply takes every group at once.
+    batch_size = persist_interval if incremental else None
     with Progress() as progress:
         bar = progress.add_task("Updating faces", total=init_n_faces)
-        niter = 0
-        while len(dirty_faces) > 0:
-            log.info(
-                "%s dirty faces remaining",
-                len(dirty_faces),
-            )
-            prev_len = len(dirty_faces)
-            # Extract one face
-            face = dirty_faces.pop(0)
-
-            res = update_map_face(db, face)
-            results.append(res)
-
-            # Persist the updates if we've reached an interval
-            if niter % persist_interval == 0 and incremental:
+        for map_layer in sorted(map_layers):
+            remaining = n_dirty_faces(db, map_layer)
+            while remaining > 0:
+                results = dissolve_layer_groups(db, map_layer, max_groups=batch_size)
+                if not results:
+                    break
                 persist_map_face_updates(db, results)
-                results = []
+                niter += len(results)
 
-            # Filter dirty faces to remove the ones that have been dissolved into the current face
-            dirty_faces = [
-                d
-                for d in dirty_faces
-                if not (d.id in res.dissolved_faces and d.map_layer == res.map_layer)
-            ]
-            niter += 1
-
-            progress.update(bar, completed=init_n_faces - len(dirty_faces))
-            # Safety guard: if the list didn't shrink and nothing was dissolved, bail out
-            if len(dirty_faces) >= prev_len and len(res.dissolved_faces) == 0:
-                log.warning(
-                    "No progress made on dirty faces (possible infinite loop); breaking after %d iterations",
-                    niter,
+                prev, remaining = remaining, n_dirty_faces(db, map_layer)
+                progress.update(
+                    bar, completed=max(0, init_n_faces - n_dirty_faces(db))
                 )
-                break
-
-        persist_map_face_updates(db, results)
+                # A group that dissolves nothing leaves its faces marked, so
+                # without this the layer would loop forever.
+                if remaining >= prev:
+                    log.warning(
+                        "No progress on %d dirty faces in layer %s; moving on",
+                        remaining,
+                        map_layer,
+                    )
+                    break
 
     t1 = perf_counter()
     log.info(

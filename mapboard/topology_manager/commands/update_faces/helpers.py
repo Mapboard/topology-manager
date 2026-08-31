@@ -32,6 +32,33 @@ def update_map_face(db: Database, face) -> FaceUpdateResult:
     return _get_adjacent_faces_core(db, face_id, map_layer)
 
 
+def dissolve_layer_groups(
+    db: Database, map_layer: int, *, max_groups: int | None = None
+) -> list[FaceUpdateResult]:
+    """Dissolve up to `max_groups` components in a layer, in one round trip.
+
+    The per-face equivalent of this is `_get_adjacent_faces_core` called in a
+    loop; the work is identical, but the loop runs in the database rather than
+    across the wire.
+    """
+    rows = db.run_query(
+        "SELECT * FROM {topo_schema}.dissolve_groups(:map_layer, :barriers, :max_groups)",
+        dict(
+            map_layer=map_layer,
+            barriers=[],
+            max_groups=max_groups,
+        ),
+    ).all()
+    return [
+        FaceUpdateResult(
+            dissolved_faces=list(set(r.faces)),
+            existing_map_faces=list(r.existing_map_faces or []),
+            map_layer=r.map_layer,
+        )
+        for r in rows
+    ]
+
+
 def persist_map_face_updates(
     db: Database, updates: list[FaceUpdateResult], *, unmark_dirty: bool = True
 ):

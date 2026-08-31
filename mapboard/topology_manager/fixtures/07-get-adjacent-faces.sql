@@ -208,6 +208,70 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+/** Dissolve every dirty face in a layer, one component at a time, server-side.
+
+  The same expansion `dissolve_component` performs -- this only moves the *loop*
+  into the database. That matters because the caller was making one round trip per
+  dirty face, and dirty sets run to tens of thousands: a third of a real topology's
+  faces or more after a bulk update. Round-tripping each one left the database idle
+  waiting on the client for a third of its time.
+
+  Deliberately not whole-layer label propagation over `joinable_face_edges`, which
+  would converge in as many iterations as the graph is wide -- a component spanning
+  a continent is thousands of hops. Per-component BFS stays proportional to the
+  component.
+
+  `_max_groups` bounds how many components one call returns, so the caller can
+  still persist and checkpoint in batches. Persisting unmarks those faces, so the
+  next call simply sees a smaller dirty set. NULL means "all of them".
+*/
+CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_groups(
+  _map_layer integer,
+  _barrier_layers integer[] DEFAULT ARRAY[]::integer[],
+  _max_groups integer DEFAULT NULL
+)
+RETURNS TABLE (faces integer[], existing_map_faces integer[], niter integer, map_layer integer)
+AS $$
+DECLARE
+  _seed integer;
+  _groups integer := 0;
+  _r record;
+BEGIN
+  -- Faces already claimed by a component returned from *this* call. A separate
+  -- name from `dissolve_component`'s scratch sets, which it truncates per call.
+  CREATE TEMP TABLE IF NOT EXISTS _claimed (face_id integer PRIMARY KEY);
+  TRUNCATE _claimed;
+
+  FOR _seed IN
+    SELECT d.id
+    FROM {topo_schema}.dirty_face d
+    WHERE d.map_layer = _map_layer
+    ORDER BY d.id
+  LOOP
+    EXIT WHEN _max_groups IS NOT NULL AND _groups >= _max_groups;
+    -- Another seed already pulled this face into its component.
+    CONTINUE WHEN EXISTS (
+      SELECT 1 FROM _claimed c WHERE c.face_id = _seed
+    );
+
+    SELECT * INTO _r
+    FROM {topo_schema}.dissolve_component(_seed, _map_layer, _barrier_layers);
+
+    INSERT INTO _claimed (face_id)
+    SELECT unnest(_r.faces)
+    ON CONFLICT DO NOTHING;
+
+    faces := _r.faces;
+    existing_map_faces := _r.existing_map_faces;
+    niter := _r.niter;
+    map_layer := _map_layer;
+    _groups := _groups + 1;
+    RETURN NEXT;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+
 /** Get faces that can be dissolved into a given map layer */
 CREATE OR REPLACE FUNCTION {topo_schema}.adjacent_faces(
   face_id integer,

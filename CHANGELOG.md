@@ -13,6 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   allowed, and one layer can sit at different priorities under different parents
 - Existing `composited_from` values are migrated on `create-tables` (array
   ordinality becomes priority) and the column is dropped
+- Add `dissolve_groups()`: walks every dirty component in a layer server-side and
+  returns a bounded batch of them, replacing the caller's one-round-trip-per-face
+  loop. `_max_groups` preserves checkpointing, so `--incremental` is now expressed
+  as a batch size. `joinable_face_edges()` -- built for a whole-layer label
+  propagation that was never written, and never called -- is left in place but is
+  still not the path taken: per-component BFS is proportional to the component,
+  where label propagation would take as many passes as the graph is wide
+- Index the referencing side of `map_face`'s cascading foreign keys
+  (`face_identity.map_face`, `map_face.source_id`): PostgreSQL does not create
+  these, so every deleted face sequentially scanned both tables
 - Add `IdentityStrategy.solves_composites` (default false) and
   `dirty_layers_for()`, replacing `child_map_layers()` in `mark_surrounding_faces`:
   a change in a layer now marks its composition parents dirty, so a composite
