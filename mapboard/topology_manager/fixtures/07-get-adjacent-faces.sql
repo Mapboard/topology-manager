@@ -207,17 +207,29 @@ BEGIN
     _niter := _niter + 1;
   END LOOP;
 
+  -- A temp table carries no statistics, so without this the planner takes
+  -- `_component` for a default-sized relation and drives the join from the wrong
+  -- side -- scanning all of `map_face` to keep a handful of rows.
+  ANALYZE _component;
+
   RETURN QUERY
   SELECT
     (SELECT array_agg(face_id) FROM _component) faces,
     coalesce((
+      -- Driven from the component, with the map_face topogeometry layer pinned:
+      -- a face's `relation` rows span every layer (its map areas, its parts, its
+      -- map_face in each layer), and all but one layer's worth are probed for
+      -- nothing.
       SELECT array_agg(DISTINCT f.id)
-      FROM {topo_schema}.map_face f
+      FROM _component c
       JOIN {topo_schema}.relation r
-        ON (f.topo).id = r.topogeo_id AND r.layer_id = (f.topo).layer_id
-      WHERE r.element_id IN (SELECT face_id FROM _component)
-        AND r.element_type = 3
-        AND f.map_layer = _map_layer
+        ON r.element_id = c.face_id
+       AND r.element_type = 3
+       AND r.layer_id = {topo_schema}.__map_face_layer_id()
+      JOIN {topo_schema}.map_face f
+        ON (f.topo).id = r.topogeo_id
+       AND (f.topo).layer_id = r.layer_id
+      WHERE f.map_layer = _map_layer
     ), ARRAY[]::integer[]) existing_map_faces,
     _niter niter,
     _map_layer map_layer;
