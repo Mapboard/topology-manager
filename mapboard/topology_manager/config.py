@@ -45,6 +45,13 @@ class IdentityStrategy:
     # for a strategy that cannot solve them would dissolve a composite into one
     # face.
     solves_composites: bool = False
+    # Whether the strategy installs `resolve_layer_identity(map_layer)` -- a
+    # set-oriented form of `identity_for_face` returning `(face_id, identity)` for
+    # a whole layer. When true, `dissolve_groups` materialises it once per layer
+    # and compares cached identities instead of calling `faces_are_joinable` on
+    # every candidate edge, which otherwise re-resolves each face's identity once
+    # per incident edge.
+    bulk_identity: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +170,7 @@ def create_context(
         "boundary_table_literal": Literal(boundary_table),
         "face_identity_column": Identifier(face_identity_column),
         "solves_composites": SQL("true" if strategy.solves_composites else "false"),
+        "bulk_identity": SQL("true" if strategy.bulk_identity else "false"),
     }
 
     ctx = TopologyContext(

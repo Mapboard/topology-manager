@@ -120,7 +120,11 @@ Membership is held in indexed temp tables so large components stay efficient. */
 CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(
   _seed integer,
   _map_layer integer,
-  _barrier_layers integer[] DEFAULT ARRAY[]::integer[]
+  _barrier_layers integer[] DEFAULT ARRAY[]::integer[],
+  -- Read joinability from `_layer_identity` rather than calling
+  -- `faces_are_joinable` per edge. Only `dissolve_groups` sets this, because only
+  -- it populates the cache; a standalone caller keeps the per-edge path.
+  _use_identity_cache boolean DEFAULT false
 )
 RETURNS TABLE (faces integer[], existing_map_faces integer[], niter integer, map_layer integer)
 AS $$
@@ -134,6 +138,12 @@ BEGIN
   CREATE TEMP TABLE IF NOT EXISTS _component     (face_id integer PRIMARY KEY);
   CREATE TEMP TABLE IF NOT EXISTS _frontier      (face_id integer PRIMARY KEY);
   CREATE TEMP TABLE IF NOT EXISTS _frontier_next (face_id integer PRIMARY KEY);
+  -- Populated per layer by `dissolve_groups`; created here so the frontier query
+  -- plans whether or not the cache is in use.
+  CREATE TEMP TABLE IF NOT EXISTS _layer_identity (
+    face_id integer PRIMARY KEY,
+    identity text
+  );
   TRUNCATE _component, _frontier, _frontier_next;
 
   INSERT INTO _component VALUES (_seed);
@@ -173,12 +183,19 @@ BEGIN
       WHERE c.face_id IS NULL
       GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
     ) j
+    LEFT JOIN _layer_identity il ON _use_identity_cache AND il.face_id = j.left_face
+    LEFT JOIN _layer_identity ir ON _use_identity_cache AND ir.face_id = j.right_face
     WHERE (
             NOT (j.edge_layers && _constraining)
          OR array_length(j.edge_layers, 1) = 0
          OR array_length(_constraining, 1) = 0
           )
-       OR {topo_schema}.faces_are_joinable(j.left_face, j.right_face, _map_layer);
+       OR CASE
+            WHEN _use_identity_cache
+              THEN il.identity IS NOT DISTINCT FROM ir.identity
+            ELSE {topo_schema}.faces_are_joinable(
+                   j.left_face, j.right_face, _map_layer)
+          END;
 
     GET DIAGNOSTICS _added = ROW_COUNT;
     EXIT WHEN _added = 0;
@@ -236,11 +253,35 @@ DECLARE
   _seed integer;
   _groups integer := 0;
   _r record;
+  _cached boolean := {bulk_identity};
 BEGIN
   -- Faces already claimed by a component returned from *this* call. A separate
   -- name from `dissolve_component`'s scratch sets, which it truncates per call.
   CREATE TEMP TABLE IF NOT EXISTS _claimed (face_id integer PRIMARY KEY);
   TRUNCATE _claimed;
+
+  /* Resolve every face's identity for this layer once.
+
+     `faces_are_joinable` is evaluated per candidate edge, so without this each
+     face's identity is re-resolved once per incident edge -- around six times
+     over in a planar graph, and twice that because BFS reaches each edge from
+     both ends. Where the strategy offers a set-oriented form, the whole layer
+     costs about as much as a few hundred individual lookups.
+
+     Only strategies that opt in have `resolve_layer_identity`; the rest keep the
+     per-edge path, which is what `search` wants anyway -- its `faces_are_joinable`
+     is a no-op, so there is nothing to cache. */
+  CREATE TEMP TABLE IF NOT EXISTS _layer_identity (
+    face_id integer PRIMARY KEY,
+    identity text
+  );
+  IF _cached THEN
+    TRUNCATE _layer_identity;
+    INSERT INTO _layer_identity (face_id, identity)
+    SELECT face_id, identity
+    FROM {topo_schema}.resolve_layer_identity(_map_layer);
+    ANALYZE _layer_identity;
+  END IF;
 
   FOR _seed IN
     SELECT d.id
@@ -255,7 +296,8 @@ BEGIN
     );
 
     SELECT * INTO _r
-    FROM {topo_schema}.dissolve_component(_seed, _map_layer, _barrier_layers);
+    FROM {topo_schema}.dissolve_component(
+      _seed, _map_layer, _barrier_layers, _cached);
 
     INSERT INTO _claimed (face_id)
     SELECT unnest(_r.faces)

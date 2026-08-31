@@ -27,6 +27,12 @@ CREATE INDEX IF NOT EXISTS face_identity_map_face_idx
 CREATE INDEX IF NOT EXISTS map_face_source_id_idx
   ON {topo_schema}.map_face (source_id);
 CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
+/* Dissolving a component looks up the map_faces it replaces by joining `relation`
+   on the topogeometry id. A composite field access cannot use an ordinary index,
+   so without this every component sequentially scans `map_face`. Only `(topo).id`
+   is indexed -- `check_topogeom_topo` pins the layer, so it adds nothing. */
+CREATE INDEX IF NOT EXISTS map_face_topogeom_id_idx
+  ON {topo_schema}.map_face (((topo).id));
 
 /* A table to hold dirty faces */
 CREATE TABLE IF NOT EXISTS {topo_schema}.dirty_face (
