@@ -77,7 +77,7 @@ BEGIN
   INTO __faces;
 
   WITH ml AS (
-    SELECT {topo_schema}.child_map_layers(line.map_layer) id
+    SELECT {topo_schema}.dirty_layers_for(line.map_layer) id
   )
   INSERT INTO {topo_schema}.dirty_face (id, map_layer)
   SELECT

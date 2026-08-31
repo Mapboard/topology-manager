@@ -210,3 +210,30 @@ JOIN r
 )
 SELECT id FROM r;
 $$ LANGUAGE SQL IMMUTABLE;
+
+/** Every layer whose faces a change in `_map_layer` invalidates.
+
+  Its tree children, which inherit its linework -- and, where composites are
+  *solved* rather than overlaid, the layers that composite from it, transitively.
+  Dirtiness propagates upward through composition, the mirror of how barriers
+  propagate downward in `constraining_layers`.
+
+  The composition half is gated on the identity strategy: marking a composite
+  dirty for a strategy that cannot resolve identity across its members would
+  dissolve the whole layer into a single face.
+*/
+CREATE OR REPLACE FUNCTION {topo_schema}.dirty_layers_for(_map_layer integer)
+RETURNS setof integer AS $$
+WITH RECURSIVE composite_parents AS (
+  SELECT _map_layer AS id
+  UNION
+  SELECT c.parent_id
+  FROM composite_parents p
+  JOIN {data_schema}.map_layer_composition c ON c.member_id = p.id
+  WHERE {solves_composites}
+)
+SELECT id FROM {topo_schema}.child_map_layers(_map_layer) AS t(id)
+UNION
+SELECT id FROM composite_parents;
+$$ LANGUAGE SQL;
+

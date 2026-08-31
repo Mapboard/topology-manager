@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   allowed, and one layer can sit at different priorities under different parents
 - Existing `composited_from` values are migrated on `create-tables` (array
   ordinality becomes priority) and the column is dropped
+- Add `IdentityStrategy.solves_composites` (default false) and
+  `dirty_layers_for()`, replacing `child_map_layers()` in `mark_surrounding_faces`:
+  a change in a layer now marks its composition parents dirty, so a composite
+  layer can be *solved* by dissolving rather than filled by overlay. Gated,
+  because a strategy without a meaningful `faces_are_joinable` would dissolve a
+  composite into a single face; the overlay remains for linework mode
 - Add `constraining_layers()`, replacing `parent_map_layers()` in the dissolve:
   a layer's barriers are now its ancestors *and* its composition closure, so a
   composite layer solved by dissolving cannot span a contact that exists in one
