@@ -20,6 +20,7 @@ from typing import Optional
 from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
 from typer import Argument, Option
+from typer.models import OptionInfo
 
 from ...config import FaceUpdateMode, TopologyContext, get_context, sql
 from ..edge_relations import rebuild_dirty_edge_relations
@@ -79,6 +80,19 @@ def update_faces(
     ),
 ) -> FaceUpdateStats:
     """Update faces"""
+    # Called directly (not through the CLI) the typer defaults arrive as
+    # OptionInfo objects; resolve them so e.g. `reset` is not truthy.
+    reset, fill_holes, engine, incremental, persist_interval, face_update_mode = (
+        _resolve_default(v)
+        for v in (
+            reset,
+            fill_holes,
+            engine,
+            incremental,
+            persist_interval,
+            face_update_mode,
+        )
+    )
     log.info("Updating faces with engine %s", engine)
 
     db = ctx.database
@@ -120,6 +134,13 @@ def update_faces(
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
     return stats
+
+
+def _resolve_default(value):
+    """Unwrap a typer ``Option(...)`` default when the command is called as a function."""
+    if isinstance(value, OptionInfo):
+        return value.default
+    return value
 
 
 def _update_faces(*args, **kwargs):

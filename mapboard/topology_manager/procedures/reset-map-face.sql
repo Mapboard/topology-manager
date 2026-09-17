@@ -11,5 +11,7 @@ CROSS JOIN {data_schema}.map_layer ml
 WHERE ml.topological
 ON CONFLICT DO NOTHING;
 
+-- Clear the map-face topogeometries first, so no relation rows are orphaned
+DELETE FROM {topo_schema}.relation WHERE layer_id = {topo_schema}.__map_face_layer_id();
 TRUNCATE TABLE {topo_schema}.map_face CASCADE;
 
