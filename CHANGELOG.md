@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Two short-circuits keep small changes cheap against large faces: a shed face
   whose remainder is still connected (checked locally) is settled in place
   rather than re-walked, and the dissolve absorbs settled map faces whole.
+- `--engine plpgsql` (`TOPO_ENGINE`) runs the face loop server-side in chunks
+  (`update_dirty_faces`), one round trip per chunk instead of two per component.
 - `commands/update_faces` is now a package: `dissolve` (components), `store`
   (primitive-level CRUD over `map_face`, backed by the new
   `fixtures/07.1-map-face-elements.sql` functions), `persist` (the two modes),

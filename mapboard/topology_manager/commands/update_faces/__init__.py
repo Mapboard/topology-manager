@@ -6,11 +6,14 @@ The package is organised around the loop's three concerns:
 - `persist`   — settle a component onto map faces (`move` or `replace` mode),
                 built on the primitive CRUD in `store`.
 - `loop`      — the queue that drains `dirty_face`, feeding shed remainders back
-                in so faces are split and holes are filled.
+                in so faces are split and holes are filled. `FaceUpdateLoop`
+                runs it from Python; `ServerSideFaceUpdateLoop` runs whole
+                chunks in PL/pgSQL (`update_dirty_faces`, `--engine plpgsql`).
 
 `helpers` re-exports the historical names for compatibility.
 """
 
+import os
 import warnings
 from collections import defaultdict
 from enum import Enum
@@ -25,7 +28,7 @@ from typer.models import OptionInfo
 from ...config import FaceUpdateMode, TopologyContext, get_context, sql
 from ..edge_relations import rebuild_dirty_edge_relations
 from .dissolve import dissolve_component, get_adjacent_faces, log, update_map_face
-from .loop import FaceUpdateLoop
+from .loop import FaceUpdateLoop, ServerSideFaceUpdateLoop
 from .models import (
     DirtyFace,
     FaceOverlap,
@@ -65,9 +68,10 @@ def update_faces(
     *,
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
-    engine: Engine = Option(
-        Engine.PYTHON,
-        help="Use Python or PL/pgSQL (not yet implemented)",
+    engine: Optional[Engine] = Option(
+        None,
+        help="Where the loop runs: 'python' (one round trip per step) or "
+        "'plpgsql' (whole chunks server-side; defaults to TOPO_ENGINE / python)",
         envvar="TOPO_ENGINE",
     ),
     incremental: bool = Option(True, help="Incremental update"),
@@ -93,7 +97,8 @@ def update_faces(
             face_update_mode,
         )
     )
-    log.info("Updating faces with engine %s", engine)
+    engine = Engine(engine or os.environ.get("TOPO_ENGINE", Engine.PYTHON))
+    log.info("Updating faces with engine %s", engine.value)
 
     db = ctx.database
     mode = FaceUpdateMode(face_update_mode or ctx.face_update_mode)
@@ -118,14 +123,17 @@ def update_faces(
     ix = get_dirty_faces_layer_index(dirty_faces)
     print(
         f"{len(dirty_faces)} dirty faces to update, across {len(ix)} layers "
-        f"({mode.value} mode)"
+        f"({mode.value} mode, {engine.value} engine)"
     )
     log.info(
         "Dirty faces in layers: %s",
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
 
-    loop = FaceUpdateLoop(
+    loop_class = (
+        ServerSideFaceUpdateLoop if engine == Engine.PLPGSQL else FaceUpdateLoop
+    )
+    loop = loop_class(
         db,
         get_persister(db, mode),
         batch_size=persist_interval if incremental else None,
@@ -175,6 +183,7 @@ __all__ = [
     "Engine",
     "FaceUpdateMode",
     "FaceUpdateLoop",
+    "ServerSideFaceUpdateLoop",
     "FaceUpdateStats",
     "FaceUpdateResult",
     "FaceOverlap",

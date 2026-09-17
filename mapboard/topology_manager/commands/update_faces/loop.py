@@ -97,3 +97,75 @@ class FaceUpdateLoop:
             stats.rounds,
         )
         return stats
+
+
+class ServerSideFaceUpdateLoop:
+    """Drain `dirty_face` with the PL/pgSQL `update_dirty_faces` function.
+
+    Same algorithm as `FaceUpdateLoop`, but each call to the database processes
+    a whole chunk of components (dissolve, persist, un-mark), so a chunk costs
+    one round trip instead of two per component. Every call commits, so a chunk
+    is also the checkpoint.
+    """
+
+    def __init__(
+        self,
+        db: Database,
+        persister: FacePersister,
+        *,
+        batch_size: Optional[int] = None,
+        progress: bool = True,
+    ):
+        self.db = db
+        self.persister = persister
+        self.batch_size = batch_size or 100
+        self.progress = progress
+
+    def run(self, seeds: Iterable[DirtyFace]) -> FaceUpdateStats:
+        seeds = list(seeds)
+        stats = self.persister.stats
+        stats.seeds = len(seeds)
+        layers = sorted({s.map_layer for s in seeds})
+
+        t0 = perf_counter()
+        self.persister.begin_run(seeds)
+        try:
+            with Progress(disable=not self.progress) as progress:
+                bar = progress.add_task("Updating faces", total=len(seeds))
+                for layer in layers:
+                    while True:
+                        row = self.db.run_query(
+                            "SELECT * FROM {topo_schema}.update_dirty_faces(:layer, :mode, :limit)",
+                            dict(
+                                layer=layer,
+                                mode=self.persister.mode.value,
+                                limit=self.batch_size,
+                            ),
+                        ).one()
+                        stats.rounds += 1
+                        stats.components += row.components
+                        stats.created += row.created
+                        stats.updated += row.updated
+                        stats.deleted += row.deleted
+                        stats.shed += row.shed
+                        stats.reseeded += row.reseeded
+                        progress.update(bar, advance=row.components)
+                        if row.remaining == 0 or row.components == 0:
+                            break
+        finally:
+            self.persister.end_run()
+
+        log.info(
+            "Updated %d dirty faces server-side in %.2f seconds: %d components, "
+            "%d created, %d updated, %d deleted, %d shed, %d re-seeded, %d chunks",
+            stats.seeds,
+            perf_counter() - t0,
+            stats.components,
+            stats.created,
+            stats.updated,
+            stats.deleted,
+            stats.shed,
+            stats.reseeded,
+            stats.rounds,
+        )
+        return stats

@@ -95,6 +95,15 @@ variable.
 
 ### Validating a change
 
+- **A live database is the only validation there is.** If none is available in
+  your environment, install the PostGIS packages for the local PostgreSQL
+  (`postgresql-16-postgis-3` plus `libpq-dev` on Debian/Ubuntu, then start the
+  cluster) or run the `postgis/postgis:16-3.4-alpine` container CI uses. Point
+  `TOPO_TESTING_DATABASE_URL` at a throwaway database name.
+- **Run both suites and, for anything touching `commands/update_faces/` or
+  `fixtures/07*.sql`, both face-update modes and both engines**
+  (`MAPBOARD_FACE_UPDATE_MODE=move|replace`, `TOPO_ENGINE=python|plpgsql`), as the
+  CI matrix does.
 - **Fixture SQL errors do not fail `create_tables`** — they are logged and loading
   continues. If tests fail with "function/type ... does not exist", search the
   captured log for `ERROR` before debugging anything else. `check_topology_setup(ctx)`
@@ -126,7 +135,7 @@ variable.
 **Update pipeline** (`commands/update.py`):
 1. `_update_contacts` — calls `toTopoGeom` per changed line; returns count of lines updated
 2. `_clean_topology` (pre-faces) — only runs when contacts changed; removes empty topogeometries, calls `RemoveUnusedPrimitives`, heals degree-2 nodes
-3. `update_faces` (package `commands/update_faces/`) — resolves dirty faces into `map_face` polygons. It first drains the deferred edge-relation cache (`rebuild_dirty_edge_relations`, needed for face-based boundaries), then runs a queue-driven loop (`loop.py`): pop a dirty seed, compute its component server-side (`dissolve.py` → `dissolve_component`, the joinable face graph walked from the seed), and persist batches of components through a `FacePersister` (`persist.py`) built on the primitive CRUD in `store.py` (`MapFaceStore` → the `map_face_*` SQL functions in `fixtures/07.1-map-face-elements.sql`). Persisting a component may *re-seed* primitives — the remainder of any existing face that lost primitives — which go back on the queue; that is what splits a face whose remainder is disconnected and rebuilds a face that would otherwise be left without one. Components containing the universal face (0) only *release* primitives. `--incremental`/`persist_interval` set the batch size (every statement commits anyway; each component is persisted atomically by a single PL/pgSQL call).
+3. `update_faces` (package `commands/update_faces/`) — resolves dirty faces into `map_face` polygons. It first drains the deferred edge-relation cache (`rebuild_dirty_edge_relations`, needed for face-based boundaries), then runs a queue-driven loop (`loop.py`): pop a dirty seed, compute its component server-side (`dissolve.py` → `dissolve_component`, the joinable face graph walked from the seed), and persist batches of components through a `FacePersister` (`persist.py`) built on the primitive CRUD in `store.py` (`MapFaceStore` → the `map_face_*` SQL functions in `fixtures/07.1-map-face-elements.sql`). Persisting a component may *re-seed* primitives — the remainder of any existing face that lost primitives — which go back on the queue; that is what splits a face whose remainder is disconnected and rebuilds a face that would otherwise be left without one. Components containing the universal face (0) only *release* primitives. `--incremental`/`persist_interval` set the batch size (every statement commits anyway; each component is persisted atomically by a single PL/pgSQL call). With `--engine plpgsql` (`TOPO_ENGINE`) the same loop runs server-side in chunks (`update_dirty_faces`, `fixtures/07.2-update-faces-loop.sql`, driven by `ServerSideFaceUpdateLoop`): one round trip per chunk instead of two per component, which matters when the database is remote.
 4. `_clean_topology` (post-faces)
 
 **Performance-critical paths:**
@@ -160,5 +169,14 @@ variable.
 
 - SQL files under `procedures/` are loaded by name via `sql("path/to/file")` in Python; no `.sql` extension in the call.
 - Template variables like `{topo_schema}`, `{data_schema}`, `{topo_name_literal}` are substituted at load time by the database layer — they are not SQL parameters.
-- Named parameters in SQL use SQLAlchemy `:name` syntax.
+- Named parameters in SQL use SQLAlchemy `:name` syntax — but not inside the body of
+  a stored function (`$$ ... $$`): there, only the client-side template variables
+  (`{topo_schema}`, `{face_identity_column}`, `{srid_literal}`, `{topo_name_literal}`,
+  ...) can parameterize the SQL.
+- Every `Database.run_query` / `run_sql` call commits. Atomicity across steps must
+  come from a single SQL statement (e.g. one PL/pgSQL function call), which is why
+  the face-update CRUD lives in `map_face_absorb` / `map_face_replace` and the
+  server-side loop in `update_dirty_faces`.
+- Prefer moving primitives (`FaceUpdateMode.MOVE`) when adding behaviour to the
+  face loop; keep `replace` working as the fallback.
 - Timing output uses `print_step(name, elapsed)` from `utilities.py`.

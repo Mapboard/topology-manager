@@ -30,6 +30,7 @@ FACE_UPDATE_FUNCTIONS = (
     "map_face_absorb",
     "map_face_release",
     "map_face_replace",
+    "update_dirty_faces",
 )
 
 
