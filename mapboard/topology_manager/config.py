@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from macrostrat.database import Database as BaseDatabase
 import os
 from psycopg.sql import SQL, Identifier, Literal
@@ -12,6 +13,30 @@ from typing import Callable, Optional
 class Database(BaseDatabase):
     def proc(self, name, params=None, **kwargs):
         return super().run_sql(sql(name), params, **kwargs)
+
+
+class FaceUpdateMode(str, Enum):
+    """How the face-update loop persists a dissolved component onto `map_face`.
+
+    - ``move`` (default): move topology primitives between existing map faces
+      (`map_face_absorb`). Faces that overlap the component shed the component's
+      primitives, one survivor gains them, and only the primitives that moved or
+      were reshaped are resolved from the topology. Untouched faces keep their
+      ids and geometry, so the cost of a change scales with the change.
+    - ``replace``: the historical behaviour — delete every overlapping map face
+      and create a new one for the component (`map_face_replace`). Simpler and
+      fully re-resolves geometry, but costs O(size of the neighbouring faces).
+
+    Both modes re-mark the remainder of any face they take primitives from as
+    dirty, so no region is left without a face and disconnected remainders are
+    split into one face per component.
+    """
+
+    MOVE = "move"
+    REPLACE = "replace"
+
+
+DEFAULT_FACE_UPDATE_MODE = FaceUpdateMode.MOVE
 
 
 @dataclass
@@ -95,6 +120,8 @@ class TopologyContext:
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None
     # Whether to include listen/notify triggers for layer updates
     notify_triggers: bool = True
+    # How dissolved components are persisted onto map_face (see FaceUpdateMode).
+    face_update_mode: FaceUpdateMode = DEFAULT_FACE_UPDATE_MODE
 
     @property
     def manage_data_tables(self) -> bool:
@@ -129,6 +156,7 @@ def create_context(
     boundary_table: str = None,
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None,
     notify_triggers: bool = True,
+    face_update_mode: Optional[FaceUpdateMode | str] = None,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -152,6 +180,12 @@ def create_context(
 
     strategy = identity_strategy or SEARCH_STRATEGY
     face_identity_column = strategy.identity_column
+
+    if face_update_mode is None:
+        face_update_mode = env.get(
+            "MAPBOARD_FACE_UPDATE_MODE", DEFAULT_FACE_UPDATE_MODE
+        )
+    face_update_mode = FaceUpdateMode(face_update_mode)
 
     _database = Database(database.engine.url)
     _database.instance_params = {
@@ -185,6 +219,7 @@ def create_context(
         boundary_table=boundary_table,
         create_data_tables=create_data_tables,
         notify_triggers=notify_triggers,
+        face_update_mode=face_update_mode,
     )
 
     _side_effects(ctx)

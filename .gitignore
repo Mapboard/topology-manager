@@ -4,3 +4,4 @@ dist
 geologic-map-config.json
 .venv
 .idea
+__pycache__/

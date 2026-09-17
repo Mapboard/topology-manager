@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## `[Unreleased]`
+## Unreleased
 
 - Replace `map_layer.composited_from integer[]` with a `map_layer_composition` linking
   table carrying an explicit `priority` (higher wins), plus `is_composite_layer()`
@@ -14,12 +14,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Existing `composited_from` values are migrated on `create-tables` (array
   ordinality becomes priority) and the column is dropped
 - Add `dissolve_groups()`: walks every dirty component in a layer server-side and
-  returns a bounded batch of them, replacing the caller's one-round-trip-per-face
-  loop. `_max_groups` preserves checkpointing, so `--incremental` is now expressed
-  as a batch size. `joinable_face_edges()` -- built for a whole-layer label
-  propagation that was never written, and never called -- is left in place but is
-  still not the path taken: per-component BFS is proportional to the component,
-  where label propagation would take as many passes as the graph is wide
+  returns a bounded batch of them (`dissolve_layer_groups` in Python). The face
+  loop's round-trip saving now comes from the `plpgsql` engine below, which
+  dissolves *and* persists server-side; `dissolve_groups` remains the batch form
+  for callers that want components without persisting them. Strategies that set
+  `IdentityStrategy.bulk_identity` and provide `resolve_layer_identity(layer)`
+  get identities cached once per layer/chunk in both, instead of resolved per edge.
+  `joinable_face_edges()` -- built for a whole-layer label propagation that was
+  never written, and never called -- is left in place but is still not the path
+  taken: per-component BFS is proportional to the component, where label
+  propagation would take as many passes as the graph is wide
 - Index the referencing side of `map_face`'s cascading foreign keys
   (`face_identity.map_face`, `map_face.source_id`): PostgreSQL does not create
   these, so every deleted face sequentially scanned both tables
@@ -32,7 +36,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add `constraining_layers()`, replacing `parent_map_layers()` in the dissolve:
   a layer's barriers are now its ancestors *and* its composition closure, so a
   composite layer solved by dissolving cannot span a contact that exists in one
-  of its members
+  of its members (the local remainder-connectivity check uses the same set)
+- Update map faces by moving topology primitives between existing faces instead
+  of deleting and recreating them (#27). New `FaceUpdateMode` setting
+  (`create_context(face_update_mode=...)`, `MAPBOARD_FACE_UPDATE_MODE`,
+  `--face-update-mode`): `move` (default) or the legacy `replace`. In both modes
+  the remainder of any face that loses primitives is re-seeded, so a
+  reprioritization no longer leaves a region without a face, disconnected
+  remainders are split into one face per component, and every delete clears the
+  topogeometry (no orphaned `relation` rows).
+- Two short-circuits keep small changes cheap against large faces: a shed face
+  whose remainder is still connected (checked locally) is settled in place
+  rather than re-walked, and the dissolve absorbs settled map faces whole.
+- `--engine plpgsql` (`TOPO_ENGINE`) runs the face loop server-side in chunks
+  (`update_dirty_faces`), one round trip per chunk instead of two per component.
+- `commands/update_faces` is now a package: `dissolve` (components), `store`
+  (primitive-level CRUD over `map_face`, backed by the new
+  `fixtures/07.1-map-face-elements.sql` functions), `persist` (the two modes),
+  `loop` (the dirty-face queue). `helpers` re-exports the old names.
+- The update pipeline now drains the deferred `__edge_relation` cache
+  (`rebuild_dirty_edge_relations`) before dissolving faces, so face-based
+  boundaries added since the last update act as barriers.
+- `TopologyInspector` gains `orphaned_relations`, `faces_match_topology`,
+  `unfaced_primitives` and `n_dirty_faces`; `check_topology_setup` verifies the
+  face-update functions compiled.
+- Fix the `update-faces` CLI command's signature and the test/README spelling of
+  `TOPO_TESTING_DATABASE_URL`.
 
 ## `[5.0.0]` - 2026-06-11
 

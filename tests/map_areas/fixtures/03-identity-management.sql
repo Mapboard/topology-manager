@@ -20,14 +20,19 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
   JOIN map_bounds.map_priority mc
     ON mc.map_id = ma.id
    AND mc.map_layer = _map_layer
-  -- The center of the area must be within each candidate map
-  WHERE ST_Intersects(ST_Centroid(geom), ma.geometry)
+  -- A point guaranteed to lie on the area must be within each candidate map
+  -- (a centroid can fall outside a non-convex face, e.g. one with a notch)
+  WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
   ORDER BY priority, map_id DESC
   LIMIT 1;
 $$ LANGUAGE sql;
 
 
-/** TODO: this has to be recreated here because the types are wrong **/
+/** The identity of a primitive: the highest-priority map area covering it.
+
+Topogeometry ids are only unique *within a topology layer*, so the relation row
+must be matched on both `topogeo_id` and `layer_id` — otherwise a `map_face`
+topogeometry with the same id as a map area is mistaken for it. */
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
 SELECT
@@ -45,7 +50,7 @@ WHERE element_id = $1
   AND element_type = 3
 ORDER BY priority, map_id DESC
 LIMIT 1;
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL STABLE;
 
 CREATE OR REPLACE FUNCTION map_bounds_topology.faces_are_joinable(f1 integer, f2 integer, map_layer integer)
   RETURNS boolean AS $$
@@ -57,7 +62,7 @@ BEGIN
   id2 := map_bounds_topology.identity_for_face(f2, map_layer);
   RETURN id1 IS NOT DISTINCT FROM id2;
 END
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_is_identified(map_face {topo_schema}.map_face)
   RETURNS boolean AS $$
