@@ -159,7 +159,11 @@ $$ LANGUAGE plpgsql;
 
 /** The map faces of a layer that hold any of the given primitives, with the
 breakdown of each face's primitives into those inside the set (`shared`) and
-those outside it (`outside`). */
+those outside it (`outside`).
+
+The set is staged in an indexed, analyzed temp table: joined straight from
+`unnest()` the planner underestimates it and nested-loops thousands of
+primitives against thousands of relation rows. */
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_overlaps(_faces integer[], _map_layer integer)
 RETURNS TABLE (
   map_face integer,
@@ -168,17 +172,22 @@ RETURNS TABLE (
   n_shared integer,
   n_outside integer
 ) AS $$
-  WITH component AS (
-    SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id)
-  ),
-  candidates AS (
-    SELECT DISTINCT mf.id, mf.topo
+BEGIN
+  CREATE TEMP TABLE IF NOT EXISTS _mfo_component (face_id integer PRIMARY KEY);
+  TRUNCATE _mfo_component;
+  INSERT INTO _mfo_component (face_id)
+  SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) WHERE f.face_id IS NOT NULL;
+  ANALYZE _mfo_component;
+
+  RETURN QUERY
+  WITH candidates AS (
+    SELECT DISTINCT mf.id, (mf.topo).id AS topogeo_id, (mf.topo).layer_id AS layer_id
     FROM {topo_schema}.map_face mf
     JOIN {topo_schema}.relation r
       ON r.topogeo_id = (mf.topo).id
      AND r.layer_id = (mf.topo).layer_id
      AND r.element_type = 3
-    JOIN component c ON c.face_id = r.element_id
+    JOIN _mfo_component c ON c.face_id = r.element_id
     WHERE mf.map_layer = _map_layer
   ),
   members AS (
@@ -188,21 +197,22 @@ RETURNS TABLE (
       c.face_id IS NOT NULL AS inside
     FROM candidates mf
     JOIN {topo_schema}.relation r
-      ON r.topogeo_id = (mf.topo).id
-     AND r.layer_id = (mf.topo).layer_id
+      ON r.topogeo_id = mf.topogeo_id
+     AND r.layer_id = mf.layer_id
      AND r.element_type = 3
-    LEFT JOIN component c ON c.face_id = r.element_id
+    LEFT JOIN _mfo_component c ON c.face_id = r.element_id
   )
   SELECT
-    map_face,
-    coalesce(array_agg(face_id ORDER BY face_id) FILTER (WHERE inside), ARRAY[]::integer[]) AS shared,
-    coalesce(array_agg(face_id ORDER BY face_id) FILTER (WHERE NOT inside), ARRAY[]::integer[]) AS outside,
-    (count(*) FILTER (WHERE inside))::integer AS n_shared,
-    (count(*) FILTER (WHERE NOT inside))::integer AS n_outside
-  FROM members
-  GROUP BY map_face
-  ORDER BY map_face;
-$$ LANGUAGE SQL STABLE;
+    m.map_face,
+    coalesce(array_agg(m.face_id ORDER BY m.face_id) FILTER (WHERE m.inside), ARRAY[]::integer[]),
+    coalesce(array_agg(m.face_id ORDER BY m.face_id) FILTER (WHERE NOT m.inside), ARRAY[]::integer[]),
+    (count(*) FILTER (WHERE m.inside))::integer,
+    (count(*) FILTER (WHERE NOT m.inside))::integer
+  FROM members m
+  GROUP BY m.map_face
+  ORDER BY m.map_face;
+END;
+$$ LANGUAGE plpgsql;
 
 /** Primitives of the map_face layer's relation rows that no map face refers to
 (should always be zero: every delete path clears the topogeometry first). */
@@ -222,9 +232,16 @@ $$ LANGUAGE SQL STABLE;
 /* Create / delete                                                           */
 /* ------------------------------------------------------------------------- */
 
-/** Create a map face over a set of primitives, resolving identity and geometry
-from scratch. Returns the new face id. */
-CREATE OR REPLACE FUNCTION {topo_schema}.map_face_create(_faces integer[], _map_layer integer)
+/** Create a map face over a set of primitives. The geometry is resolved from the
+topology unless the caller already assembled it (`_geometry`); identity is
+resolved from the geometry. Returns the new face id. */
+-- An earlier revision had no geometry argument; drop it so the call is unambiguous.
+DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer);
+CREATE OR REPLACE FUNCTION {topo_schema}.map_face_create(
+  _faces integer[],
+  _map_layer integer,
+  _geometry geometry DEFAULT NULL
+)
 RETURNS integer AS $$
 DECLARE
   _id integer;
@@ -249,7 +266,9 @@ BEGIN
       {topo_name_literal}, 3, {topo_schema}.__map_face_layer_id(), _elements
     ) AS topo
   ) t,
-  LATERAL (SELECT ST_Multi(ST_SetSRID(t.topo::geometry, {srid_literal}))) g(geom)
+  LATERAL (
+    SELECT coalesce(_geometry, ST_Multi(ST_SetSRID(t.topo::geometry, {srid_literal})))
+  ) g(geom)
   RETURNING id INTO _id;
 
   PERFORM {topo_schema}.register_face_identity(_id);
@@ -421,9 +440,12 @@ single map face by moving primitives rather than recreating faces.
    (mostly) inside the component are reused outside the reshaped region; the
    remaining primitives are resolved from the topology. Resolve the identity.
 3. Choose the survivor: an overlapping face with the same identity if there is
-   one, then the one sharing the most primitives.
+   one (most shared primitives first), else a face lying entirely inside the
+   component. A face that extends beyond the component with a different
+   identity is never taken over — it keeps its row for its remainder.
 4. Every other overlapping face sheds the component's primitives (deleted when
-   emptied, re-marked dirty otherwise); the survivor sheds its primitives
+   emptied, re-marked dirty otherwise). With no survivor a new face is created
+   from the assembled geometry; otherwise the survivor sheds its primitives
    outside the component (re-marked dirty) and gains the component's missing
    ones. Its geometry and identity are refreshed and `face_identity` updated.
 */
@@ -471,6 +493,8 @@ BEGIN
 
   INSERT INTO _mfc_component (face_id)
   SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) WHERE f.face_id IS NOT NULL;
+
+  ANALYZE _mfc_component;
 
   _has_info := {topo_schema}.__has_reshaped_info(_map_layer);
   IF _has_info THEN
@@ -533,19 +557,28 @@ BEGIN
   _geom := ST_Multi(_geom);
   _identity := {topo_schema}.identity_for_area(_geom, _map_layer);
 
-  -- 3. Survivor
+  -- 3. Survivor: an overlapping face with the component's identity (most shared
+  -- primitives first), else a face lying entirely inside the component (its row
+  -- would otherwise be deleted). A face that extends *beyond* the component and
+  -- has a different identity must not be taken over — it keeps its row for its
+  -- remainder, and the component gets a new face.
   SELECT o.map_face INTO _survivor
   FROM _mfc_overlap o
   JOIN {topo_schema}.map_face mf ON mf.id = o.map_face
+  WHERE mf.{face_identity_column} IS NOT DISTINCT FROM _identity
+     OR o.n_outside = 0
   ORDER BY
     (mf.{face_identity_column} IS NOT DISTINCT FROM _identity) DESC,
     o.n_shared DESC,
     o.map_face ASC
   LIMIT 1;
-  _res.map_face := _survivor;
 
   -- 4a. Other faces shed the component's primitives
-  FOR _o IN SELECT * FROM _mfc_overlap WHERE map_face <> _survivor ORDER BY map_face LOOP
+  FOR _o IN
+    SELECT * FROM _mfc_overlap
+    WHERE _survivor IS NULL OR map_face <> _survivor
+    ORDER BY map_face
+  LOOP
     _remaining := {topo_schema}.__map_face_shed(_o.map_face, _o.shared, _map_layer, true);
     IF _remaining IS NULL THEN
       _res.deleted := _res.deleted || _o.map_face;
@@ -554,6 +587,16 @@ BEGIN
       _res.reseeded := _res.reseeded || _remaining;
     END IF;
   END LOOP;
+
+  IF _survivor IS NULL THEN
+    _res.map_face := {topo_schema}.map_face_create(
+      array(SELECT face_id FROM _mfc_component), _map_layer, _geom
+    );
+    _res.created := true;
+    _res.added := array(SELECT face_id FROM _mfc_component ORDER BY face_id);
+    RETURN _res;
+  END IF;
+  _res.map_face := _survivor;
 
   -- 4b. The survivor sheds its part outside the component ...
   SELECT outside INTO _s_outside FROM _mfc_overlap WHERE map_face = _survivor;

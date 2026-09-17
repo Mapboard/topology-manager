@@ -170,6 +170,52 @@ class TestSheddingCanSplit:
             assert cross_faces[0].id in old_cross_ids
 
 
+class TestInnerMapFlip:
+    """A small map entirely inside a big one starts out losing, then wins."""
+
+    @fixture(scope="class")
+    def maps(self, ctx):
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        layer = insp.map_layer_id("Large")
+        big = add_map(db, "ST_MakeEnvelope(0, 0, 10, 10)", "large", priority=0)
+        # subdivide the big map so its face has several primitives
+        for i in range(5):
+            add_map(db, f"ST_MakeEnvelope({2*i}, 0, {2*i+2}, 10)", "medium")
+        inner = add_map(db, "ST_MakeEnvelope(0, 0, 2, 4)", "large", priority=1)
+        update(ctx, composite_layers=False)
+        return dict(big=big, inner=inner, layer=layer)
+
+    def test_initial_state(self, ctx, maps):
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        faces = map_faces(db, maps["layer"])
+        assert [f.map_id for f in faces] == [maps["big"]]
+        assert faces[0].area == 100
+        _check_invariants(insp, maps["layer"])
+
+    def test_inner_map_wins(self, ctx, maps, face_update_mode):
+        """The big face keeps its row (and most of its primitives); the inner
+        map gets a new face."""
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        layer = maps["layer"]
+        (big_before,) = map_faces(db, layer)
+        inner_face = insp.get_face_id(geom(Point(1, 1)))
+
+        set_priority(db, maps["inner"], -1)
+        mark_dirty(db, [inner_face], layer)
+        update(ctx, composite_layers=False)
+
+        after = {f.map_id: f for f in map_faces(db, layer)}
+        assert set(after) == {maps["big"], maps["inner"]}
+        assert after[maps["inner"]].area == 8
+        assert after[maps["big"]].area == 92
+        _check_invariants(insp, layer)
+        if face_update_mode == FaceUpdateMode.MOVE:
+            assert after[maps["big"]].id == big_before.id
+
+
 class TestAddingMaps:
     """The ordinary flow — adding maps — keeps the same invariants, and in move
     mode leaves faces that were not affected untouched."""
