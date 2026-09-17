@@ -108,9 +108,11 @@ but the project is currently tested on PostgreSQL 14 and greater.
 
 ### Testing
 
-Using the `TOPO_TEST_DATABASE_URL` environment variable, you can run tests against a local database.
-
-Run `uv run pytest` to run the tests.
+Tests run against a live PostgreSQL/PostGIS database named by the
+`TOPO_TESTING_DATABASE_URL` environment variable (the database is recreated by the
+test session, so use a throwaway name). Run `uv run pytest` to run the tests; see
+[`AGENTS.md`](AGENTS.md) for the database setup CI uses and for how to run the two
+suites and both face-update modes.
 
 ### "Hybrid" installation
 

@@ -27,7 +27,11 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
 $$ LANGUAGE sql;
 
 
-/** TODO: this has to be recreated here because the types are wrong **/
+/** The identity of a primitive: the highest-priority map area covering it.
+
+Topogeometry ids are only unique *within a topology layer*, so the relation row
+must be matched on both `topogeo_id` and `layer_id` — otherwise a `map_face`
+topogeometry with the same id as a map area is mistaken for it. */
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
 SELECT
@@ -35,6 +39,7 @@ SELECT
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
   ON (f.topo).id = r.topogeo_id
+ AND (f.topo).layer_id = r.layer_id
  AND f.map_layer = $2
 JOIN map_bounds.map_priority mc
   ON mc.map_id = f.id
@@ -43,7 +48,7 @@ WHERE element_id = $1
   AND element_type = 3
 ORDER BY priority, map_id DESC
 LIMIT 1;
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL STABLE;
 
 CREATE OR REPLACE FUNCTION map_bounds_topology.faces_are_joinable(f1 integer, f2 integer, map_layer integer)
   RETURNS boolean AS $$
@@ -55,7 +60,7 @@ BEGIN
   id2 := map_bounds_topology.identity_for_face(f2, map_layer);
   RETURN id1 IS NOT DISTINCT FROM id2;
 END
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_is_identified(map_face {topo_schema}.map_face)
   RETURNS boolean AS $$

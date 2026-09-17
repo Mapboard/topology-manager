@@ -10,8 +10,13 @@ on:
 
 jobs:
   ci:
-    name: Continuous integration tests
+    name: Continuous integration tests (${{ matrix.face_update_mode }} mode)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both ways of persisting map faces must keep the suites green
+        face_update_mode: [move, replace]
     services:
       # Label used to access the service container
       postgis:
@@ -44,3 +49,4 @@ jobs:
         run: make test
         env:
           TOPO_TESTING_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mapboard_topology_test
+          MAPBOARD_FACE_UPDATE_MODE: ${{ matrix.face_update_mode }}

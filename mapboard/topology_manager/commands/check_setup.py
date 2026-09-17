@@ -20,6 +20,18 @@ IDENTITY_FUNCTIONS = (
 # Columns the update pipeline relies on for any boundary table.
 BOUNDARY_COLUMNS = ("geometry", "map_layer", "geometry_hash", "topology_error")
 
+# Library functions the face-update loop calls (fixtures/07-*.sql). Fixture
+# errors are logged rather than raised while loading, so check they compiled.
+FACE_UPDATE_FUNCTIONS = (
+    "dissolve_component",
+    "map_face_overlaps",
+    "map_face_create",
+    "map_face_delete",
+    "map_face_absorb",
+    "map_face_release",
+    "map_face_replace",
+)
+
 
 def _column_exists(db, schema, table, column) -> bool:
     return db.run_query(
@@ -77,6 +89,14 @@ def check_topology_setup(ctx: TopologyContext) -> list[str]:
                 f"function {topo}.{fn}(...) is missing — IdentityStrategy.install must define it"
             )
 
+    # Face-update functions — defined by the library's own fixtures.
+    for fn in FACE_UPDATE_FUNCTIONS:
+        if not _function_exists(db, topo, fn):
+            problems.append(
+                f"function {topo}.{fn}(...) is missing — a fixtures/07-*.sql file "
+                f"failed to load (see the create-tables log)"
+            )
+
     # Boundary table + its topogeometry and the columns the pipeline needs.
     boundary = ctx.boundary_table
     if not _table_exists(db, data, boundary):
@@ -101,7 +121,6 @@ def assert_topology_setup(ctx: TopologyContext) -> TopologyContext:
     problems = check_topology_setup(ctx)
     if problems:
         raise RuntimeError(
-            "Topology setup check failed:\n"
-            + "\n".join(f"  - {p}" for p in problems)
+            "Topology setup check failed:\n" + "\n".join(f"  - {p}" for p in problems)
         )
     return ctx

@@ -6,6 +6,7 @@ from ..config import TopologyContext, get_context
 from ..database import Database, get_database, sql
 from ..utilities import console
 from .clean_topology import clean_topology
+from .edge_relations import rebuild_dirty_edge_relations
 from macrostrat.utils import get_logger
 
 count = sql("procedures/count-contact")
@@ -69,4 +70,6 @@ def update_contacts(ctx: TopologyContext, fix_failed: bool = False) -> int:
 
             nops += 1
 
+    # Face-based boundaries defer their edge-relation cache maintenance
+    rebuild_dirty_edge_relations(ctx)
     return total_updated
