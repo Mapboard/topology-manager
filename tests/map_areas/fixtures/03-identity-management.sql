@@ -20,8 +20,9 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
   JOIN map_bounds.map_priority mc
     ON mc.map_id = ma.id
    AND mc.map_layer = _map_layer
-  -- The center of the area must be within each candidate map
-  WHERE ST_Intersects(ST_Centroid(geom), ma.geometry)
+  -- A point guaranteed to lie on the area must be within each candidate map
+  -- (a centroid can fall outside a non-convex face, e.g. one with a notch)
+  WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
   ORDER BY priority, map_id DESC
   LIMIT 1;
 $$ LANGUAGE sql;

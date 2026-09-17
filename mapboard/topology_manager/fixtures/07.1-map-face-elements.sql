@@ -309,12 +309,128 @@ CREATE TYPE {topo_schema}.map_face_change AS (
   reseeded integer[]    -- primitives re-marked dirty for the caller to process
 );
 
-/** Take `_faces` away from one map face. The face's remaining primitives are
-re-marked dirty so the caller revisits them (rebuilding the face's geometry and
-identity, and splitting it if the remainder is disconnected). If nothing
-remains, the face is deleted. Returns the remaining primitives, or NULL when the
-face was deleted. With `_update_geometry` false the cached geometry is left for
-the caller to set. */
+/** Whether a face's remainder is still one connected piece after `_removed`
+was taken away from it, decided *locally*.
+
+Every piece of the remainder must contain a primitive adjacent to the removed
+set (the face was one connected component before). So it is enough to walk the
+joinable graph, restricted to the remainder, from one of those neighbours until
+all of them have been reached: for a small change against a
+large face this touches only the surroundings of the change and stops, instead
+of walking the whole face. Returns false as soon as the walk exhausts without
+reaching every neighbour (the remainder is split) — and, conservatively, when it
+cannot tell. */
+CREATE OR REPLACE FUNCTION {topo_schema}.__remainder_connected(
+  _remaining integer[],
+  _removed integer[],
+  _map_layer integer
+)
+RETURNS boolean AS $$
+DECLARE
+  _boundary_layers integer[];
+  _n_targets integer;
+  _n_reached integer;
+  _added integer;
+  _niter integer := 0;
+BEGIN
+  CREATE TEMP TABLE IF NOT EXISTS _rc_remaining (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _rc_removed   (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _rc_target    (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _rc_seen      (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _rc_frontier  (face_id integer PRIMARY KEY);
+  CREATE TEMP TABLE IF NOT EXISTS _rc_next      (face_id integer PRIMARY KEY);
+  TRUNCATE _rc_remaining, _rc_removed, _rc_target, _rc_seen, _rc_frontier, _rc_next;
+
+  INSERT INTO _rc_remaining SELECT DISTINCT f.face_id FROM unnest(_remaining) AS f(face_id);
+  INSERT INTO _rc_removed   SELECT DISTINCT f.face_id FROM unnest(_removed)   AS f(face_id);
+  ANALYZE _rc_remaining;
+
+  _boundary_layers := array(
+    SELECT DISTINCT p.id FROM {topo_schema}.parent_map_layers(_map_layer) AS p(id)
+  );
+
+  -- The remaining primitives adjacent to the removed set. Plain edge adjacency,
+  -- not joinability: the removed set usually stopped being joinable to the
+  -- remainder (that is why it left), but every piece of the remainder still
+  -- touches it across some edge, since the face was connected before.
+  INSERT INTO _rc_target (face_id)
+  SELECT DISTINCT r.face_id
+  FROM {topo_schema}.edge_data e
+  JOIN _rc_removed d ON d.face_id IN (e.left_face, e.right_face)
+  JOIN _rc_remaining r ON r.face_id IN (e.left_face, e.right_face)
+  WHERE e.left_face <> e.right_face;
+
+  SELECT count(*) INTO _n_targets FROM _rc_target;
+  IF _n_targets = 0 THEN
+    RETURN false;  -- cannot tell; let the caller do the full walk
+  END IF;
+  IF _n_targets = 1 THEN
+    RETURN true;
+  END IF;
+
+  INSERT INTO _rc_seen     SELECT face_id FROM _rc_target ORDER BY face_id LIMIT 1;
+  INSERT INTO _rc_frontier SELECT face_id FROM _rc_seen;
+
+  LOOP
+    SELECT count(*) INTO _n_reached FROM _rc_target t JOIN _rc_seen s ON s.face_id = t.face_id;
+    IF _n_reached = _n_targets THEN
+      RETURN true;
+    END IF;
+
+    TRUNCATE _rc_next;
+    INSERT INTO _rc_next (face_id)
+    SELECT DISTINCT j.opp_face
+    FROM (
+      SELECT
+        fe.opp_face, fe.left_face, fe.right_face,
+        array_remove(array_agg(er.map_layer), null) AS edge_layers
+      FROM (
+        SELECT e.edge_id, e.left_face, e.right_face, e.right_face AS opp_face
+        FROM {topo_schema}.edge_data e
+        JOIN _rc_frontier f ON e.left_face = f.face_id
+        WHERE e.left_face <> e.right_face
+        UNION ALL
+        SELECT e.edge_id, e.left_face, e.right_face, e.left_face AS opp_face
+        FROM {topo_schema}.edge_data e
+        JOIN _rc_frontier f ON e.right_face = f.face_id
+        WHERE e.left_face <> e.right_face
+      ) fe
+      JOIN _rc_remaining r ON r.face_id = fe.opp_face
+      LEFT JOIN _rc_seen s ON s.face_id = fe.opp_face
+      LEFT JOIN {topo_schema}.__edge_relation er ON er.edge_id = fe.edge_id
+      WHERE s.face_id IS NULL
+      GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
+    ) j
+    WHERE (
+            NOT (j.edge_layers && _boundary_layers)
+         OR array_length(j.edge_layers, 1) = 0
+         OR array_length(_boundary_layers, 1) = 0
+          )
+       OR {topo_schema}.faces_are_joinable(j.left_face, j.right_face, _map_layer);
+
+    GET DIAGNOSTICS _added = ROW_COUNT;
+    IF _added = 0 THEN
+      RETURN false;  -- exhausted a piece without reaching every neighbour: split
+    END IF;
+
+    INSERT INTO _rc_seen SELECT face_id FROM _rc_next;
+    TRUNCATE _rc_frontier;
+    INSERT INTO _rc_frontier SELECT face_id FROM _rc_next;
+    _niter := _niter + 1;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+/** Take `_faces` away from one map face.
+
+If nothing remains, the face is deleted (returns NULL). If the remainder is
+trustworthy (no reshaped primitives) and `__remainder_connected` shows it is
+still one piece, the face is settled in place — geometry subtracted, identity
+re-resolved — and nothing is re-marked dirty (returns an empty array).
+Otherwise the remaining primitives are re-marked dirty so the caller revisits
+them, rebuilding geometry and identity and splitting the face if needed
+(returns them). With `_update_geometry` false the cached geometry is left for
+the caller to set and the remainder is always re-marked. */
 CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_shed(
   _map_face integer,
   _faces integer[],
@@ -328,9 +444,13 @@ DECLARE
   _geom geometry;
   _removed integer[];
   _remaining integer[];
+  _has_info boolean;
+  _trusted boolean := false;
+  _old_identity {topo_schema}.map_face.{face_identity_column}%TYPE;
+  _new_identity {topo_schema}.map_face.{face_identity_column}%TYPE;
 BEGIN
-  SELECT (topo).id, (topo).layer_id, geometry
-  INTO _topo_id, _layer_id, _geom
+  SELECT (topo).id, (topo).layer_id, geometry, {face_identity_column}
+  INTO _topo_id, _layer_id, _geom, _old_identity
   FROM {topo_schema}.map_face WHERE id = _map_face;
   IF NOT FOUND THEN
     RETURN NULL;
@@ -368,8 +488,17 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  _has_info := {topo_schema}.__has_reshaped_info(_map_layer);
+  IF _has_info AND _geom IS NOT NULL THEN
+    -- The remainder's stored geometry can be trusted when none of it was reshaped
+    _trusted := NOT EXISTS (
+      SELECT 1 FROM _reshaped_faces rf
+      WHERE rf.map_layer = _map_layer AND rf.face_id = ANY(_remaining)
+    );
+  END IF;
+
   IF _update_geometry THEN
-    IF NOT {topo_schema}.__has_reshaped_info(_map_layer)
+    IF NOT _has_info
        OR _geom IS NULL
        OR cardinality(_remaining) < cardinality(_removed) THEN
       -- Resolving the remainder is authoritative, and cheaper when it is small.
@@ -391,6 +520,18 @@ BEGIN
   -- Derived (composite-layer) copies of this face are stale; they are rebuilt
   -- by the composite update, exactly as if the face had been recreated.
   DELETE FROM {topo_schema}.map_face WHERE source_id = _map_face;
+
+  -- Short-circuit: a trustworthy remainder that is still one piece is settled
+  -- here, without re-marking it dirty (which would walk the whole remainder).
+  IF _update_geometry AND _trusted
+     AND {topo_schema}.__remainder_connected(_remaining, _removed, _map_layer) THEN
+    _new_identity := {topo_schema}.identity_for_area(_geom, _map_layer);
+    IF _new_identity IS DISTINCT FROM _old_identity THEN
+      UPDATE {topo_schema}.map_face SET {face_identity_column} = _new_identity WHERE id = _map_face;
+      PERFORM {topo_schema}.register_face_identity(_map_face);
+    END IF;
+    RETURN ARRAY[]::integer[];
+  END IF;
 
   INSERT INTO {topo_schema}.dirty_face (id, map_layer)
   SELECT f.face_id, _map_layer FROM unnest(_remaining) AS f(face_id)

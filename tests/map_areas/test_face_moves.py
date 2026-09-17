@@ -16,6 +16,7 @@ from pytest import fixture
 from shapely.geometry import Point
 
 from mapboard.topology_manager import TopologyInspector
+from mapboard.topology_manager.commands.update_faces import update_faces
 from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.config import FaceUpdateMode
 
@@ -214,6 +215,64 @@ class TestInnerMapFlip:
         _check_invariants(insp, layer)
         if face_update_mode == FaceUpdateMode.MOVE:
             assert after[maps["big"]].id == big_before.id
+
+
+class TestShortCircuits:
+    """A shed whose remainder stays connected is settled in place without
+    re-marking (and walking) the remainder; a shed that splits still is."""
+
+    @fixture(scope="class")
+    def maps(self, ctx):
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        layer = insp.map_layer_id("Large")
+        big = add_map(db, "ST_MakeEnvelope(0, 0, 10, 10)", "large", priority=0)
+        for i in range(5):
+            add_map(db, f"ST_MakeEnvelope({2*i}, 0, {2*i+2}, 10)", "medium")
+        corner = add_map(db, "ST_MakeEnvelope(0, 0, 2, 4)", "large", priority=1)
+        bar = add_map(db, "ST_MakeEnvelope(4, 3, 6, 7)", "large", priority=1)
+        update(ctx, composite_layers=False)
+        return dict(big=big, corner=corner, bar=bar, layer=layer)
+
+    def _flip(self, ctx, maps, map_id, priority, point, mode):
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        set_priority(db, map_id, priority)
+        mark_dirty(db, [insp.get_face_id(geom(point))], maps["layer"])
+        stats = update_faces(ctx, face_update_mode=mode, incremental=False)
+        _check_invariants(insp, maps["layer"])
+        return stats
+
+    def test_connected_remainder_is_not_reseeded(self, ctx, maps, face_update_mode):
+        stats = self._flip(ctx, maps, maps["corner"], -1, Point(1, 1), face_update_mode)
+        insp = TopologyInspector(ctx)
+        assert insp.n_faces(map_layer=maps["layer"]) == 2
+        if face_update_mode == FaceUpdateMode.MOVE:
+            assert stats.reseeded == 0
+            assert stats.rounds == 1
+
+    def test_notch_keeps_remainder_connected(self, ctx, maps, face_update_mode):
+        """A map that only notches the big map leaves one connected remainder."""
+        stats = self._flip(ctx, maps, maps["bar"], -1, Point(5, 5), face_update_mode)
+        insp = TopologyInspector(ctx)
+        db = ctx.database
+        assert insp.n_faces(map_layer=maps["layer"]) == 3
+        big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
+        assert len(big_faces) == 1
+        assert big_faces[0].area == 100 - 8 - 8
+        if face_update_mode == FaceUpdateMode.MOVE:
+            assert stats.reseeded == 0
+
+    def test_split_reseeds(self, ctx, maps, face_update_mode):
+        """A map spanning the full height splits the big map's remainder."""
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        wall = add_map(db, "ST_MakeEnvelope(6, -1, 8, 11)", "large", priority=1)
+        update(ctx, composite_layers=False)  # wall loses at first
+        stats = self._flip(ctx, maps, wall, -1, Point(7, 5), face_update_mode)
+        big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
+        assert len(big_faces) == 2
+        assert stats.reseeded > 0
 
 
 class TestAddingMaps:

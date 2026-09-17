@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reprioritization no longer leaves a region without a face, disconnected
   remainders are split into one face per component, and every delete clears the
   topogeometry (no orphaned `relation` rows).
+- Two short-circuits keep small changes cheap against large faces: a shed face
+  whose remainder is still connected (checked locally) is settled in place
+  rather than re-walked, and the dissolve absorbs settled map faces whole.
 - `commands/update_faces` is now a package: `dissolve` (components), `store`
   (primitive-level CRUD over `map_face`, backed by the new
   `fixtures/07.1-map-face-elements.sql` functions), `persist` (the two modes),
