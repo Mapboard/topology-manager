@@ -4,6 +4,7 @@ from shapely.geometry import LineString, Point, Polygon
 from macrostrat.database import Database
 
 from .config import TopologyContext
+from .commands.update_faces import n_dirty_faces
 from .commands.update_faces.helpers import get_adjacent_faces
 
 
@@ -49,6 +50,21 @@ class TopologyInspector:
 
     def get_adjacent_faces(self, face_id: int, map_layer: int):
         return get_adjacent_faces(self.db, face_id, map_layer)
+
+    def n_dirty_faces(self, map_layer=None):
+        return n_dirty_faces(self.db, map_layer)
+
+    def orphaned_relations(self) -> int:
+        """Relation rows in the map_face layer that no map face refers to (should be 0)."""
+        return orphaned_relations(self.db)
+
+    def faces_match_topology(self, map_layer=None) -> bool:
+        """Whether every map face's cached geometry equals its resolved topogeometry."""
+        return len(faces_mismatching_topology(self.db, map_layer=map_layer)) == 0
+
+    def unfaced_primitives(self, map_layer) -> list[int]:
+        """Identified primitives of a layer not held by exactly one map face (should be empty)."""
+        return unfaced_primitives(self.db, map_layer)
 
 
 def insert_feature(db, table, geometry, *, type=None, map_layer=None, srid=32612):
@@ -248,3 +264,54 @@ def create_grid(
             type="bedrock",
             map_layer=layer,
         )
+
+
+def orphaned_relations(db) -> int:
+    """Relation rows in the map_face layer that no map face refers to."""
+    return db.run_query("SELECT {topo_schema}.orphaned_map_face_relations()").scalar()
+
+
+def faces_mismatching_topology(db, *, map_layer=None) -> list[int]:
+    """Ids of map faces whose cached geometry differs from their topogeometry."""
+    sql = """
+        SELECT id
+        FROM {topo_schema}.map_face
+        WHERE topo IS NOT NULL
+          AND NOT ST_Equals(geometry, ST_SetSRID(topo::geometry, :srid))
+    """
+    params = {}
+    if map_layer is not None:
+        if isinstance(map_layer, str):
+            map_layer = map_layer_id(db, map_layer)
+        sql += " AND map_layer = :map_layer"
+        params["map_layer"] = map_layer
+    return list(db.run_query(sql, params).scalars())
+
+
+def unfaced_primitives(db, map_layer) -> list[int]:
+    """Primitives of a layer that resolve to an identity but are not held by
+    exactly one map face of that layer."""
+    if isinstance(map_layer, str):
+        map_layer = map_layer_id(db, map_layer)
+    return list(
+        db.run_query(
+            """
+            SELECT f.face_id
+            FROM {topo_schema}.face f
+            LEFT JOIN {topo_schema}.relation r
+              ON r.element_id = f.face_id
+             AND r.element_type = 3
+             AND r.layer_id = {topo_schema}.__map_face_layer_id()
+            LEFT JOIN {topo_schema}.map_face mf
+              ON (mf.topo).id = r.topogeo_id
+             AND (mf.topo).layer_id = r.layer_id
+             AND mf.map_layer = :map_layer
+            WHERE f.face_id <> 0
+              AND {topo_schema}.identity_for_face(f.face_id, :map_layer) IS NOT NULL
+            GROUP BY f.face_id
+            HAVING count(mf.id) <> 1
+            ORDER BY f.face_id
+            """,
+            dict(map_layer=map_layer),
+        ).scalars()
+    )
