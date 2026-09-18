@@ -88,6 +88,12 @@ class FaceUpdateLoop:
                             )
                             break
                         self.persister.persist(groups)
+                        # Nothing above has committed. `run_query` does not (its
+                        # commit sits after a yield the caller never resumes); only
+                        # `unmark_dirty`, which happens to use `run_sql`, does. That
+                        # makes the checkpoint depend on which helper a store method
+                        # calls, so commit the batch deliberately instead.
+                        self.db.session.commit()
                         stats.rounds += 1
 
                         remaining = _n_dirty(self.db, layer)
@@ -127,8 +133,9 @@ class ServerSideFaceUpdateLoop:
 
     Same algorithm as `FaceUpdateLoop`, but each call to the database processes
     a whole chunk of components (dissolve, persist, un-mark), so a chunk costs
-    one round trip instead of two. Every call commits, so a chunk is also the
-    checkpoint.
+    one round trip instead of two. The loop commits after each chunk, which is what
+    makes a chunk the checkpoint -- `update_dirty_faces` is a function and cannot
+    commit on its own.
 
     The chunk size is **adaptive**. A component can cost anywhere from a
     millisecond to ten seconds depending on how much of the layer it spans, so a
@@ -219,6 +226,13 @@ class ServerSideFaceUpdateLoop:
                             ),
                         ).one()
                         elapsed = perf_counter() - t_chunk
+                        # `update_dirty_faces` is a function, and a function cannot
+                        # COMMIT -- the chunk runs inside this session's
+                        # transaction. `run_query` does not commit either, so
+                        # without this the whole run is one transaction and a cancel
+                        # discards every chunk. This line is what makes a chunk a
+                        # checkpoint.
+                        self.db.session.commit()
                         first = False
                         stats.rounds += 1
                         stats.components += row.components

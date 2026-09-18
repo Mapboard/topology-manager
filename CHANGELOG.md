@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- The face loop commits after each batch/chunk. Nothing committed before: `run_query`
+  abandons the generator that holds its commit, and `update_dirty_faces` is a function,
+  which cannot COMMIT. The `plpgsql` engine therefore ran an entire update in one
+  transaction, so cancelling discarded every chunk; the `python` engine checkpointed
+  only incidentally, because `unmark_dirty` happens to use `run_sql`
+- `ANALYZE _component, _frontier` each BFS iteration in `dissolve_component`. Temp
+  tables carry no statistics, so the planner hash-joined all of `edge_data` (556k) and
+  `__edge_relation` (720k) against a handful of frontier rows: 430 ms a step against
+  5.8 ms analyzed, on index scans
 - The face edge-relation triggers on `relation` are statement-level (transition
   tables) and skip `map_face` rows, so a `createTopoGeom` or a bulk move of
   primitives queues at most one dirty entry per statement instead of firing a

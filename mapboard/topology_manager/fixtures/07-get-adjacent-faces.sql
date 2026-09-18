@@ -196,6 +196,13 @@ BEGIN
 
   INSERT INTO _component VALUES (_seed);
   INSERT INTO _frontier  VALUES (_seed);
+  -- Statistics before the first frontier query, for the same reason they are
+  -- taken after the loop: a temp table carries none, so the planner sizes it by
+  -- a default and hash-joins the whole of `edge_data` and `__edge_relation`
+  -- against a handful of rows. Measured on one frontier step of a real layer:
+  -- 430 ms unanalyzed (seq scans of 556k edges and 720k edge relations to find
+  -- 204 rows) against 5.8 ms analyzed, entirely on index scans.
+  ANALYZE _component, _frontier;
   _constraining := array(
     SELECT DISTINCT p.id
     FROM unnest(ARRAY[_map_layer]::integer[] || _barrier_layers) AS lyr(id)
@@ -253,12 +260,17 @@ BEGIN
     TRUNCATE _frontier;
     INSERT INTO _frontier (face_id) SELECT face_id FROM _frontier_next;
 
+    -- Both sides changed, and the plan for the next iteration is chosen from
+    -- their statistics. Analyzing two small temp tables costs a few ms against
+    -- the hundreds a mis-planned frontier step costs.
+    ANALYZE _component, _frontier;
+
     _niter := _niter + 1;
   END LOOP;
 
-  -- A temp table carries no statistics, so without this the planner takes
-  -- `_component` for a default-sized relation and drives the join from the wrong
-  -- side -- scanning all of `map_face` to keep a handful of rows.
+  -- Re-analyzed after the final iteration, so the `map_face` lookup below is
+  -- planned from the component's real size rather than a default -- otherwise it
+  -- scans all of `map_face` to keep a handful of rows.
   ANALYZE _component;
 
   RETURN QUERY
