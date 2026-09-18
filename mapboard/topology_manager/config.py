@@ -62,6 +62,21 @@ class IdentityStrategy:
     # Reserved: the SQL currently hardcodes "or"; "and" is for the future
     # direct-identity linework mode.
     combinator: str = "or"
+    # Whether a composite layer can be *solved* by dissolving, rather than filled
+    # by the painter's-algorithm overlay. True only when `faces_are_joinable` is
+    # meaningful and identity resolves across a layer's composition closure --
+    # the `search` strategy has neither, so it keeps the overlay. This gates
+    # whether a change in a layer marks its composition parents dirty: doing so
+    # for a strategy that cannot solve them would dissolve a composite into one
+    # face.
+    solves_composites: bool = False
+    # Whether the strategy installs `resolve_layer_identity(map_layer)` -- a
+    # set-oriented form of `identity_for_face` returning `(face_id, identity)` for
+    # a whole layer. When true, `dissolve_groups` materialises it once per layer
+    # and compares cached identities instead of calling `faces_are_joinable` on
+    # every candidate edge, which otherwise re-resolves each face's identity once
+    # per incident edge.
+    bulk_identity: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +203,8 @@ def create_context(
         "boundary_table": Identifier(data_schema, boundary_table),
         "boundary_table_literal": Literal(boundary_table),
         "face_identity_column": Identifier(face_identity_column),
+        "solves_composites": SQL("true" if strategy.solves_composites else "false"),
+        "bulk_identity": SQL("true" if strategy.bulk_identity else "false"),
     }
 
     ctx = TopologyContext(

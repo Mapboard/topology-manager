@@ -346,7 +346,7 @@ BEGIN
   ANALYZE _rc_remaining;
 
   _boundary_layers := array(
-    SELECT DISTINCT p.id FROM {topo_schema}.parent_map_layers(_map_layer) AS p(id)
+    SELECT DISTINCT p.id FROM {topo_schema}.constraining_layers(_map_layer) AS p(id)
   );
 
   -- The remaining primitives adjacent to the removed set. Plain edge adjacency,

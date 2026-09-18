@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- Face-update progress is counted in dirty primitives settled, not seeds popped
+  (Python engine) or components persisted (plpgsql engine). A component settles
+  every dirty primitive it covers, so the bar read ~0% through batches that had
+  cleared a sixth of the queue
+- Replace `map_layer.composited_from integer[]` with a `map_layer_composition` linking
+  table carrying an explicit `priority` (higher wins), plus `is_composite_layer()`
+  and `composite_layer_members()` helpers
+- Membership is foreign-keyed and cycle-checked; single-member composites are now
+  allowed, and one layer can sit at different priorities under different parents
+- Existing `composited_from` values are migrated on `create-tables` (array
+  ordinality becomes priority) and the column is dropped
+- Add `dissolve_groups()`: walks every dirty component in a layer server-side and
+  returns a bounded batch of them (`dissolve_layer_groups` in Python). The face
+  loop's round-trip saving now comes from the `plpgsql` engine below, which
+  dissolves *and* persists server-side; `dissolve_groups` remains the batch form
+  for callers that want components without persisting them. Strategies that set
+  `IdentityStrategy.bulk_identity` and provide `resolve_layer_identity(layer)`
+  get identities cached once per layer/chunk in both, instead of resolved per edge.
+  `joinable_face_edges()` -- built for a whole-layer label propagation that was
+  never written, and never called -- is left in place but is still not the path
+  taken: per-component BFS is proportional to the component, where label
+  propagation would take as many passes as the graph is wide
+- Index the referencing side of `map_face`'s cascading foreign keys
+  (`face_identity.map_face`, `map_face.source_id`): PostgreSQL does not create
+  these, so every deleted face sequentially scanned both tables
+- Add `IdentityStrategy.solves_composites` (default false) and
+  `dirty_layers_for()`, replacing `child_map_layers()` in `mark_surrounding_faces`:
+  a change in a layer now marks its composition parents dirty, so a composite
+  layer can be *solved* by dissolving rather than filled by overlay. Gated,
+  because a strategy without a meaningful `faces_are_joinable` would dissolve a
+  composite into a single face; the overlay remains for linework mode
+- Add `constraining_layers()`, replacing `parent_map_layers()` in the dissolve:
+  a layer's barriers are now its ancestors *and* its composition closure, so a
+  composite layer solved by dissolving cannot span a contact that exists in one
+  of its members (the local remainder-connectivity check uses the same set)
 - Update map faces by moving topology primitives between existing faces instead
   of deleting and recreating them (#27). New `FaceUpdateMode` setting
   (`create_context(face_update_mode=...)`, `MAPBOARD_FACE_UPDATE_MODE`,

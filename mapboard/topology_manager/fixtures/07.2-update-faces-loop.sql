@@ -35,9 +35,25 @@ DECLARE
   _faces integer[];
   _change {topo_schema}.map_face_change;
   _stats {topo_schema}.face_update_stats;
+  _cached boolean := {bulk_identity};
 BEGIN
   IF _mode NOT IN ('move', 'replace') THEN
     RAISE EXCEPTION 'Unknown face update mode %', _mode;
+  END IF;
+
+  -- Strategies that offer `resolve_layer_identity` get their identities cached
+  -- once per chunk, so the walk compares cached values instead of calling
+  -- `faces_are_joinable` per edge (see `dissolve_groups`). Identity does not
+  -- change while faces are persisted, so the cache holds for the whole chunk.
+  CREATE TEMP TABLE IF NOT EXISTS _layer_identity (
+    face_id integer PRIMARY KEY,
+    identity text
+  );
+  IF _cached THEN
+    TRUNCATE _layer_identity;
+    INSERT INTO _layer_identity (face_id, identity)
+    SELECT face_id, identity FROM {topo_schema}.resolve_layer_identity(_map_layer);
+    ANALYZE _layer_identity;
   END IF;
 
   _stats.components := 0;
@@ -57,7 +73,7 @@ BEGIN
     EXIT WHEN NOT FOUND;
 
     SELECT faces INTO _faces
-    FROM {topo_schema}.dissolve_component(_seed, _map_layer);
+    FROM {topo_schema}.dissolve_component(_seed, _map_layer, ARRAY[]::integer[], _cached);
 
     IF _mode = 'move' THEN
       IF 0 = ANY(_faces) THEN

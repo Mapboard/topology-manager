@@ -39,6 +39,7 @@ SELECT
   map_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
+  -- A topogeometry id is only unique within a layer.
   ON (f.topo).id = r.topogeo_id
  AND (f.topo).layer_id = r.layer_id
  AND f.map_layer = $2

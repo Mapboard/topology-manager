@@ -48,6 +48,13 @@ class FaceUpdateLoop:
         seeds = list(seeds)
         queue: deque[DirtyFace] = deque(seeds)
         settled: dict[int, set[int]] = defaultdict(set)
+        # Dirty primitives not yet settled, per layer. The bar counts these down
+        # rather than counting seeds *popped*: one component settles every dirty
+        # primitive it covers, which can be thousands, so a pop-counted bar reports
+        # a fraction of a percent through a batch that has done real work.
+        pending: dict[int, set[int]] = defaultdict(set)
+        for seed in seeds:
+            pending[seed.map_layer].add(seed.id)
         stats = self.persister.stats
         stats.seeds = len(seeds)
 
@@ -55,20 +62,24 @@ class FaceUpdateLoop:
         self.persister.begin_run(seeds)
         try:
             with Progress(disable=not self.progress) as progress:
-                bar = progress.add_task("Updating faces", total=len(seeds))
                 total = len(seeds)
                 done = 0
+                bar = progress.add_task("Updating faces", total=total)
                 while queue:
                     batch: list[FaceUpdateResult] = []
                     while queue and (
                         self.batch_size is None or len(batch) < self.batch_size
                     ):
                         seed = queue.popleft()
-                        done += 1
                         if seed.id in settled[seed.map_layer]:
                             continue
                         component = dissolve_component(self.db, seed.id, seed.map_layer)
                         settled[seed.map_layer].update(component.dissolved_faces)
+                        covered = pending[seed.map_layer].intersection(
+                            component.dissolved_faces
+                        )
+                        pending[seed.map_layer].difference_update(covered)
+                        done += len(covered)
                         batch.append(component)
                         progress.update(bar, completed=done, total=total)
 
@@ -78,6 +89,8 @@ class FaceUpdateLoop:
                     if fresh:
                         log.info("%d re-seeded primitives to revisit", len(fresh))
                         queue.extend(fresh)
+                        for r in fresh:
+                            pending[r.map_layer].add(r.id)
                         total += len(fresh)
                     progress.update(bar, completed=done, total=total)
         finally:
@@ -126,13 +139,22 @@ class ServerSideFaceUpdateLoop:
         stats = self.persister.stats
         stats.seeds = len(seeds)
         layers = sorted({s.map_layer for s in seeds})
+        # The bar is denominated in dirty primitives, so progress is read from the
+        # layer's `remaining` count -- not from `components`, which counts a chunk
+        # of at most `batch_size` however many primitives it settled.
+        layer_start: dict[int, int] = defaultdict(int)
+        for seed in seeds:
+            layer_start[seed.map_layer] += 1
 
         t0 = perf_counter()
         self.persister.begin_run(seeds)
         try:
             with Progress(disable=not self.progress) as progress:
-                bar = progress.add_task("Updating faces", total=len(seeds))
+                total = len(seeds)
+                done = 0
+                bar = progress.add_task("Updating faces", total=total)
                 for layer in layers:
+                    layer_done = 0
                     while True:
                         row = self.db.run_query(
                             "SELECT * FROM {topo_schema}.update_dirty_faces(:layer, :mode, :limit)",
@@ -149,7 +171,18 @@ class ServerSideFaceUpdateLoop:
                         stats.deleted += row.deleted
                         stats.shed += row.shed
                         stats.reseeded += row.reseeded
-                        progress.update(bar, advance=row.components)
+
+                        settled_now = layer_start[layer] - row.remaining
+                        if settled_now < layer_done:
+                            # Sheds re-marked more primitives than this chunk settled;
+                            # widen the denominator rather than going backwards.
+                            growth = layer_done - settled_now
+                            layer_start[layer] += growth
+                            total += growth
+                            settled_now = layer_done
+                        done += settled_now - layer_done
+                        layer_done = settled_now
+                        progress.update(bar, completed=done, total=total)
                         if row.remaining == 0 or row.components == 0:
                             break
         finally:
