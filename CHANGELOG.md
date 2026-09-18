@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- The face edge-relation triggers on `relation` are statement-level (transition
+  tables) and skip `map_face` rows, so a `createTopoGeom` or a bulk move of
+  primitives queues at most one dirty entry per statement instead of firing a
+  row-level trigger per primitive — and never for the map_face layer, whose
+  entries the rebuild discarded anyway.
 - `replace` mode is the historical face-update path again, verbatim: batch
   dissolve (`dissolve_groups`), one bulk plain `DELETE` of overlapping faces per
   batch (relation rows reclaimed by the clean step), `createTopoGeom` per
