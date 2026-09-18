@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- Face-update progress is counted in dirty primitives settled, not seeds popped
+  (Python engine) or components persisted (plpgsql engine). A component settles
+  every dirty primitive it covers, so the bar read ~0% through batches that had
+  cleared a sixth of the queue
 - Replace `map_layer.composited_from integer[]` with a `map_layer_composition` linking
   table carrying an explicit `priority` (higher wins), plus `is_composite_layer()`
   and `composite_layer_members()` helpers
