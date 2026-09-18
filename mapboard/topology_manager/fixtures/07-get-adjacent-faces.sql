@@ -119,14 +119,57 @@ the component's primitive faces and the existing map_faces they replace.
 Membership is held in indexed temp tables so large components stay efficient. */
 -- Earlier revisions had no `_use_identity_cache` argument; drop that signature so
 -- a two- or three-argument call is unambiguous on a re-provisioned database.
+/** Fill the session's `_layer_identity` cache for one layer.
+
+  `faces_are_joinable` is evaluated per candidate edge, so without this each face's
+  identity is re-resolved once per incident edge -- around six times over in a
+  planar graph, and twice that because a walk reaches each edge from both ends.
+  Resolving the whole layer set-wise costs about as much as a few hundred
+  individual lookups.
+
+  Only strategies that opt in have `resolve_layer_identity` ({bulk_identity});
+  for the rest this is a no-op returning -1, and callers keep the per-edge path.
+  `search` wants that anyway -- its `faces_are_joinable` is a no-op, so there is
+  nothing to cache.
+
+  Identity is invariant while faces are persisted: it resolves from `map_area` and
+  `map_priority`, never from `map_face`. That is the same invariant checkpointing
+  relies on, so one fill serves a whole layer's worth of components. Returns the
+  number of faces cached.
+
+  The table is session-scoped, deliberately without ON COMMIT DROP, because the
+  callers commit between components. */
+CREATE OR REPLACE FUNCTION {topo_schema}.prepare_layer_identity(_map_layer integer)
+RETURNS integer AS $$
+DECLARE
+  _n integer;
+BEGIN
+  CREATE TEMP TABLE IF NOT EXISTS _layer_identity (
+    face_id integer PRIMARY KEY,
+    identity text
+  );
+  IF NOT {bulk_identity} THEN
+    RETURN -1;
+  END IF;
+  TRUNCATE _layer_identity;
+  INSERT INTO _layer_identity (face_id, identity)
+  SELECT face_id, identity FROM {topo_schema}.resolve_layer_identity(_map_layer);
+  GET DIAGNOSTICS _n = ROW_COUNT;
+  ANALYZE _layer_identity;
+  RETURN _n;
+END;
+$$ LANGUAGE plpgsql;
+
+
 DROP FUNCTION IF EXISTS {topo_schema}.dissolve_component(integer, integer, integer[]);
 CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(
   _seed integer,
   _map_layer integer,
   _barrier_layers integer[] DEFAULT ARRAY[]::integer[],
   -- Read joinability from `_layer_identity` rather than calling
-  -- `faces_are_joinable` per edge. Only `dissolve_groups` sets this, because only
-  -- it populates the cache; a standalone caller keeps the per-edge path.
+  -- `faces_are_joinable` per edge. Only set this when the caller has filled the
+  -- cache for this layer via `prepare_layer_identity`: an unfilled cache reads as
+  -- all-NULL identities, which makes everything joinable.
   _use_identity_cache boolean DEFAULT false
 )
 RETURNS TABLE (faces integer[], existing_map_faces integer[], niter integer, map_layer integer)
@@ -294,11 +337,7 @@ BEGIN
     identity text
   );
   IF _cached THEN
-    TRUNCATE _layer_identity;
-    INSERT INTO _layer_identity (face_id, identity)
-    SELECT face_id, identity
-    FROM {topo_schema}.resolve_layer_identity(_map_layer);
-    ANALYZE _layer_identity;
+    PERFORM {topo_schema}.prepare_layer_identity(_map_layer);
   END IF;
 
   FOR _seed IN

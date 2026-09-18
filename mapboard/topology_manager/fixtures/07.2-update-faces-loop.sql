@@ -23,10 +23,18 @@ CREATE TYPE {topo_schema}.face_update_stats AS (
   remaining integer     -- dirty primitives left in the layer afterwards
 );
 
+-- The 3-argument form would otherwise remain and make a 3-argument call ambiguous.
+DROP FUNCTION IF EXISTS {topo_schema}.update_dirty_faces(integer, text, integer);
+
 CREATE OR REPLACE FUNCTION {topo_schema}.update_dirty_faces(
   _map_layer integer,
   _mode text DEFAULT 'move',
-  _limit integer DEFAULT 100
+  _limit integer DEFAULT 100,
+  -- Refill the identity cache. The caller sets this false for every chunk after
+  -- the first of a layer: identity does not change while faces are persisted, so
+  -- one fill serves the whole layer. Refilling per chunk costs a whole-layer
+  -- resolve (~180 ms on a 214k-face layer), which is most of a small chunk.
+  _refresh_identity boolean DEFAULT true
 )
 RETURNS {topo_schema}.face_update_stats AS $$
 DECLARE
@@ -48,11 +56,8 @@ BEGIN
     face_id integer PRIMARY KEY,
     identity text
   );
-  IF _cached THEN
-    TRUNCATE _layer_identity;
-    INSERT INTO _layer_identity (face_id, identity)
-    SELECT face_id, identity FROM {topo_schema}.resolve_layer_identity(_map_layer);
-    ANALYZE _layer_identity;
+  IF _cached AND _refresh_identity THEN
+    PERFORM {topo_schema}.prepare_layer_identity(_map_layer);
   END IF;
 
   _stats.components := 0;

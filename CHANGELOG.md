@@ -10,6 +10,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (Python engine) or components persisted (plpgsql engine). A component settles
   every dirty primitive it covers, so the bar read ~0% through batches that had
   cleared a sixth of the queue
+- `prepare_layer_identity(map_layer)` fills the identity cache; `dissolve_groups`,
+  `update_dirty_faces` and now the Python loop all use it. The Python loop was the
+  only path still resolving identity per candidate edge -- measured at 13.7 s vs
+  5.2 s on the same 42,759-face component, against a 180 ms whole-layer fill
+- `tests/map_areas` declares `resolve_layer_identity` and `bulk_identity=True`, so
+  the suites cover the cached dissolve path a bulk strategy actually runs; it had
+  no test before
+- `update_dirty_faces` takes `_refresh_identity`, so the identity cache is filled
+  once per layer rather than once per chunk (a whole-layer resolve, ~180 ms on a
+  214k-face layer, which small chunks would otherwise pay every time)
+- The `plpgsql` engine sizes its chunks adaptively, starting at one component and
+  timing each chunk to land in 1-10 s, instead of a fixed 100. A component ranges
+  from a millisecond to ten seconds, so 100 was simultaneously a wasted round trip
+  and a five-minute gap between checkpoints
+- The face-update engine is a context setting (`FaceUpdateEngine`,
+  `create_context(face_update_engine=...)`), resolved like `face_update_mode`: explicit
+  argument, else the context. `TOPO_ENGINE` is now read when the context is built
+  rather than inside `update_faces`, so callers that never touch the CLI can choose it
 - Re-seeded primitives enter the progress denominator once. A batch sheds the same
   map face from several components, so one primitive is re-seeded repeatedly; counting
   each occurrence made the bar slide backwards and stop short of 100%

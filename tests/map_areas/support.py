@@ -35,6 +35,11 @@ def _install_direct_strategy(ctx: TopologyContext):
 DIRECT_STRATEGY = IdentityStrategy(
     identity_column="map_id",
     install=_install_direct_strategy,
+    # The fixture defines `resolve_layer_identity`, so the dissolve caches
+    # identities per layer instead of calling `faces_are_joinable` per edge. Set
+    # here so the suites cover the cached path, which is what a host with a bulk
+    # strategy runs; without it that path has no test at all.
+    bulk_identity=True,
 )
 
 

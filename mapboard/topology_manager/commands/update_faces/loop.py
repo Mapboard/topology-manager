@@ -22,7 +22,7 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from rich.progress import Progress
 
-from .dissolve import dissolve_component
+from .dissolve import dissolve_component, prepare_layer_identity
 from .models import DirtyFace, FaceUpdateResult, FaceUpdateStats
 from .persist import FacePersister
 
@@ -37,12 +37,17 @@ class FaceUpdateLoop:
         *,
         batch_size: Optional[int] = None,
         progress: bool = True,
+        bulk_identity: bool = False,
     ):
         self.db = db
         self.persister = persister
         # None: dissolve everything before persisting (one batch per round).
         self.batch_size = batch_size
         self.progress = progress
+        # Whether the identity strategy offers `resolve_layer_identity`, so the
+        # walk can compare cached identities instead of calling
+        # `faces_are_joinable` on every candidate edge.
+        self.bulk_identity = bulk_identity
 
     def run(self, seeds: Iterable[DirtyFace]) -> FaceUpdateStats:
         seeds = list(seeds)
@@ -57,6 +62,8 @@ class FaceUpdateLoop:
             pending[seed.map_layer].add(seed.id)
         stats = self.persister.stats
         stats.seeds = len(seeds)
+        # The layer `_layer_identity` currently holds, or None when unfilled.
+        cached_layer: Optional[int] = None
 
         t0 = perf_counter()
         self.persister.begin_run(seeds)
@@ -73,7 +80,19 @@ class FaceUpdateLoop:
                         seed = queue.popleft()
                         if seed.id in settled[seed.map_layer]:
                             continue
-                        component = dissolve_component(self.db, seed.id, seed.map_layer)
+                        # The cache holds for a whole layer, so it is refilled only
+                        # when the queue moves to a different one. Seeds arrive in
+                        # layer order and re-seeds stay in their own layer, so this
+                        # is a handful of fills per run, not one per component.
+                        if self.bulk_identity and seed.map_layer != cached_layer:
+                            prepare_layer_identity(self.db, seed.map_layer)
+                            cached_layer = seed.map_layer
+                        component = dissolve_component(
+                            self.db,
+                            seed.id,
+                            seed.map_layer,
+                            use_identity_cache=self.bulk_identity,
+                        )
                         settled[seed.map_layer].update(component.dissolved_faces)
                         covered = pending[seed.map_layer].intersection(
                             component.dissolved_faces
@@ -127,7 +146,29 @@ class ServerSideFaceUpdateLoop:
     a whole chunk of components (dissolve, persist, un-mark), so a chunk costs
     one round trip instead of two per component. Every call commits, so a chunk
     is also the checkpoint.
+
+    The chunk size is **adaptive**. A component can cost anywhere from a
+    millisecond to ten seconds depending on how much of the layer it spans, so a
+    fixed count is wrong at both ends: 100 tiny components is a wasted round trip,
+    100 continental ones is five minutes with no checkpoint and no progress. Each
+    chunk is timed and the next is sized to land in `TARGET_SECONDS`, starting
+    small so the first measurement costs little.
+
+    This only pays off because a chunk's fixed cost is small: the identity cache
+    is filled once per layer (`_refresh_identity`), not once per chunk.
     """
+
+    # The band a chunk should land in. Long enough that one round trip and the
+    # per-chunk bookkeeping are noise; short enough to checkpoint often and to
+    # notice quickly when components get more expensive.
+    TARGET_SECONDS = 5.0
+    MIN_SECONDS = 1.0
+    MAX_SECONDS = 10.0
+    FIRST_CHUNK = 1
+    # Never more than this in one step, so a run of trivial components cannot
+    # overshoot into a chunk that then takes minutes.
+    MAX_GROWTH = 4.0
+    DEFAULT_MAX_CHUNK = 5000
 
     def __init__(
         self,
@@ -139,8 +180,23 @@ class ServerSideFaceUpdateLoop:
     ):
         self.db = db
         self.persister = persister
-        self.batch_size = batch_size or 100
+        # An explicit batch size caps the chunk; the loop still starts small and
+        # grows into it rather than opening with it.
+        self.max_chunk = batch_size or self.DEFAULT_MAX_CHUNK
         self.progress = progress
+
+    def _next_chunk(self, chunk: int, components: int, elapsed: float) -> int:
+        """Size the next chunk from how long this one took."""
+        if components <= 0:
+            return chunk
+        if self.MIN_SECONDS <= elapsed <= self.MAX_SECONDS:
+            return chunk
+        per_component = elapsed / components
+        if per_component <= 0:
+            return min(int(chunk * self.MAX_GROWTH), self.max_chunk)
+        target = int(self.TARGET_SECONDS / per_component)
+        ceiling = min(int(chunk * self.MAX_GROWTH) or 1, self.max_chunk)
+        return max(1, min(target, ceiling))
 
     def run(self, seeds: Iterable[DirtyFace]) -> FaceUpdateStats:
         seeds = list(seeds)
@@ -163,15 +219,24 @@ class ServerSideFaceUpdateLoop:
                 bar = progress.add_task("Updating faces", total=total)
                 for layer in layers:
                     layer_done = 0
+                    chunk = min(self.FIRST_CHUNK, self.max_chunk)
+                    first = True
                     while True:
+                        t_chunk = perf_counter()
                         row = self.db.run_query(
-                            "SELECT * FROM {topo_schema}.update_dirty_faces(:layer, :mode, :limit)",
+                            "SELECT * FROM {topo_schema}.update_dirty_faces("
+                            ":layer, :mode, :limit, :refresh_identity)",
                             dict(
                                 layer=layer,
                                 mode=self.persister.mode.value,
-                                limit=self.batch_size,
+                                limit=chunk,
+                                # Identity is invariant while faces are persisted,
+                                # so one fill serves the whole layer.
+                                refresh_identity=first,
                             ),
                         ).one()
+                        elapsed = perf_counter() - t_chunk
+                        first = False
                         stats.rounds += 1
                         stats.components += row.components
                         stats.created += row.created
@@ -193,6 +258,20 @@ class ServerSideFaceUpdateLoop:
                         progress.update(bar, completed=done, total=total)
                         if row.remaining == 0 or row.components == 0:
                             break
+
+                        next_chunk = self._next_chunk(chunk, row.components, elapsed)
+                        if next_chunk != chunk:
+                            log.debug(
+                                "Layer %d: %d components in %.2fs (%.3fs each); "
+                                "chunk %d -> %d",
+                                layer,
+                                row.components,
+                                elapsed,
+                                elapsed / max(row.components, 1),
+                                chunk,
+                                next_chunk,
+                            )
+                        chunk = next_chunk
         finally:
             self.persister.end_run()
 

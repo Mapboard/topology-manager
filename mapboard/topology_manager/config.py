@@ -39,6 +39,26 @@ class FaceUpdateMode(str, Enum):
 DEFAULT_FACE_UPDATE_MODE = FaceUpdateMode.MOVE
 
 
+class FaceUpdateEngine(str, Enum):
+    """Where the face-update loop runs.
+
+    - ``python`` (default): the loop lives in the client (`FaceUpdateLoop`), one
+      round trip per component, and re-seeded primitives are carried in memory.
+    - ``plpgsql``: whole chunks run server-side (`update_dirty_faces`), one round
+      trip per chunk. `dirty_face` itself is the queue, so a re-seed reaches the
+      next iteration only if it was written there.
+
+    Both commit per checkpoint and must produce the same faces; CI runs the suites
+    under each, crossed with both `FaceUpdateMode`s.
+    """
+
+    PYTHON = "python"
+    PLPGSQL = "plpgsql"
+
+
+DEFAULT_FACE_UPDATE_ENGINE = FaceUpdateEngine.PYTHON
+
+
 @dataclass
 class IdentityStrategy:
     """Defines how a map face acquires its identity.
@@ -122,6 +142,8 @@ class TopologyContext:
     notify_triggers: bool = True
     # How dissolved components are persisted onto map_face (see FaceUpdateMode).
     face_update_mode: FaceUpdateMode = DEFAULT_FACE_UPDATE_MODE
+    # Where the face-update loop runs (see FaceUpdateEngine).
+    face_update_engine: FaceUpdateEngine = DEFAULT_FACE_UPDATE_ENGINE
 
     @property
     def manage_data_tables(self) -> bool:
@@ -157,6 +179,7 @@ def create_context(
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None,
     notify_triggers: bool = True,
     face_update_mode: Optional[FaceUpdateMode | str] = None,
+    face_update_engine: Optional[FaceUpdateEngine | str] = None,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -186,6 +209,10 @@ def create_context(
             "MAPBOARD_FACE_UPDATE_MODE", DEFAULT_FACE_UPDATE_MODE
         )
     face_update_mode = FaceUpdateMode(face_update_mode)
+
+    if face_update_engine is None:
+        face_update_engine = env.get("TOPO_ENGINE", DEFAULT_FACE_UPDATE_ENGINE)
+    face_update_engine = FaceUpdateEngine(face_update_engine)
 
     _database = Database(database.engine.url)
     _database.instance_params = {
@@ -220,6 +247,7 @@ def create_context(
         create_data_tables=create_data_tables,
         notify_triggers=notify_triggers,
         face_update_mode=face_update_mode,
+        face_update_engine=face_update_engine,
     )
 
     _side_effects(ctx)

@@ -39,6 +39,15 @@ independent signals (there is no single "mode" flag):
   churn is limited to what changed; `replace` is the historical delete-and-recreate
   behaviour (`map_face_replace`). Both must satisfy
   the same invariants (below) and both are exercised by CI.
+- `face_update_engine` — where the face loop runs (`config.FaceUpdateEngine`; default
+  `python`, env `TOPO_ENGINE`, CLI `--engine`, or set on the context via
+  `create_context(..., face_update_engine=...)`). `python` runs the loop client-side
+  (`FaceUpdateLoop`), one round trip per component, carrying re-seeded primitives in
+  memory; `plpgsql` runs whole chunks server-side (`update_dirty_faces`), one round
+  trip per chunk, with `dirty_face` itself as the queue — so anything re-seeded must
+  be written there to survive. Resolved like `face_update_mode`: an explicit argument
+  to `update_faces` wins, otherwise the context's value. CI crosses both engines with
+  both modes.
 
 `identity_strategy` derives `face_identity_column`; `create_tables` calls
 `create_data_tables` (or the default fixtures) — which add the identity column — then

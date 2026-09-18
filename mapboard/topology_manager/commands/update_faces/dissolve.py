@@ -16,12 +16,52 @@ from .models import DirtyFace, FaceUpdateResult
 log = get_logger("mapboard.topology_manager.update_faces")
 
 
-def dissolve_component(db: Database, face_id: int, map_layer: int) -> FaceUpdateResult:
-    """The maximal set of primitives joinable with `face_id` in `map_layer`."""
+def prepare_layer_identity(db: Database, map_layer: int) -> int:
+    """Fill the session's identity cache for `map_layer`.
+
+    Without it the dissolve calls `faces_are_joinable` on every candidate edge,
+    re-resolving each face's identity once per incident edge. Returns the number of
+    faces cached, or -1 when the identity strategy offers no bulk form (in which
+    case the caller must keep `use_identity_cache` false).
+    """
+    t0 = perf_counter()
+    n = db.run_query(
+        "SELECT {topo_schema}.prepare_layer_identity(:map_layer)",
+        dict(map_layer=map_layer),
+    ).scalar()
+    if n >= 0:
+        log.debug(
+            "Cached %d face identities for layer %d in %.2f seconds",
+            n,
+            map_layer,
+            perf_counter() - t0,
+        )
+    return n
+
+
+def dissolve_component(
+    db: Database,
+    face_id: int,
+    map_layer: int,
+    *,
+    use_identity_cache: bool = False,
+) -> FaceUpdateResult:
+    """The maximal set of primitives joinable with `face_id` in `map_layer`.
+
+    Set `use_identity_cache` only after `prepare_layer_identity` has run for this
+    layer in this session; an unfilled cache reads as all-NULL identities, which
+    would make every face joinable with every other.
+    """
     t0 = perf_counter()
     res = db.run_query(
-        "SELECT * FROM {topo_schema}.dissolve_component(:face_id, :map_layer)",
-        dict(face_id=face_id, map_layer=map_layer),
+        "SELECT * FROM {topo_schema}.dissolve_component("
+        ":face_id, :map_layer, :barriers, :cached)",
+        dict(
+            face_id=face_id,
+            map_layer=map_layer,
+            barriers=[],
+            cached=use_identity_cache,
+        ),
     ).one()
     component = FaceUpdateResult(
         dissolved_faces=sorted(set(res.faces)),
@@ -74,6 +114,7 @@ def get_adjacent_faces(db: Database, face_id: int, map_layer: int) -> list[int]:
 __all__ = [
     "DirtyFace",
     "FaceUpdateResult",
+    "prepare_layer_identity",
     "dissolve_component",
     "dissolve_layer_groups",
     "update_map_face",
