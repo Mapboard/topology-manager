@@ -1,20 +1,17 @@
 """The face-update loop: drain `dirty_face` into settled map faces.
 
-    queue ← dirty faces
-    while queue:
-        batch ← dissolve the next N unsettled seeds (N = persist interval)
-        reseeds ← persist(batch)          # create / absorb / replace, per mode
-        queue ← queue + unsettled reseeds
+    for each layer with dirty faces:
+        while the layer has dirty faces:
+            groups <- dissolve_groups(layer, batch)   # server-side, one round trip
+            persist(groups)                          # move or replace, then un-mark
 
-A primitive is *settled* once it belongs to a persisted component; components
-partition the layer's joinable graph and the graph does not change while faces
-are persisted, so each seed is dissolved at most once and the loop terminates.
-Re-seeds are the remainders of faces that lost primitives; processing them is
-what splits a disconnected remainder and rebuilds a face that would otherwise be
-left as a hole.
+`dirty_face` itself is the queue. Persisting a batch un-marks its components;
+anything a `move`-mode shed re-marks (one primitive per shed face) is simply
+picked up by the next `dissolve_groups` call. `ServerSideFaceUpdateLoop` runs
+the same loop entirely in PL/pgSQL, one call per chunk.
 """
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from time import perf_counter
 from typing import Iterable, Optional
 
@@ -22,14 +19,25 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 from rich.progress import Progress
 
-from .dissolve import dissolve_component, prepare_layer_identity
-from .models import DirtyFace, FaceUpdateResult, FaceUpdateStats
+from .dissolve import dissolve_layer_groups
+from .models import DirtyFace, FaceUpdateStats
 from .persist import FacePersister
 
 log = get_logger("mapboard.topology_manager.update_faces")
 
 
+def _n_dirty(db: Database, map_layer: Optional[int] = None) -> int:
+    query = "SELECT count(*)::integer FROM {topo_schema}.dirty_face"
+    params = {}
+    if map_layer is not None:
+        query += " WHERE map_layer = :map_layer"
+        params["map_layer"] = map_layer
+    return db.run_query(query, params).scalar()
+
+
 class FaceUpdateLoop:
+    """Batch loop driven from Python: `dissolve_groups` per layer, then persist."""
+
     def __init__(
         self,
         db: Database,
@@ -41,29 +49,22 @@ class FaceUpdateLoop:
     ):
         self.db = db
         self.persister = persister
-        # None: dissolve everything before persisting (one batch per round).
+        # None: dissolve every component of a layer before persisting.
         self.batch_size = batch_size
         self.progress = progress
-        # Whether the identity strategy offers `resolve_layer_identity`, so the
-        # walk can compare cached identities instead of calling
-        # `faces_are_joinable` on every candidate edge.
+        # `dissolve_groups` fills the identity cache itself when the strategy
+        # offers one; the flag is accepted for interface parity with the
+        # server-side loop.
         self.bulk_identity = bulk_identity
 
     def run(self, seeds: Iterable[DirtyFace]) -> FaceUpdateStats:
         seeds = list(seeds)
-        queue: deque[DirtyFace] = deque(seeds)
-        settled: dict[int, set[int]] = defaultdict(set)
-        # Dirty primitives not yet settled, per layer. The bar counts these down
-        # rather than counting seeds *popped*: one component settles every dirty
-        # primitive it covers, which can be thousands, so a pop-counted bar reports
-        # a fraction of a percent through a batch that has done real work.
-        pending: dict[int, set[int]] = defaultdict(set)
-        for seed in seeds:
-            pending[seed.map_layer].add(seed.id)
         stats = self.persister.stats
         stats.seeds = len(seeds)
-        # The layer `_layer_identity` currently holds, or None when unfilled.
-        cached_layer: Optional[int] = None
+        layers = sorted({s.map_layer for s in seeds})
+        layer_start: dict[int, int] = defaultdict(int)
+        for seed in seeds:
+            layer_start[seed.map_layer] += 1
 
         t0 = perf_counter()
         self.persister.begin_run(seeds)
@@ -72,60 +73,42 @@ class FaceUpdateLoop:
                 total = len(seeds)
                 done = 0
                 bar = progress.add_task("Updating faces", total=total)
-                while queue:
-                    batch: list[FaceUpdateResult] = []
-                    while queue and (
-                        self.batch_size is None or len(batch) < self.batch_size
-                    ):
-                        seed = queue.popleft()
-                        if seed.id in settled[seed.map_layer]:
-                            continue
-                        # The cache holds for a whole layer, so it is refilled only
-                        # when the queue moves to a different one. Seeds arrive in
-                        # layer order and re-seeds stay in their own layer, so this
-                        # is a handful of fills per run, not one per component.
-                        if self.bulk_identity and seed.map_layer != cached_layer:
-                            prepare_layer_identity(self.db, seed.map_layer)
-                            cached_layer = seed.map_layer
-                        component = dissolve_component(
-                            self.db,
-                            seed.id,
-                            seed.map_layer,
-                            use_identity_cache=self.bulk_identity,
+                for layer in layers:
+                    layer_done = 0
+                    remaining = _n_dirty(self.db, layer)
+                    while remaining > 0:
+                        groups = dissolve_layer_groups(
+                            self.db, layer, max_groups=self.batch_size
                         )
-                        settled[seed.map_layer].update(component.dissolved_faces)
-                        covered = pending[seed.map_layer].intersection(
-                            component.dissolved_faces
-                        )
-                        pending[seed.map_layer].difference_update(covered)
-                        done += len(covered)
-                        batch.append(component)
-                        progress.update(bar, completed=done, total=total)
+                        if not groups:
+                            log.warning(
+                                "No components for %d dirty faces in layer %s; moving on",
+                                remaining,
+                                layer,
+                            )
+                            break
+                        self.persister.persist(groups)
+                        stats.rounds += 1
 
-                    reseeds = self.persister.persist(batch)
-                    stats.rounds += 1
-                    # A batch sheds the same map face from several components, so one
-                    # primitive can be re-seeded many times over; `pending` is also
-                    # already holding everything still queued. Count each primitive
-                    # into the denominator once, or the bar slides backwards and never
-                    # reaches its total.
-                    fresh: list[DirtyFace] = []
-                    for r in reseeds:
-                        if r.id in settled[r.map_layer] or r.id in pending[r.map_layer]:
-                            continue
-                        pending[r.map_layer].add(r.id)
-                        fresh.append(r)
-                    if fresh:
-                        log.info("%d re-seeded primitives to revisit", len(fresh))
-                        queue.extend(fresh)
-                        total += len(fresh)
-                    progress.update(bar, completed=done, total=total)
+                        remaining = _n_dirty(self.db, layer)
+                        # Progress is denominated in dirty primitives. A shed can
+                        # re-mark a primitive, so widen the total rather than let
+                        # the bar go backwards.
+                        settled_now = layer_start[layer] - remaining
+                        if settled_now < layer_done:
+                            growth = layer_done - settled_now
+                            layer_start[layer] += growth
+                            total += growth
+                            settled_now = layer_done
+                        done += settled_now - layer_done
+                        layer_done = settled_now
+                        progress.update(bar, completed=done, total=total)
         finally:
             self.persister.end_run()
 
         log.info(
             "Updated %d dirty faces in %.2f seconds: %d components, %d created, "
-            "%d updated, %d deleted, %d shed, %d re-seeded, %d rounds",
+            "%d updated, %d deleted, %d shed, %d re-seeded, %d batches",
             stats.seeds,
             perf_counter() - t0,
             stats.components,
@@ -144,8 +127,8 @@ class ServerSideFaceUpdateLoop:
 
     Same algorithm as `FaceUpdateLoop`, but each call to the database processes
     a whole chunk of components (dissolve, persist, un-mark), so a chunk costs
-    one round trip instead of two per component. Every call commits, so a chunk
-    is also the checkpoint.
+    one round trip instead of two. Every call commits, so a chunk is also the
+    checkpoint.
 
     The chunk size is **adaptive**. A component can cost anywhere from a
     millisecond to ten seconds depending on how much of the layer it spans, so a

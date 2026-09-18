@@ -12,6 +12,8 @@ from typing import Iterable
 from macrostrat.database import Database
 from macrostrat.database.query import OutputMode
 
+from ...database import sql
+
 from .models import DirtyFace, FaceOverlap, FaceUpdateResult, MapFaceChange
 
 
@@ -47,6 +49,33 @@ class MapFaceStore:
             "SELECT {topo_schema}.map_face_create(:faces, :map_layer)",
             dict(faces=list(faces), map_layer=map_layer),
         ).scalar()
+
+    def delete_plain(self, map_faces: list[int]) -> int:
+        """Delete map faces the way the original pipeline did: a plain DELETE,
+        leaving their relation rows for `remove_empty_topogeometries`."""
+        if len(map_faces) == 0:
+            return 0
+        return self.db.run_query(
+            """
+            WITH gone AS (
+                DELETE FROM {topo_schema}.map_face WHERE id = ANY(:map_faces)
+                RETURNING id
+            )
+            SELECT count(*) FROM gone
+            """,
+            dict(map_faces=list(map_faces)),
+        ).scalar()
+
+    def create_plain(self, faces: list[int], map_layer: int):
+        """Create a map face exactly as the original pipeline did
+        (`procedures/update-faces/insert-face-topogeom.sql`)."""
+        self.db.run_query(
+            sql("procedures/update-faces/insert-face-topogeom"),
+            dict(
+                map_layer=map_layer,
+                topo_element_array=[[face_id, 3] for face_id in faces],
+            ),
+        )
 
     def delete(self, map_faces: list[int]) -> int:
         """Delete map faces, clearing their topogeometries first."""

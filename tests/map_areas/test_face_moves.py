@@ -3,16 +3,18 @@
 A host that drives this library with a `direct` identity strategy flags stale
 identity by inserting primitives into `dirty_face` — e.g. when a region flips
 from map A to map B because their priorities changed. These tests pin the
-contract for that flow, in both face-update modes:
+contract for that flow in `move` mode:
 
 - every identified primitive belongs to exactly one map face (no holes),
 - one map face per connected same-identity component (shedding can split),
 - no orphaned `relation` rows, and cached geometry matches the topology.
+- untouched faces keep their ids.
 
-Only `move` mode additionally guarantees that untouched faces keep their ids.
+`replace` mode is the historical behaviour (bulk delete and recreate, no
+re-marking) and is not held to these.
 """
 
-from pytest import fixture
+from pytest import fixture, skip
 from shapely.geometry import Point
 
 from mapboard.topology_manager import TopologyInspector
@@ -28,6 +30,15 @@ from .support import (
     mark_dirty,
     set_priority,
 )
+
+
+@fixture(scope="class", autouse=True)
+def _move_mode_only(face_update_mode):
+    """`replace` mode is the historical behaviour by design, including leaving a
+    partly-covered face's remainder without a face; these tests pin the
+    contract of `move` mode."""
+    if face_update_mode != FaceUpdateMode.MOVE:
+        skip("face-move contract applies to move mode only")
 
 
 def _check_invariants(insp: TopologyInspector, layer: int):

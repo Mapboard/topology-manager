@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- `replace` mode is the historical face-update path again, verbatim: batch
+  dissolve (`dissolve_groups`), one bulk plain `DELETE` of overlapping faces per
+  batch (relation rows reclaimed by the clean step), `createTopoGeom` per
+  component, nothing re-marked. `move` mode keeps in-place topogeometry reuse,
+  and a shed now re-marks one primitive of the remainder rather than all of
+  them, so the dirty set grows by one row per shed face. The Python engine uses
+  the same batch loop as before (#28); the server-side engine is unchanged.
+- Add `benchmarks/bulk_update.py`: a fixed bulk-update scenario (large existing
+  faces, a dirty set that does not cover them) timed across both modes and both
+  engines, so changes to the face loop are measured against the same thing.
 - Face-update progress is counted in dirty primitives settled, not seeds popped
   (Python engine) or components persisted (plpgsql engine). A component settles
   every dirty primitive it covers, so the bar read ~0% through batches that had

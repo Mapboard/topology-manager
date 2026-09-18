@@ -136,6 +136,28 @@ variable.
 - There is no linter/formatter gate in CI; `black` and `isort` are in the dev group
   for Python (`uv run black mapboard tests`).
 
+### Benchmarking a change to the face loop
+
+`benchmarks/bulk_update.py` is the fixed scenario for face-loop work: a layer that
+already holds four large faces (an N×N grid of primitives underneath), then K new
+higher-priority maps whose dirty set does **not** cover those faces. It builds the
+base once into a template database and runs every mode × engine cell against a
+fresh copy, reporting wall time, components, faces created/updated/deleted,
+primitives re-marked, and afterwards holes (identified primitives without a face)
+and orphaned relation rows.
+
+```bash
+export TOPO_TESTING_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mapboard_topology_bench
+uv run python benchmarks/bulk_update.py                       # N=40, K=24
+BENCH_GRID=60 BENCH_MAPS=50 uv run python benchmarks/bulk_update.py
+BENCH_CELLS="replace/python,move/plpgsql" uv run python benchmarks/bulk_update.py
+```
+
+Compare cells against each other and against the numbers recorded in the PR that
+changed the loop; a change that only helps a single-face flip but not this
+scenario is not an improvement for bulk updates. `replace` is expected to report
+holes: that is the historical behaviour it preserves.
+
 ## Key architecture
 
 **Two-schema design:**

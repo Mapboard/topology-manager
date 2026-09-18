@@ -25,11 +25,19 @@ face's primitives — the same work `createTopoGeom` + `topo::geometry` did
 before). What is saved is the churn on `map_face` and `relation`: a face that
 keeps most of its primitives keeps its row and its unchanged relation rows.
 
-Every operation that takes primitives away from a face re-marks the face's
-*remaining* primitives as dirty. The caller's loop picks them up, so a face whose
-remainder is disconnected is split into one row per connected component, and a
-face that would otherwise be left without a map face is rebuilt. Every delete
-path clears the topogeometry first, so no `relation` rows are orphaned.
+In `move` mode, an operation that takes primitives away from a face re-marks
+*one* of the face's remaining primitives as dirty. The loop dissolves that
+primitive's component and settles it onto the face; if the remainder was split,
+the face sheds the other piece then, re-marking one primitive of *it*, and so on
+until every piece has its own row. One seed per shed is enough, and it keeps the
+dirty set from growing by the size of every face that is touched. Faces emptied
+this way are deleted with their topogeometry cleared.
+
+`replace` mode is the historical behaviour exactly: overlapping faces are deleted
+with a plain `DELETE` (their `relation` rows are reclaimed by the clean step, as
+before), nothing is re-marked, and a new topogeometry is created. A face whose
+primitives were only partly covered by the component loses its remainder, as it
+always did.
 
 Note: relation rows are inserted/deleted directly (set-based) rather than
 through `TopoGeom_addElement` / `TopoGeom_remElement`, which do exactly the
@@ -141,10 +149,14 @@ $$ LANGUAGE SQL STABLE;
 topology unless the caller already resolved it (`_geometry`); identity is
 resolved from the geometry. Returns the new face id. */
 DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer);
+DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer, geometry);
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_create(
   _faces integer[],
   _map_layer integer,
-  _geometry geometry DEFAULT NULL
+  _geometry geometry DEFAULT NULL,
+  -- Register face identity now (move mode) or leave it to the trigger /
+  -- post-update step as the original pipeline did (replace mode).
+  _register boolean DEFAULT true
 )
 RETURNS integer AS $$
 DECLARE
@@ -175,7 +187,9 @@ BEGIN
   ) g(geom)
   RETURNING id INTO _id;
 
-  PERFORM {topo_schema}.register_face_identity(_id);
+  IF _register THEN
+    PERFORM {topo_schema}.register_face_identity(_id);
+  END IF;
   RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
@@ -215,18 +229,24 @@ CREATE TYPE {topo_schema}.map_face_change AS (
 
 /** Take `_faces` away from one map face's topogeometry.
 
-If nothing remains the face is deleted (returns NULL). Otherwise the remaining
-primitives are re-marked dirty and returned: the loop revisits them, and the
-face is then re-resolved (geometry and identity) as the survivor of their
-component, or split if the remainder is disconnected. Nothing is resolved here,
-so a face is resolved once per update, not once per shed. */
+If nothing remains the face is deleted (returns NULL). Otherwise *one* remaining
+primitive is re-marked dirty and returned: the loop dissolves its component and
+settles it onto this face, re-resolving geometry and identity; if the remainder
+was split, that step sheds the other piece and re-marks one primitive of it in
+turn. Nothing is resolved here, and the dirty set grows by one row per shed, not
+by the size of the face. */
 -- Earlier revisions took an `_update_geometry` flag; drop that signature so the
 -- call is unambiguous on a re-provisioned database.
 DROP FUNCTION IF EXISTS {topo_schema}.__map_face_shed(integer, integer[], integer, boolean);
+DROP FUNCTION IF EXISTS {topo_schema}.__map_face_shed(integer, integer[], integer);
 CREATE OR REPLACE FUNCTION {topo_schema}.__map_face_shed(
   _map_face integer,
   _faces integer[],
-  _map_layer integer
+  _map_layer integer,
+  -- Re-mark one *remaining* primitive so the loop revisits this face. The
+  -- survivor of a component passes false: its remainder is the component being
+  -- settled right now, and it is the *removed* primitives that need a seed.
+  _reseed_remainder boolean DEFAULT true
 )
 RETURNS integer[] AS $$
 DECLARE
@@ -275,11 +295,15 @@ BEGIN
   -- by the composite update, exactly as if the face had been recreated.
   DELETE FROM {topo_schema}.map_face WHERE source_id = _map_face;
 
+  IF NOT _reseed_remainder THEN
+    RETURN ARRAY[]::integer[];
+  END IF;
+
   INSERT INTO {topo_schema}.dirty_face (id, map_layer)
-  SELECT f.face_id, _map_layer FROM unnest(_remaining) AS f(face_id)
+  VALUES (_remaining[1], _map_layer)
   ON CONFLICT DO NOTHING;
 
-  RETURN _remaining;
+  RETURN ARRAY[_remaining[1]];
 END;
 $$ LANGUAGE plpgsql;
 
@@ -414,12 +438,17 @@ BEGIN
   END IF;
   _res.map_face := _survivor;
 
-  -- 4b. The chosen face sheds its part outside the component ...
+  -- 4b. The chosen face sheds its part outside the component. Those primitives
+  -- now have no face: re-mark one of them so the loop builds one (and, if they
+  -- form several pieces, the same step repeats from there).
   SELECT outside INTO _s_outside FROM _mfc_overlap WHERE map_face = _survivor;
   IF cardinality(_s_outside) > 0 THEN
-    PERFORM {topo_schema}.__map_face_shed(_survivor, _s_outside, _map_layer);
+    PERFORM {topo_schema}.__map_face_shed(_survivor, _s_outside, _map_layer, false);
+    INSERT INTO {topo_schema}.dirty_face (id, map_layer)
+    VALUES (_s_outside[1], _map_layer)
+    ON CONFLICT DO NOTHING;
     _res.removed := _s_outside;
-    _res.reseeded := _res.reseeded || _s_outside;
+    _res.reseeded := _res.reseeded || _s_outside[1];
   END IF;
 
   -- ... and takes on the component's primitives it does not yet hold.
@@ -456,11 +485,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/** Legacy behaviour: delete every map face holding any of the component's
-primitives and (optionally) create a fresh face for the component. Unlike the
-original implementation, the deleted faces' primitives outside the component are
-re-marked dirty so they are rebuilt rather than left without a face, and the
-deleted topogeometries are cleared. */
+/** The historical behaviour, unchanged: delete every map face holding any of
+the component's primitives with a plain DELETE (relation rows are reclaimed by
+`remove_empty_topogeometries` in the clean step, as before), then create a fresh
+face for the component. Nothing is re-marked dirty, so a face only partly covered
+by the component loses its remainder — exactly as the original pipeline did. */
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_replace(
   _faces integer[],
   _map_layer integer,
@@ -468,31 +497,26 @@ CREATE OR REPLACE FUNCTION {topo_schema}.map_face_replace(
 )
 RETURNS {topo_schema}.map_face_change AS $$
 DECLARE
-  _o record;
   _res {topo_schema}.map_face_change;
 BEGIN
   _res.map_face := NULL;
   _res.created := false;
   _res.added := ARRAY[]::integer[];
   _res.removed := ARRAY[]::integer[];
-  _res.deleted := ARRAY[]::integer[];
   _res.shed := ARRAY[]::integer[];
   _res.reseeded := ARRAY[]::integer[];
 
-  FOR _o IN SELECT * FROM {topo_schema}.map_face_overlaps(_faces, _map_layer) LOOP
-    INSERT INTO {topo_schema}.dirty_face (id, map_layer)
-    SELECT f.face_id, _map_layer FROM unnest(_o.outside) AS f(face_id)
-    ON CONFLICT DO NOTHING;
-    _res.reseeded := _res.reseeded || _o.outside;
-    _res.deleted := _res.deleted || _o.map_face;
-  END LOOP;
-
-  IF cardinality(_res.deleted) > 0 THEN
-    PERFORM {topo_schema}.map_face_delete(_res.deleted);
-  END IF;
+  WITH gone AS (
+    DELETE FROM {topo_schema}.map_face mf
+    WHERE mf.id IN (
+      SELECT o.map_face FROM {topo_schema}.map_face_overlaps(_faces, _map_layer) o
+    )
+    RETURNING mf.id
+  )
+  SELECT coalesce(array_agg(id ORDER BY id), ARRAY[]::integer[]) INTO _res.deleted FROM gone;
 
   IF _create AND NOT (0 = ANY(_faces)) THEN
-    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer);
+    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, NULL, false);
     _res.created := true;
     _res.added := array(SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) ORDER BY 1);
   END IF;

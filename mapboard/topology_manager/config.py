@@ -18,18 +18,21 @@ class Database(BaseDatabase):
 class FaceUpdateMode(str, Enum):
     """How the face-update loop persists a dissolved component onto `map_face`.
 
-    - ``move`` (default): reuse an existing topogeometry. When a map face already
-      overlaps the component (`map_face_absorb`), its `relation` rows are updated
-      in place to hold exactly the component and its geometry and identity are
-      re-resolved from the topology; other overlapping faces lose the component's
-      primitives. A new topogeometry is created only when no suitable face
-      exists. Faces that are not affected keep their ids.
-    - ``replace``: the historical behaviour — delete every overlapping map face
-      and create a new one for the component (`map_face_replace`).
+    - ``replace``: the historical behaviour, unchanged — delete every map face the
+      component overlaps (bulk, plain DELETE; relation rows are reclaimed by the
+      clean step) and create a new topogeometry for the component. A face only
+      partly covered by the component loses its remainder, as it always did.
+    - ``move`` (default): reuse an existing topogeometry. When a face overlaps the
+      component (`map_face_absorb`), its `relation` rows are updated in place to
+      hold exactly the component and its geometry and identity are re-resolved;
+      other overlapping faces lose the component's primitives and have *one*
+      remaining primitive re-marked dirty, so their remainder is rebuilt (and
+      split if disconnected) by the loop. A new topogeometry is created only when
+      no suitable face exists. Untouched faces keep their ids.
 
-    Both modes re-mark the remainder of any face they take primitives from as
-    dirty, so no region is left without a face and disconnected remainders are
-    split into one face per component by the ordinary loop.
+    Both resolve geometry from the topology the same way; `move` saves the
+    delete-and-recreate churn on `map_face` and `relation`, `replace` saves the
+    remainder work. `benchmarks/bulk_update.py` compares them.
     """
 
     MOVE = "move"
