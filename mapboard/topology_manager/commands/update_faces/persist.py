@@ -2,7 +2,10 @@
 
 Two strategies implement the same interface, selected by `FaceUpdateMode`:
 
-- `MoveFacesPersister` (``move``): primitives are moved between existing faces.
+- `MoveFacesPersister` (``move``): an existing overlapping face's topogeometry
+  is updated in place to hold the component (its geometry re-resolved from the
+  topology, as a new face's would be); a new topogeometry is created only when
+  no suitable face exists.
 - `ReplaceFacesPersister` (``replace``): overlapping faces are deleted and a new
   one is created (the historical behaviour).
 
@@ -78,19 +81,10 @@ class FacePersister:
 
 
 class MoveFacesPersister(FacePersister):
-    """Move primitives between existing map faces (`map_face_absorb`)."""
+    """Update an existing map face's topogeometry in place (`map_face_absorb`)
+    instead of deleting it and creating a new one."""
 
     mode = FaceUpdateMode.MOVE
-
-    def begin_run(self, seeds: Iterable[DirtyFace]):
-        by_layer: dict[int, set[int]] = defaultdict(set)
-        for seed in seeds:
-            by_layer[seed.map_layer].add(seed.id)
-        for layer, faces in by_layer.items():
-            self.store.set_reshaped_faces(layer, faces)
-
-    def end_run(self):
-        self.store.clear_reshaped_faces()
 
     def apply(self, component: FaceUpdateResult) -> MapFaceChange:
         if component.touches_universe:

@@ -49,9 +49,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reprioritization no longer leaves a region without a face, disconnected
   remainders are split into one face per component, and every delete clears the
   topogeometry (no orphaned `relation` rows).
-- Two short-circuits keep small changes cheap against large faces: a shed face
-  whose remainder is still connected (checked locally) is settled in place
-  rather than re-walked, and the dissolve absorbs settled map faces whole.
+- Simplify `move` mode back to the original design plus topogeometry reuse:
+  the dissolve is the plain topological sweep again, geometry is always
+  resolved from the topology (once per touched face), and the per-run
+  "reshaped region", incremental geometry assembly and local connectivity
+  walk are removed. What `move` saves over `replace` is the delete/recreate
+  churn on `map_face` and `relation`.
 - `--engine plpgsql` (`TOPO_ENGINE`) runs the face loop server-side in chunks
   (`update_dirty_faces`), one round trip per chunk instead of two per component.
 - `commands/update_faces` is now a package: `dissolve` (components), `store`

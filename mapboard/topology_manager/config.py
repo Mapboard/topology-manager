@@ -18,18 +18,18 @@ class Database(BaseDatabase):
 class FaceUpdateMode(str, Enum):
     """How the face-update loop persists a dissolved component onto `map_face`.
 
-    - ``move`` (default): move topology primitives between existing map faces
-      (`map_face_absorb`). Faces that overlap the component shed the component's
-      primitives, one survivor gains them, and only the primitives that moved or
-      were reshaped are resolved from the topology. Untouched faces keep their
-      ids and geometry, so the cost of a change scales with the change.
+    - ``move`` (default): reuse an existing topogeometry. When a map face already
+      overlaps the component (`map_face_absorb`), its `relation` rows are updated
+      in place to hold exactly the component and its geometry and identity are
+      re-resolved from the topology; other overlapping faces lose the component's
+      primitives. A new topogeometry is created only when no suitable face
+      exists. Faces that are not affected keep their ids.
     - ``replace``: the historical behaviour — delete every overlapping map face
-      and create a new one for the component (`map_face_replace`). Simpler and
-      fully re-resolves geometry, but costs O(size of the neighbouring faces).
+      and create a new one for the component (`map_face_replace`).
 
     Both modes re-mark the remainder of any face they take primitives from as
     dirty, so no region is left without a face and disconnected remainders are
-    split into one face per component.
+    split into one face per component by the ordinary loop.
     """
 
     MOVE = "move"

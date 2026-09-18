@@ -78,8 +78,8 @@ def update_faces(
     persist_interval: int = 100,
     face_update_mode: Optional[FaceUpdateMode] = Option(
         None,
-        help="How to persist faces: 'move' primitives between existing faces, "
-        "or 'replace' overlapping faces (defaults to the context setting)",
+        help="How to persist faces: 'move' (update an existing topogeometry in "
+        "place) or 'replace' overlapping faces (defaults to the context setting)",
         envvar="MAPBOARD_FACE_UPDATE_MODE",
     ),
 ) -> FaceUpdateStats:

@@ -92,18 +92,6 @@ class MapFaceStore:
 
     # -- run bookkeeping -------------------------------------------------------
 
-    def set_reshaped_faces(self, map_layer: int, faces: Iterable[int]) -> int:
-        """Register the primitives of a layer whose shape may have changed."""
-        return self.db.run_query(
-            "SELECT {topo_schema}.set_reshaped_faces(:map_layer, :faces)",
-            dict(map_layer=map_layer, faces=sorted(set(faces))),
-        ).scalar()
-
-    def clear_reshaped_faces(self):
-        self.db.run_query(
-            "SELECT {topo_schema}.clear_reshaped_faces()", output_mode=OutputMode.NONE
-        )
-
     def unmark_dirty(self, map_layer: int, faces: list[int]):
         """Remove primitives (and the universal face) from `dirty_face` for a layer."""
         self.db.run_sql(

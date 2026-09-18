@@ -114,10 +114,12 @@ $$ LANGUAGE SQL STABLE;
 face. Unlike dissolve_groups (which builds the whole layer's adjacency up front),
 this touches only edges incident to faces already reached, so its cost is
 proportional to the component, not the layer — the right shape for incremental,
-dirty-face-driven updates where the caller loops one component at a time.
-Settled map faces reached by the walk are absorbed whole (see the loop). Returns
+dirty-face-driven updates where the caller loops one component at a time. Returns
 the component's primitive faces and the existing map_faces they replace.
 Membership is held in indexed temp tables so large components stay efficient. */
+-- Earlier revisions had no `_use_identity_cache` argument; drop that signature so
+-- a two- or three-argument call is unambiguous on a re-provisioned database.
+DROP FUNCTION IF EXISTS {topo_schema}.dissolve_component(integer, integer, integer[]);
 CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(
   _seed integer,
   _map_layer integer,
@@ -146,10 +148,7 @@ BEGIN
     face_id integer PRIMARY KEY,
     identity text
   );
-  CREATE TEMP TABLE IF NOT EXISTS _jump_faces (
-    map_face integer PRIMARY KEY, topogeo_id integer, layer_id integer
-  );
-  TRUNCATE _component, _frontier, _frontier_next, _jump_faces;
+  TRUNCATE _component, _frontier, _frontier_next;
   _face_layer_id := {topo_schema}.__map_face_layer_id();
 
   INSERT INTO _component VALUES (_seed);
@@ -207,54 +206,6 @@ BEGIN
     EXIT WHEN _added = 0;
 
     INSERT INTO _component (face_id) SELECT face_id FROM _frontier_next;
-
-    -- Short-circuit: a newly reached primitive that belongs to a *settled* map
-    -- face of this layer (none of whose primitives is dirty) brings the whole
-    -- face along. Such a face is a connected joinable set — nothing inside it
-    -- has changed since it was persisted — so walking it primitive by primitive
-    -- would only rediscover its membership. Its primitives join the frontier so
-    -- the walk continues from the face's boundary. Staged in small steps, driven
-    -- from the (analyzed) frontier, so the common case — no map face reached —
-    -- costs one indexed probe per frontier primitive.
-    ANALYZE _frontier_next;
-    TRUNCATE _jump_faces;
-    INSERT INTO _jump_faces (map_face, topogeo_id, layer_id)
-    SELECT DISTINCT mf.id, (mf.topo).id, (mf.topo).layer_id
-    FROM _frontier_next fn
-    JOIN {topo_schema}.relation r
-      ON r.element_id = fn.face_id
-     AND r.element_type = 3
-     AND r.layer_id = _face_layer_id
-    JOIN {topo_schema}.map_face mf
-      ON (mf.topo).id = r.topogeo_id
-     AND (mf.topo).layer_id = r.layer_id
-    WHERE mf.map_layer = _map_layer
-      AND mf.source_id IS NULL;
-    GET DIAGNOSTICS _added = ROW_COUNT;
-
-    IF _added > 0 THEN
-      -- A face with any dirty primitive may be mid-change: walk it normally.
-      DELETE FROM _jump_faces jf
-      WHERE EXISTS (
-        SELECT 1
-        FROM {topo_schema}.relation r3
-        JOIN {topo_schema}.dirty_face df
-          ON df.id = r3.element_id AND df.map_layer = _map_layer
-        WHERE r3.topogeo_id = jf.topogeo_id
-          AND r3.layer_id = jf.layer_id
-          AND r3.element_type = 3
-      );
-
-      INSERT INTO _frontier_next (face_id)
-      SELECT r2.element_id
-      FROM _jump_faces jf
-      JOIN {topo_schema}.relation r2
-        ON r2.topogeo_id = jf.topogeo_id
-       AND r2.layer_id = jf.layer_id
-       AND r2.element_type = 3
-      ON CONFLICT DO NOTHING;
-      INSERT INTO _component (face_id) SELECT face_id FROM _frontier_next ON CONFLICT DO NOTHING;
-    END IF;
 
     TRUNCATE _frontier;
     INSERT INTO _frontier (face_id) SELECT face_id FROM _frontier_next;

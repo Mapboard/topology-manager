@@ -217,9 +217,8 @@ class TestInnerMapFlip:
             assert after[maps["big"]].id == big_before.id
 
 
-class TestShortCircuits:
-    """A shed whose remainder stays connected is settled in place without
-    re-marking (and walking) the remainder; a shed that splits still is."""
+class TestNotchAndWall:
+    """Shedding from a big face: a notch leaves one remainder, a wall splits it."""
 
     @fixture(scope="class")
     def maps(self, ctx):
@@ -243,30 +242,30 @@ class TestShortCircuits:
         _check_invariants(insp, maps["layer"])
         return stats
 
-    def test_connected_remainder_is_not_reseeded(self, ctx, maps, face_update_mode):
-        stats = self._flip(ctx, maps, maps["corner"], -1, Point(1, 1), face_update_mode)
-        insp = TopologyInspector(ctx)
-        assert insp.n_faces(map_layer=maps["layer"]) == 2
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert stats.reseeded == 0
-            assert stats.rounds == 1
-
-    def test_notch_keeps_remainder_connected(self, ctx, maps, face_update_mode):
-        """A map that only notches the big map leaves one connected remainder."""
-        stats = self._flip(ctx, maps, maps["bar"], -1, Point(5, 5), face_update_mode)
-        insp = TopologyInspector(ctx)
+    def test_corner_notch(self, ctx, maps, face_update_mode):
         db = ctx.database
+        insp = TopologyInspector(ctx)
+        (big_before,) = map_faces(db, maps["layer"])
+        self._flip(ctx, maps, maps["corner"], -1, Point(1, 1), face_update_mode)
+        assert insp.n_faces(map_layer=maps["layer"]) == 2
+        big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
+        assert len(big_faces) == 1 and big_faces[0].area == 92
+        if face_update_mode == FaceUpdateMode.MOVE:
+            assert big_faces[0].id == big_before.id
+
+    def test_middle_notch(self, ctx, maps, face_update_mode):
+        """A map that only notches the big map leaves one connected remainder."""
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        self._flip(ctx, maps, maps["bar"], -1, Point(5, 5), face_update_mode)
         assert insp.n_faces(map_layer=maps["layer"]) == 3
         big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
         assert len(big_faces) == 1
         assert big_faces[0].area == 100 - 8 - 8
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert stats.reseeded == 0
 
-    def test_split_reseeds(self, ctx, maps, face_update_mode):
+    def test_wall_splits(self, ctx, maps, face_update_mode):
         """A map spanning the full height splits the big map's remainder."""
         db = ctx.database
-        insp = TopologyInspector(ctx)
         wall = add_map(db, "ST_MakeEnvelope(6, -1, 8, 11)", "large", priority=1)
         update(ctx, composite_layers=False)  # wall loses at first
         stats = self._flip(ctx, maps, wall, -1, Point(7, 5), face_update_mode)

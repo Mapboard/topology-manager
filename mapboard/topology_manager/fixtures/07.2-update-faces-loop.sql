@@ -8,9 +8,8 @@ map_face_replace), un-mark the component, repeat. It is the same algorithm as
 the Python loop (`commands/update_faces/loop.py`) with `dirty_face` itself as the
 queue — primitives re-marked by a shed are simply picked up by a later
 iteration — so a chunk costs one network round trip instead of two per
-component. The Python side still registers the run's reshaped primitives
-(`set_reshaped_faces`) before the first chunk and calls this until nothing is
-left, which keeps checkpointing (commit per chunk) and progress reporting.
+component. The Python side calls this until nothing is left, which keeps
+checkpointing (commit per chunk) and progress reporting.
 */
 
 DROP TYPE IF EXISTS {topo_schema}.face_update_stats CASCADE;
