@@ -85,12 +85,20 @@ class FaceUpdateLoop:
 
                     reseeds = self.persister.persist(batch)
                     stats.rounds += 1
-                    fresh = [r for r in reseeds if r.id not in settled[r.map_layer]]
+                    # A batch sheds the same map face from several components, so one
+                    # primitive can be re-seeded many times over; `pending` is also
+                    # already holding everything still queued. Count each primitive
+                    # into the denominator once, or the bar slides backwards and never
+                    # reaches its total.
+                    fresh: list[DirtyFace] = []
+                    for r in reseeds:
+                        if r.id in settled[r.map_layer] or r.id in pending[r.map_layer]:
+                            continue
+                        pending[r.map_layer].add(r.id)
+                        fresh.append(r)
                     if fresh:
                         log.info("%d re-seeded primitives to revisit", len(fresh))
                         queue.extend(fresh)
-                        for r in fresh:
-                            pending[r.map_layer].add(r.id)
                         total += len(fresh)
                     progress.update(bar, completed=done, total=total)
         finally:
