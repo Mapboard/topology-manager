@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from macrostrat.database import Database as BaseDatabase
 import os
 from psycopg.sql import SQL, Identifier, Literal
@@ -12,6 +13,53 @@ from typing import Callable, Optional
 class Database(BaseDatabase):
     def proc(self, name, params=None, **kwargs):
         return super().run_sql(sql(name), params, **kwargs)
+
+
+class FaceUpdateMode(str, Enum):
+    """How the face-update loop persists a dissolved component onto `map_face`.
+
+    - ``replace``: the historical behaviour, unchanged — delete every map face the
+      component overlaps (bulk, plain DELETE; relation rows are reclaimed by the
+      clean step) and create a new topogeometry for the component. A face only
+      partly covered by the component loses its remainder, as it always did.
+    - ``move`` (default): reuse an existing topogeometry. When a face overlaps the
+      component (`map_face_absorb`), its `relation` rows are updated in place to
+      hold exactly the component and its geometry and identity are re-resolved;
+      other overlapping faces lose the component's primitives and have *one*
+      remaining primitive re-marked dirty, so their remainder is rebuilt (and
+      split if disconnected) by the loop. A new topogeometry is created only when
+      no suitable face exists. Untouched faces keep their ids.
+
+    Both resolve geometry from the topology the same way; `move` saves the
+    delete-and-recreate churn on `map_face` and `relation`, `replace` saves the
+    remainder work. `benchmarks/bulk_update.py` compares them.
+    """
+
+    MOVE = "move"
+    REPLACE = "replace"
+
+
+DEFAULT_FACE_UPDATE_MODE = FaceUpdateMode.MOVE
+
+
+class FaceUpdateEngine(str, Enum):
+    """Where the face-update loop runs.
+
+    - ``python`` (default): the loop lives in the client (`FaceUpdateLoop`), one
+      round trip per component, and re-seeded primitives are carried in memory.
+    - ``plpgsql``: whole chunks run server-side (`update_dirty_faces`), one round
+      trip per chunk. `dirty_face` itself is the queue, so a re-seed reaches the
+      next iteration only if it was written there.
+
+    Both commit per checkpoint and must produce the same faces; CI runs the suites
+    under each, crossed with both `FaceUpdateMode`s.
+    """
+
+    PYTHON = "python"
+    PLPGSQL = "plpgsql"
+
+
+DEFAULT_FACE_UPDATE_ENGINE = FaceUpdateEngine.PYTHON
 
 
 @dataclass
@@ -95,6 +143,10 @@ class TopologyContext:
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None
     # Whether to include listen/notify triggers for layer updates
     notify_triggers: bool = True
+    # How dissolved components are persisted onto map_face (see FaceUpdateMode).
+    face_update_mode: FaceUpdateMode = DEFAULT_FACE_UPDATE_MODE
+    # Where the face-update loop runs (see FaceUpdateEngine).
+    face_update_engine: FaceUpdateEngine = DEFAULT_FACE_UPDATE_ENGINE
 
     @property
     def manage_data_tables(self) -> bool:
@@ -129,6 +181,8 @@ def create_context(
     boundary_table: str = None,
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None,
     notify_triggers: bool = True,
+    face_update_mode: Optional[FaceUpdateMode | str] = None,
+    face_update_engine: Optional[FaceUpdateEngine | str] = None,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -152,6 +206,16 @@ def create_context(
 
     strategy = identity_strategy or SEARCH_STRATEGY
     face_identity_column = strategy.identity_column
+
+    if face_update_mode is None:
+        face_update_mode = env.get(
+            "MAPBOARD_FACE_UPDATE_MODE", DEFAULT_FACE_UPDATE_MODE
+        )
+    face_update_mode = FaceUpdateMode(face_update_mode)
+
+    if face_update_engine is None:
+        face_update_engine = env.get("TOPO_ENGINE", DEFAULT_FACE_UPDATE_ENGINE)
+    face_update_engine = FaceUpdateEngine(face_update_engine)
 
     _database = Database(database.engine.url)
     _database.instance_params = {
@@ -185,6 +249,8 @@ def create_context(
         boundary_table=boundary_table,
         create_data_tables=create_data_tables,
         notify_triggers=notify_triggers,
+        face_update_mode=face_update_mode,
+        face_update_engine=face_update_engine,
     )
 
     _side_effects(ctx)

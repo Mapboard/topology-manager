@@ -1,6 +1,7 @@
 from time import perf_counter
+from typing import Optional
 
-from ..config import TopologyContext, get_context
+from ..config import FaceUpdateMode, TopologyContext, get_context
 from ..utilities import console, print_step
 from .clean_topology import clean_topology
 from .update_contacts import update_contacts
@@ -20,8 +21,13 @@ def update(
     composite_layers: bool = False,
     boundaries: bool = True,
     faces: bool = True,
+    face_update_mode: Optional[FaceUpdateMode] = None,
 ):
-    """Update the topology"""
+    """Update the topology
+
+    `face_update_mode` overrides the context's setting for this run (see
+    `FaceUpdateMode`: move primitives between faces, or replace faces).
+    """
     if ctx is None:
         ctx = get_context()
 
@@ -51,6 +57,7 @@ def update(
             reset=reset,
             fill_holes=fill_holes,
             incremental=incremental,
+            face_update_mode=face_update_mode,
         )
         t3 = perf_counter()
         print_step("Update faces", t3 - t_start)

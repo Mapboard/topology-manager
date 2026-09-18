@@ -189,25 +189,37 @@ one relation row per face a feature covers — thousands for a large map — so
 recomputing per row is O(N²) and dominates bulk topology population.
 
 Instead, this trigger only records the touched topogeometry in
-`__edge_relation_dirty` (O(1) per row); `rebuild_dirty_edge_relations()` does
-the scoped recompute once per affected topogeometry. Callers run that function
+`__edge_relation_dirty` (one statement-level insert per statement, boundary
+layers only); `rebuild_dirty_edge_relations()` does the scoped recompute once per
+affected topogeometry. Callers run that function
 after a batch of edits (e.g. at the end of adding a map). The `__edge_relation`
 cache is thus eventually consistent — briefly stale between an edit and the
 rebuild. */
 CREATE OR REPLACE FUNCTION {topo_schema}.update_face_edge_relation()
 RETURNS trigger AS $$
 BEGIN
-  IF TG_OP = 'DELETE' THEN
+  -- Statement-level, with transition tables: one INSERT per statement however
+  -- many rows it touched, instead of one per row. Only *boundary* topogeometries
+  -- have cached edge relations; `map_face` rows (the bulk of relation traffic --
+  -- every createTopoGeom, every primitive moved between faces) are skipped
+  -- outright rather than queued and discarded by the rebuild.
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
     INSERT INTO {topo_schema}.__edge_relation_dirty (topogeo_id, topolayer_id)
-    VALUES (OLD.topogeo_id, OLD.layer_id)
+    SELECT DISTINCT n.topogeo_id, n.layer_id
+    FROM changed_new n
+    WHERE n.element_type = 3
+      AND n.layer_id <> {topo_schema}.__map_face_layer_id()
     ON CONFLICT DO NOTHING;
-    RETURN OLD;
   END IF;
-
-  INSERT INTO {topo_schema}.__edge_relation_dirty (topogeo_id, topolayer_id)
-  VALUES (NEW.topogeo_id, NEW.layer_id)
-  ON CONFLICT DO NOTHING;
-  RETURN NEW;
+  IF TG_OP IN ('DELETE', 'UPDATE') THEN
+    INSERT INTO {topo_schema}.__edge_relation_dirty (topogeo_id, topolayer_id)
+    SELECT DISTINCT o.topogeo_id, o.layer_id
+    FROM changed_old o
+    WHERE o.element_type = 3
+      AND o.layer_id <> {topo_schema}.__map_face_layer_id()
+    ON CONFLICT DO NOTHING;
+  END IF;
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -261,18 +273,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER update_face_edge_relation
-AFTER INSERT OR UPDATE
-ON {topo_schema}.relation
-FOR EACH ROW
-WHEN (NEW.element_type = 3)
+-- Earlier revisions were row-level; a statement-level trigger cannot replace
+-- one in place, so drop them first.
+DROP TRIGGER IF EXISTS update_face_edge_relation ON {topo_schema}.relation;
+DROP TRIGGER IF EXISTS delete_face_edge_relation ON {topo_schema}.relation;
+DROP TRIGGER IF EXISTS insert_face_edge_relation ON {topo_schema}.relation;
+
+CREATE TRIGGER insert_face_edge_relation
+AFTER INSERT ON {topo_schema}.relation
+REFERENCING NEW TABLE AS changed_new
+FOR EACH STATEMENT
 EXECUTE FUNCTION {topo_schema}.update_face_edge_relation();
 
-CREATE OR REPLACE TRIGGER delete_face_edge_relation
-AFTER DELETE
-ON {topo_schema}.relation
-FOR EACH ROW
-WHEN (OLD.element_type = 3)
+CREATE TRIGGER update_face_edge_relation
+AFTER UPDATE ON {topo_schema}.relation
+REFERENCING OLD TABLE AS changed_old NEW TABLE AS changed_new
+FOR EACH STATEMENT
+EXECUTE FUNCTION {topo_schema}.update_face_edge_relation();
+
+CREATE TRIGGER delete_face_edge_relation
+AFTER DELETE ON {topo_schema}.relation
+REFERENCING OLD TABLE AS changed_old
+FOR EACH STATEMENT
 EXECUTE FUNCTION {topo_schema}.update_face_edge_relation();
 
 /** Change the map layer if it is updated for a line */

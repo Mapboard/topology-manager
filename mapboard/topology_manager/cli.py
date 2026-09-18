@@ -1,3 +1,5 @@
+from typing import Optional
+
 from macrostrat.database import Database
 from rich.prompt import Confirm
 from typer import Option, Typer
@@ -6,7 +8,7 @@ from .commands import create_tables, clean_topology, update_contacts, update_fac
 from .commands.edge_relations import rebuild_edge_relations
 from .commands.update_topology import update
 from .watcher import start_watcher
-from .config import get_database, sql, create_context, get_context
+from .config import FaceUpdateMode, get_database, sql, create_context, get_context
 from .utilities import console
 
 
@@ -47,6 +49,11 @@ def _update(
     watch: bool = Option(False, help="Watch for changes"),
     fix_failed: bool = Option(False, help="Fix failed contacts"),
     composite_layers: bool = Option(False, help="Update composite layers"),
+    face_update_mode: Optional[FaceUpdateMode] = Option(
+        None,
+        help="How to persist faces: 'move' primitives between existing faces, "
+        "or 'replace' overlapping faces (defaults to MAPBOARD_FACE_UPDATE_MODE / 'move')",
+    ),
 ):
     """Update the topology"""
 
@@ -54,6 +61,7 @@ def _update(
 
     kwargs = dict(
         composite_layers=composite_layers,
+        face_update_mode=face_update_mode,
     )
 
     update(
@@ -75,18 +83,28 @@ def _update_contacts(fix_failed: bool = False):
     update_contacts(ctx, fix_failed)
 
 
-def _update_faces(**kwargs):
+@app.command(name="update-faces")
+def _update_faces(
+    reset: bool = Option(False, help="Rebuild from scratch"),
+    incremental: bool = Option(
+        True, help="Persist faces in batches as they are computed"
+    ),
+    persist_interval: int = Option(100, help="Batch size for incremental persistence"),
+    face_update_mode: Optional[FaceUpdateMode] = Option(
+        None,
+        help="How to persist faces: 'move' primitives between existing faces, "
+        "or 'replace' overlapping faces (defaults to MAPBOARD_FACE_UPDATE_MODE / 'move')",
+    ),
+):
     """Update faces"""
     ctx = get_context()
-    update_faces(ctx, **kwargs)
-
-
-# The "Database" annotation cannot be used with Typer so we create a new set of annotations
-_update_faces.__annotations__ = {
-    k: v for k, v in update_faces.__annotations__.items() if k != "ctx"
-}
-
-app.add_command(_update_faces, name="update-faces", help="Update faces")
+    update_faces(
+        ctx,
+        reset=reset,
+        incremental=incremental,
+        persist_interval=persist_interval,
+        face_update_mode=face_update_mode,
+    )
 
 
 @app.command(name="clean-topology")

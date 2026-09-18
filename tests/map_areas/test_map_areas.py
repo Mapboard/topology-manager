@@ -1,75 +1,14 @@
-from pathlib import Path
-
-from geoalchemy2.shape import from_shape
-from macrostrat.database import Database
-from psycopg.sql import SQL, Identifier
-from pytest import fixture
 from shapely.geometry import Point
 
 from mapboard.topology_manager.commands import (
-    create_tables,
     rebuild_edge_relations,
     validate_edge_relations,
 )
 from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
-from mapboard.topology_manager import (
-    create_context,
-    TopologyContext,
-    IdentityStrategy,
-    TopologyInspector,
-)
+from mapboard.topology_manager import TopologyInspector
 
-FIXTURES = Path(__file__).parent / "fixtures"
-
-
-def create_data_tables(ctx: TopologyContext):
-    # The host owns only the feature tables; identity is installed by the strategy.
-    ctx.database.run_sql(FIXTURES / "01-create-tables.sql")
-
-
-def _install_direct_strategy(ctx: TopologyContext):
-    ctx.database.run_sql(FIXTURES / "03-identity-management.sql")
-
-
-# A host-supplied identity strategy: each face carries its own identity (the
-# covering map_area, disambiguated by priority). The host just constructs it and
-# passes it to create_context — no global registration needed.
-DIRECT_STRATEGY = IdentityStrategy(
-    identity_column="map_id",
-    install=_install_direct_strategy,
-)
-
-
-def geom(_shape, srid=4326):
-    return str(from_shape(_shape, srid, extended=True))
-
-
-@fixture(scope="class")
-def ctx(empty_db):
-    ctx = create_context(
-        empty_db,
-        data_schema="map_bounds",
-        topo_schema="map_bounds_topology",
-        srid=4326,
-        tolerance=0.0001,
-        identity_strategy=DIRECT_STRATEGY,
-        boundary_table="map_area",
-        create_data_tables=create_data_tables,
-        notify_triggers=False,
-    )
-    create_tables(ctx)
-    yield ctx
-
-
-def row_count(db, table, schema=None):
-    if schema is None:
-        if "." in table:
-            schema, table = table.split(".")
-    tbl = Identifier(table)
-    if schema is not None:
-        tbl = Identifier(schema, table)
-    return db.run_query("SELECT count(*) FROM {table}", dict(table=tbl)).scalar()
+from .support import add_map, geom, row_count
 
 
 class TestMapTopology:
@@ -186,33 +125,3 @@ class TestMapTopology:
         assert insp.n_faces(map_layer="Carto medium") == 1
         assert insp.n_faces(map_layer="Carto small") == 0
         assert insp.n_faces() == 4 + 4 + 1
-
-
-def add_map(
-    db: Database, geometry: str, layer: str, *, srid: int = 4326, priority=0
-) -> int:
-    """Add a face that overlaps the other two"""
-    map_id = db.run_query(
-        """
-        WITH geom AS (
-            SELECT ST_SetSRID({geometry}, :srid) AS geometry
-        )
-        INSERT INTO map_bounds.map_area (geometry, area_km, map_layer)
-        SELECT geometry, ST_Area(geometry::geography) / 1e6, map_bounds.layer_id(:layer)
-        FROM geom
-        RETURNING id
-        """,
-        dict(geometry=SQL(geometry), layer=layer, srid=srid),
-    ).scalar()
-
-    db.run_query(
-        """
-        INSERT INTO map_bounds.map_priority (
-            map_layer,
-            map_id,
-            priority
-        )
-        VALUES (map_bounds.layer_id(:layer), :map_id, :priority)
-        """,
-        dict(layer=layer, map_id=map_id, priority=priority),
-    )
