@@ -4,7 +4,8 @@ The contract is `docs/design/piecewise-noding.md`: the host cuts a row's geometr
 into pieces and nodes each with `update_boundary_piece`; the library accumulates
 them into the row's topogeometry under a stable id, records nothing per piece,
 and marks the faces each piece touches dirty so the face update resumes from
-`dirty_face` however the run was interrupted.
+`dirty_face` however the run was interrupted. Realized geometry is held to the
+topology's precision, not bitwise.
 """
 
 from pytest import fixture
@@ -261,12 +262,12 @@ class TestGeometryChangeClears:
         _check_invariants(ctx, "Large")
 
 
-class TestTJunctionMarksNeighbour:
-    """A piece whose edge ends on a neighbour's diagonal edge inserts a vertex
-    into that edge (the meeting point is not exactly representable), so the
-    faces on both sides of it change shape without any relation row of theirs
-    changing. Both must be marked dirty, and the update must leave every face
-    matching its topogeometry."""
+class TestTJunction:
+    """A piece whose edges cross a neighbour's diagonal edge splits that edge at
+    points that are not exactly representable, so PostGIS inserts vertices into
+    it. Realized geometry is kept to the topology's precision, so what must hold
+    is that every face matches its topogeometry to that precision afterwards,
+    and that the faces the piece touches were marked."""
 
     @fixture(scope="class")
     def rows(self, ctx):
@@ -288,7 +289,7 @@ class TestTJunctionMarksNeighbour:
         assert insp.n_edges() == 3
         assert dirty_set(ctx.database) == set()
 
-    def test_piece_bends_the_shared_edge(self, ctx, rows):
+    def test_piece_splits_the_shared_edge(self, ctx, rows):
         db = ctx.database
         lower_face = list(boundary_primitives(db, rows["lower"]))
         upper_face = list(boundary_primitives(db, rows["upper"]))
@@ -308,6 +309,7 @@ class TestTJunctionMarksNeighbour:
             """).scalar()
         assert diagonal == 3
 
+        # Both triangles' remainders border the piece and are marked
         large = db.run_query("SELECT map_bounds.layer_id('large')").scalar()
         dirty = dirty_set(db)
         assert (lower_face[0], large) in dirty

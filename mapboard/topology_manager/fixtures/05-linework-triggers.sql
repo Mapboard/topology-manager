@@ -26,38 +26,58 @@ SELECT precision::numeric
   WHERE name={topo_name_literal};
 $$ LANGUAGE SQL IMMUTABLE;
 
-/** Adjacent faces (lines) or overlapping faces (polygons) for a given topogeometry */
-CREATE OR REPLACE FUNCTION {topo_schema}.relevant_faces(topo topogeometry) RETURNS integer[] AS $$
-WITH topo_primitives AS (
-  SELECT topology.GetTopoGeomElements(topo) primitives
-),
-edge_faces AS (
-  SELECT
-    left_face,
-    right_face
-  FROM topo_primitives tp
-  JOIN {topo_schema}.edge_data e1
-    ON (
-      (e1.edge_id = tp.primitives[1] AND tp.primitives[2] = 2)
-      OR
-      (left_face = tp.primitives[1] AND tp.primitives[2] = 3)
-      OR
-      (right_face = tp.primitives[1] AND tp.primitives[2] = 3)
-    )
+/** The faces on either side of the given edges, and of every edge bounding the
+given faces: what a change to those primitives can affect. Lineal boundaries
+pass their edges (the faces they separate); areal boundaries pass their faces
+(themselves, and their neighbours across their bounding edges). */
+CREATE OR REPLACE FUNCTION {topo_schema}.__adjacent_faces(
+  _edges integer[],
+  _faces integer[]
+) RETURNS integer[] AS $$
+WITH edge_faces AS (
+  SELECT e.left_face, e.right_face
+  FROM {topo_schema}.edge_data e
+  WHERE e.edge_id = ANY(_edges)
+     OR e.left_face = ANY(_faces)
+     OR e.right_face = ANY(_faces)
 ),
 faces AS (
   SELECT left_face f FROM edge_faces
   UNION
   SELECT right_face f FROM edge_faces
-),
-unique_faces AS (
-  SELECT DISTINCT f FROM faces
 )
-SELECT array_agg(f)
-FROM unique_faces;
-$$
-LANGUAGE SQL IMMUTABLE;
+SELECT array_agg(f) FROM faces;
+$$ LANGUAGE SQL STABLE;
 
+/** Adjacent faces (lines) or overlapping faces (polygons) for a given topogeometry */
+CREATE OR REPLACE FUNCTION {topo_schema}.relevant_faces(topo topogeometry) RETURNS integer[] AS $$
+WITH topo_primitives AS (
+  SELECT topology.GetTopoGeomElements(topo) primitives
+)
+SELECT {topo_schema}.__adjacent_faces(
+  (SELECT array_agg(abs(primitives[1])) FROM topo_primitives WHERE primitives[2] = 2),
+  (SELECT array_agg(primitives[1]) FROM topo_primitives WHERE primitives[2] = 3)
+);
+$$
+LANGUAGE SQL STABLE;
+
+/** Queue faces for the face update, in every layer a change in `_map_layer`
+invalidates. */
+CREATE OR REPLACE FUNCTION {topo_schema}.mark_faces(
+  _faces integer[],
+  _map_layer integer
+) RETURNS void AS $$
+  WITH ml AS (
+    SELECT {topo_schema}.dirty_layers_for(_map_layer) id
+  )
+  INSERT INTO {topo_schema}.dirty_face (id, map_layer)
+  SELECT
+    unnest(_faces),
+    ml.id
+  FROM ml
+  WHERE ml.id IS NOT NULL
+  ON CONFLICT DO NOTHING;
+$$ LANGUAGE SQL;
 
 /*
 When `map_topology.contact` table is updated, changes should propagate
@@ -76,16 +96,7 @@ BEGIN
   SELECT {topo_schema}.relevant_faces(line.topo)
   INTO __faces;
 
-  WITH ml AS (
-    SELECT {topo_schema}.dirty_layers_for(line.map_layer) id
-  )
-  INSERT INTO {topo_schema}.dirty_face (id, map_layer)
-  SELECT
-    unnest(__faces),
-    ml.id
-  FROM ml
-  WHERE ml.id IS NOT NULL
-  ON CONFLICT DO NOTHING;
+  PERFORM {topo_schema}.mark_faces(__faces, line.map_layer);
 
   RAISE NOTICE 'Marking faces %', __faces;
 END;
@@ -184,7 +195,7 @@ $$ LANGUAGE plpgsql;
 
 /** Noding a boundary row's geometry into its topogeometry.
 
-Two entry points, both returning the error text of a failed `toTopoGeom` (NULL on
+Two entry points, both returning the error text of a failed noding (NULL on
 success) and both taking the snapping tolerance as an argument, defaulting to the
 topology's precision. The library never chooses a tolerance, never retries and
 never alters a geometry before noding; simplification, subdivision and retry
@@ -196,84 +207,33 @@ policy are the caller's.
   An existing topogeometry is emptied first (keeping its id), so the result
   always holds exactly this geometry's primitives.
 - `update_boundary_topo(line, piece, tolerance)` nodes one *piece* of the row's
-  geometry: the create form of `toTopoGeom` when the row has no topogeometry
-  yet, the accumulate form otherwise, so the row's `topo` references the union of
-  what it did before and the piece's primitives under the same id. On failure
-  the row is untouched and nothing is recorded -- a piece is not a row. The
-  caller sets `geometry_hash` when it considers the row complete; the library
-  does not know about pieces once the call returns.
+  geometry: the first piece creates the row's topogeometry, later pieces
+  accumulate into it under the same id, so the row's `topo` references the union
+  of what it did before and the piece's primitives. On failure the row is
+  untouched and nothing is recorded -- a piece is not a row. The caller sets
+  `geometry_hash` when it considers the row complete; the library does not know
+  about pieces once the call returns.
 
-Marking faces dirty. Each call is an UPDATE of the row's `topo`, so the
-`boundary_changed` trigger fires, but for an accumulating call the topogeometry
-id does not change and the trigger cannot tell which primitives are new (in a
-BEFORE trigger OLD and NEW resolve to the same relation rows). So the noding
-call marks faces itself, from two sources that together cover every face whose
-identity or geometry a piece can change:
+The noding itself is what PostGIS's `toTopoGeom` does -- `TopoGeo_AddPolygon` /
+`TopoGeo_AddLinestring` per component, one `relation` row per primitive returned
+-- done here so that the primitives a call added are known to it: the faces they
+touch (`__adjacent_faces`, as the boundary trigger uses for a whole
+topogeometry) are marked dirty in the same call. A noding call is an UPDATE of
+the row's `topo` and fires `boundary_changed` too, but an accumulating call
+keeps the topogeometry id, which that trigger takes as "nothing changed".
 
-- the primitives the piece references, via the statement-level trigger on
-  `relation` inserts (`mark_boundary_relation_faces`) -- this is what catches a
-  piece that adds no edges at all, e.g. a map whose bounds coincide with one
-  already noded;
-- the faces on either side of every edge the noding created or *modified*, from
-  a snapshot of the edges near the piece taken before the call
-  (`mark_noded_faces`). Noding inserts a vertex into an existing edge when a
-  new line ends on it at a point that is not exactly representable, which
-  changes the shape of the faces on both sides of that edge without touching a
-  relation row, and the face across a T-junction is not adjacent to any new
-  edge.
+Realized geometry (`map_face.geometry`) is kept to the topology's precision, not
+bitwise: noding may insert a vertex into an existing edge a float-noise distance
+off its line where a new line ends on it, and the face across such a T-junction
+is not re-marked for that.
 */
 
 -- Earlier revisions had a one-argument form; with a defaulted tolerance the
 -- two would be ambiguous.
 DROP FUNCTION IF EXISTS {topo_schema}.update_boundary_topo({boundary_table});
 
-/** Mark dirty the faces on either side of every edge within reach of `_geom`
-that is not in `_before` (created by the noding) or whose geometry differs from
-its snapshot (modified by it: split, or bent by a vertex the noding inserted).
-Faces are marked for the dirty layers of `_map_layer`, as
-`mark_surrounding_faces` does. The universal face is never marked: it has no
-identity or geometry to refresh, and a face that merges into it is handled where
-its barrier is removed. Returns the number of dirty_face rows added. */
-CREATE OR REPLACE FUNCTION {topo_schema}.mark_noded_faces(
-  _geom geometry,
-  _tolerance numeric,
-  _before {topo_schema}.edge_data[],
-  _map_layer integer
-)
-RETURNS integer AS $$
-DECLARE
-  _n integer;
-BEGIN
-  WITH changed AS (
-    SELECT e.edge_id, e.left_face, e.right_face
-    FROM {topo_schema}.edge_data e
-    LEFT JOIN unnest(_before) b
-      ON b.edge_id = e.edge_id
-    -- Snapping moves a vertex by at most the tolerance, so an edge the noding
-    -- touched lies within twice of it from the input geometry.
-    WHERE ST_DWithin(e.geom, _geom, 2 * _tolerance)
-      AND (b.edge_id IS NULL OR NOT (b.geom = e.geom))
-  ), faces AS (
-    SELECT left_face AS face_id FROM changed
-    UNION
-    SELECT right_face FROM changed
-  ), inserted AS (
-    INSERT INTO {topo_schema}.dirty_face (id, map_layer)
-    SELECT f.face_id, dl.id
-    FROM faces f
-    CROSS JOIN {topo_schema}.dirty_layers_for(_map_layer) dl(id)
-    WHERE f.face_id <> 0
-      AND dl.id IS NOT NULL
-    ON CONFLICT DO NOTHING
-    RETURNING 1
-  )
-  SELECT count(*) INTO _n FROM inserted;
-  RETURN _n;
-END;
-$$ LANGUAGE plpgsql;
-
-/** Node `geom` into the topogeometry of the row `line`, marking the faces it
-changes dirty. `replace_existing` empties an existing topogeometry first;
+/** Node `_geom` into the topogeometry of the row `line`, marking the faces it
+touches dirty. `replace_existing` empties an existing topogeometry first;
 `complete` also records `geometry_hash` and clears `topology_error`. Raises on
 a noding failure; the callers below turn that into a returned error text. */
 CREATE OR REPLACE FUNCTION {topo_schema}.__node_boundary(
@@ -285,25 +245,67 @@ CREATE OR REPLACE FUNCTION {topo_schema}.__node_boundary(
 )
 RETURNS void AS $$
 DECLARE
-  _tol numeric := coalesce(tolerance, {topo_schema}.__topo_precision());
+  _tol float8 := coalesce(tolerance, {topo_schema}.__topo_precision());
   _layer integer := {topo_schema}.boundary_layer_id();
-  _before {topo_schema}.edge_data[];
+  _layer_type integer;
+  _dims integer := ST_Dimension(_geom);
+  _tg topology.topogeometry;
+  _component geometry;
+  _primitive integer;
+  _edges integer[] := ARRAY[]::integer[];
+  _faces integer[] := ARRAY[]::integer[];
 BEGIN
-  SELECT coalesce(array_agg(e), ARRAY[]::{topo_schema}.edge_data[])
-  INTO _before
-  FROM {topo_schema}.edge_data e
-  WHERE ST_DWithin(e.geom, _geom, 2 * _tol);
+  SELECT feature_type INTO _layer_type
+  FROM topology.layer
+  WHERE layer_id = _layer
+    AND topology_id = (SELECT id FROM topology.topology WHERE name = {topo_name_literal});
+
+  -- 1: puntal, 2: lineal, 3: areal, 4: collection
+  IF _layer_type <> 4 AND _dims + 1 <> _layer_type THEN
+    RAISE EXCEPTION 'The boundary layer is % and cannot hold a % piece',
+      CASE _layer_type WHEN 1 THEN 'puntal' WHEN 2 THEN 'lineal' ELSE 'areal' END,
+      CASE _dims WHEN 0 THEN 'puntal' WHEN 1 THEN 'lineal' ELSE 'areal' END;
+  END IF;
+
+  -- Not `SELECT topo INTO _tg`: with a composite target PL/pgSQL assigns the
+  -- selected columns to the composite's fields, one by one.
+  _tg := (SELECT topo FROM {boundary_table} WHERE id = line.id);
+  IF _tg IS NOT NULL AND replace_existing THEN
+    _tg := topology.clearTopoGeom(_tg);
+  END IF;
+  IF _tg IS NULL THEN
+    _tg := topology.CreateTopoGeom({topo_name_literal}, _layer_type, _layer);
+  END IF;
+
+  FOR _component IN
+    SELECT geom FROM ST_Dump(_geom) WHERE NOT ST_IsEmpty(geom)
+  LOOP
+    FOR _primitive IN
+      SELECT p FROM (
+        SELECT topology.TopoGeo_AddPoint({topo_name_literal}, _component, _tol)
+          WHERE _dims = 0
+        UNION ALL
+        SELECT topology.TopoGeo_AddLinestring({topo_name_literal}, _component, _tol)
+          WHERE _dims = 1
+        UNION ALL
+        SELECT topology.TopoGeo_AddPolygon({topo_name_literal}, _component, _tol)
+          WHERE _dims = 2
+      ) AS f(p)
+    LOOP
+      INSERT INTO {topo_schema}.relation (topogeo_id, layer_id, element_type, element_id)
+      VALUES ((_tg).id, _layer, _dims + 1, _primitive)
+      ON CONFLICT DO NOTHING;
+      IF _dims = 1 THEN
+        _edges := _edges || abs(_primitive);
+      ELSIF _dims = 2 THEN
+        _faces := _faces || _primitive;
+      END IF;
+    END LOOP;
+  END LOOP;
 
   UPDATE {boundary_table} l
   SET
-    topo = CASE
-      WHEN l.topo IS NULL THEN
-        topology.toTopoGeom(_geom, {topo_name_literal}, _layer, _tol)
-      WHEN replace_existing THEN
-        topology.toTopoGeom(_geom, topology.clearTopoGeom(l.topo), _tol)
-      ELSE
-        topology.toTopoGeom(_geom, l.topo, _tol)
-    END,
+    topo = _tg,
     geometry_hash = CASE
       WHEN complete THEN {topo_schema}.hash_geometry(l.geometry)
       ELSE l.geometry_hash
@@ -314,7 +316,10 @@ BEGIN
     END
   WHERE l.id = line.id;
 
-  PERFORM {topo_schema}.mark_noded_faces(_geom, _tol, _before, line.map_layer);
+  PERFORM {topo_schema}.mark_faces(
+    {topo_schema}.__adjacent_faces(_edges, _faces),
+    line.map_layer
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -364,61 +369,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/** Mark dirty the primitives a boundary topogeometry gains.
-
-The boundary trigger marks faces when a row's topogeometry *id* changes; an
-accumulating call keeps the id, so the new primitives are found here, on the
-relation rows themselves. Only rows still being noded (`geometry_hash IS NULL`)
-are considered: a relation row inserted into a *complete* row is a side effect
-of noding some other row -- an edge or face of it split by the new geometry --
-and the faces involved are adjacent to that geometry and marked by its own
-call. Faces are marked for the row's dirty layers, as `mark_surrounding_faces`
-does. `map_face` rows never match: they are in another layer. */
-CREATE OR REPLACE FUNCTION {topo_schema}.mark_boundary_relation_faces()
-RETURNS trigger AS $$
-BEGIN
-  WITH owners AS (
-    SELECT DISTINCT n.element_type, n.element_id, l.map_layer
-    FROM changed_new n
-    JOIN {boundary_table} l
-      ON (l.topo).id = n.topogeo_id
-     AND (l.topo).layer_id = n.layer_id
-    WHERE n.layer_id = {topo_schema}.boundary_layer_id()
-      AND l.geometry_hash IS NULL
-  ), faces AS (
-    SELECT o.map_layer, o.element_id AS face_id
-    FROM owners o
-    WHERE o.element_type = 3
-    UNION
-    SELECT o.map_layer, e.left_face
-    FROM owners o
-    JOIN {topo_schema}.edge_data e ON e.edge_id = abs(o.element_id)
-    WHERE o.element_type = 2
-    UNION
-    SELECT o.map_layer, e.right_face
-    FROM owners o
-    JOIN {topo_schema}.edge_data e ON e.edge_id = abs(o.element_id)
-    WHERE o.element_type = 2
-  )
-  INSERT INTO {topo_schema}.dirty_face (id, map_layer)
-  SELECT DISTINCT f.face_id, dl.id
-  FROM faces f
-  CROSS JOIN LATERAL {topo_schema}.dirty_layers_for(f.map_layer) dl(id)
-  WHERE f.face_id <> 0
-  ON CONFLICT DO NOTHING;
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS mark_boundary_relation_faces ON {topo_schema}.relation;
-CREATE TRIGGER mark_boundary_relation_faces
-AFTER INSERT ON {topo_schema}.relation
-REFERENCING NEW TABLE AS changed_new
-FOR EACH STATEMENT
-EXECUTE FUNCTION {topo_schema}.mark_boundary_relation_faces();
-
-/* The joins above and in the edge-relation triggers look a boundary row up by
-   its topogeometry id; a composite field access needs an expression index. */
+/* The edge-relation triggers look a boundary row up by its topogeometry id on
+   every relation row they see; a composite field access needs an expression
+   index. */
 CREATE INDEX IF NOT EXISTS {index_prefix}boundary_topogeom_id_idx
   ON {boundary_table} (((topo).id));
 

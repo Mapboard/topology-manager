@@ -66,7 +66,7 @@ out of `update_contacts` with a row filter.
   queue the face update drains; an interrupted run — between pieces, or between a
   piece and the face update — resumes from it, and realized geometry
   (`map_face.geometry`) is refreshed from that queue, never by re-realizing and
-  comparing.
+  comparing. It is held to the topology's precision, not bitwise.
 - **Status is per row**: `topo IS NULL` / present, `geometry_hash` current or not,
   `topology_error`. The library does not know about pieces once a call returns.
 - **Row selection is parameterized.** `update_contacts(ctx, tolerance=…,
@@ -79,33 +79,30 @@ out of `update_contacts` with a row filter.
 
 ## How faces get marked
 
-A noding call is an `UPDATE` of the row's `topo`, so the `boundary_changed` trigger
-fires — but an accumulating call keeps the topogeometry id, and in a BEFORE trigger
-OLD and NEW resolve to the same relation rows, so the trigger cannot tell which
-primitives are new. Two mechanisms in `fixtures/05-linework-triggers.sql` cover
-what a piece can change, both marking for the row's dirty layers
-(`dirty_layers_for(map_layer)`, as `mark_surrounding_faces` does):
+The noding is what PostGIS's `toTopoGeom` does — `TopoGeo_AddPolygon` or
+`TopoGeo_AddLinestring` per component, one `relation` row per primitive returned —
+but done by the library (`__node_boundary`), so that the primitives a call added
+are simply its return values. The call then marks the faces those primitives touch
+(`__adjacent_faces`: for edges, the faces either side; for faces, themselves and
+their neighbours across their bounding edges) for the row's dirty layers. That is
+the same rule `boundary_changed` applies to a whole topogeometry through
+`relevant_faces`; the trigger still fires on the noding `UPDATE`, but an
+accumulating call keeps the topogeometry id, which the trigger takes as "nothing
+changed", so the call marks for itself.
 
-- **Primitives the piece references** — a statement-level trigger on `relation`
-  inserts (`mark_boundary_relation_faces`) marks the faces of new relation rows
-  whose owner is still being noded (`geometry_hash IS NULL`). This catches a piece
-  that adds no edges at all, such as a map whose bounds coincide with one already
-  noded. Rows inserted into *complete* rows — an edge or face of theirs split by
-  the new geometry — are skipped: PostGIS extends those topogeometries itself, and
-  the faces involved border the new geometry and are marked by its own call.
-- **Faces on either side of every edge the noding created or modified** — from a
-  snapshot of the edges near the piece taken before the call (`mark_noded_faces`).
-  When a new line ends on an existing edge at a point that is not exactly
-  representable, PostGIS inserts a vertex into that edge, changing the shape of the
-  faces on both sides without touching a relation row; the face across a
-  T-junction borders no new edge, and this is the only way it gets marked.
+**Precision, not bitwise.** Where a new line ends on an existing edge at a point
+that is not exactly representable, PostGIS inserts a vertex into that edge a
+float-noise distance off its line, changing the shape of the faces either side by
+that much. The face across such a T-junction borders no new primitive and is not
+re-marked. Realized geometry (`map_face.geometry`) is therefore held to the
+topology's precision; `faces_match_topology` compares to that precision.
 
-The universal face is never marked by either. `update_line_edge_relation` no longer
-recomputes a feature's whole `__edge_relation` entry on an update that keeps its
-topogeometry: the relation-row triggers already follow the primitives a piece adds
-(row by row for edges, through `__edge_relation_dirty` for faces), so a piece costs
-what the piece touches, not what the row holds. The face-based cache is refreshed by
-`update_faces` (or `rebuild_dirty_edge_relations`), not per piece.
+`update_line_edge_relation` no longer recomputes a feature's whole `__edge_relation`
+entry on an update that keeps its topogeometry: the relation-row triggers already
+follow the primitives a piece adds (row by row for edges, through
+`__edge_relation_dirty` for faces), so a piece costs what the piece touches, not
+what the row holds. The face-based cache is refreshed by `update_faces` (or
+`rebuild_dirty_edge_relations`), not per piece.
 
 ## Tests
 
@@ -114,6 +111,6 @@ modes) and `tests/core/test_13_piecewise_noding.py` (lineal boundaries) cover: a
 noded from pieces equals the row noded whole (same primitives, same relation rows);
 a failing piece leaves the row and the other pieces intact; whole-row failure is
 recorded, selectable and retried; a geometry change empties the topogeometry before
-re-noding, keeping its id; a T-junction marks the face across the split edge; an
-update interrupted between pieces resumes from `dirty_face`; the tolerance argument
-is honoured.
+re-noding, keeping its id; a piece crossing or ending on a neighbour's edge leaves
+every face consistent to precision; an update interrupted between pieces resumes
+from `dirty_face`; the tolerance argument is honoured.

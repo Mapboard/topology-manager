@@ -2,8 +2,7 @@
 
 The shared noding SQL must hold for edge-based topogeometries too: a line noded
 from several pieces has the edges of the line noded whole, and a piece that
-ends on another line's edge marks the face across that edge dirty even though
-no new edge borders it.
+ends on another line's edge leaves every face consistent with its topogeometry.
 """
 
 from pytest import fixture
@@ -105,10 +104,12 @@ class TestLineFromPieces:
         assert faces_mismatching_topology(db) == []
 
 
-class TestTJunctionMarksNeighbour:
+class TestTJunction:
     """A line piece ending on a diagonal edge splits that edge at a point that
-    is not exactly on it; PostGIS bends the edge to meet it. The face on the far
-    side of the diagonal borders no new edge, yet its shape changed."""
+    is not exactly on it; PostGIS bends the edge to meet it by a float-noise
+    distance. Realized geometry is held to the topology's precision, so the
+    face across the diagonal need not be re-marked; the faces the piece runs
+    through must be, and every face must match its topogeometry afterwards."""
 
     def test_setup(self, mgr, db, layer):
         insert_line(db, square(6, center=(3, 3)), type="bedrock", map_layer=layer)
@@ -117,7 +118,7 @@ class TestTJunctionMarksNeighbour:
         assert n_faces(db, map_layer=layer) == 2
         assert _dirty(db) == set()
 
-    def test_piece_marks_the_face_across(self, mgr, db, layer):
+    def test_piece_marks_the_faces_it_touches(self, mgr, db, layer):
         lower = _face_at(db, 1, 1)
         upper = _face_at(db, 5, 5)
         assert lower != upper
@@ -136,9 +137,7 @@ class TestTJunctionMarksNeighbour:
         # the new edge, plus the diagonal split in two
         assert n_edges_after == n_edges_before + 2
 
-        dirty = _dirty(db)
-        assert (lower, layer) in dirty
-        assert (upper, layer) in dirty
+        assert (lower, layer) in _dirty(db)
 
     def test_update_leaves_faces_consistent(self, mgr, db, layer):
         update()

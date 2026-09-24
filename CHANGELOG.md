@@ -8,18 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Piecewise noding (`docs/design/piecewise-noding.md`). `update_boundary_topo` gains a
   form that nodes one *piece* of a boundary row's geometry into the row's existing
-  topogeometry (`toTopoGeom`'s accumulate form; the first piece creates it), returning
-  the error text on failure and recording nothing on the row; from Python,
-  `update_boundary_piece` / `TopologyManager.update_boundary_piece`. Every noding
-  entry point takes the snapping tolerance as an argument, defaulting to the
-  topology's precision. The whole-row form empties an existing topogeometry before
-  re-noding, keeping its id, so a row's topogeometry never mixes two geometries;
-  the `boundary_changed` trigger does the same when a row's geometry changes, and
-  resets `topology_error`. Faces a piece touches are marked dirty by a
-  statement-level trigger on `relation` inserts and by an edge snapshot around the
-  noded geometry, which also catches the face across a T-junction whose shared edge
-  PostGIS re-shaped; `update_line_edge_relation` no longer recomputes a feature's
-  whole edge-relation entry on an update that keeps its topogeometry.
+  topogeometry (the first piece creates it), returning the error text on failure and
+  recording nothing on the row; from Python, `update_boundary_piece` /
+  `TopologyManager.update_boundary_piece`. Every noding entry point takes the
+  snapping tolerance as an argument, defaulting to the topology's precision. The
+  noding calls `TopoGeo_AddPolygon` / `TopoGeo_AddLinestring` itself, as `toTopoGeom`
+  does, so the primitives a call added are known to it and their faces are marked
+  dirty in the same call (an accumulating update keeps the topogeometry id, which
+  the boundary trigger takes as no change). The whole-row form empties an existing
+  topogeometry before re-noding, keeping its id, so a row's topogeometry never mixes
+  two geometries; the `boundary_changed` trigger does the same when a row's geometry
+  changes, and resets `topology_error`. Realized face geometry is held to the
+  topology's precision, not bitwise (`faces_match_topology` compares to precision).
+  `update_line_edge_relation` no longer recomputes a feature's whole edge-relation
+  entry on an update that keeps its topogeometry.
 - `update_contacts` takes `tolerance`, a `row_filter` (a SQL condition over the
   boundary table aliased `l`, with `filter_params`) and `include_failed`; rows with a
   `topology_error` are a selectable set (`failed_boundaries`) and each selected row is
