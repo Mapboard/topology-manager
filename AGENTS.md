@@ -127,6 +127,10 @@ variable.
   (`orphaned_relations`), cached `geometry` equals the resolved topogeometry
   (`faces_match_topology`), and `dirty_face` is empty afterwards. In `move` mode,
   faces that were not affected also keep their ids.
+- `tests/map_areas/test_piecewise_noding.py` and `tests/core/test_13_piecewise_noding.py`
+  cover piecewise noding (`docs/design/piecewise-noding.md`); the map-area file induces
+  noding failures with a raising trigger on `relation` (`install_noding_fault`), since
+  PostGIS accepts degenerate geometries silently.
 - `tests/core/test_04_merge_map_faces.py` and
   `tests/core/test_05_map_faces.py::test_erase_and_consolidate_faces` are the most
   sensitive to merge/split regressions in linework mode; the composite-layer tests
@@ -166,13 +170,20 @@ holes: that is the historical behaviour it preserves.
 - `map_topology` (configurable) — PostGIS topology primitives + solved `map_face` output
 
 **Update pipeline** (`commands/update.py`):
-1. `_update_contacts` — calls `toTopoGeom` per changed line; returns count of lines updated
+1. `update_contacts` — nodes every pending boundary row whole (`update_boundary_topo(row,
+   tolerance)`, one `toTopoGeom` per row, adaptive batches); returns the count of rows
+   attempted. Selection is parameterized (`row_filter`, `include_failed`, `fix_failed`) and
+   the snapping tolerance is an argument. A host with rows too large to node whole nodes them
+   piece by piece instead with `update_boundary_piece` (the piece form of
+   `update_boundary_topo`, accumulating into one topogeometry) and sets `geometry_hash` when
+   the row is complete; see `docs/design/piecewise-noding.md`, including how a piece marks
+   faces dirty (the boundary trigger cannot see an accumulating update's new primitives).
 2. `_clean_topology` (pre-faces) — only runs when contacts changed; removes empty topogeometries, calls `RemoveUnusedPrimitives`, heals degree-2 nodes
 3. `update_faces` (package `commands/update_faces/`) — resolves dirty faces into `map_face` polygons. It first drains the deferred edge-relation cache (`rebuild_dirty_edge_relations`, needed for face-based boundaries), then runs a queue-driven loop (`loop.py`): pop a dirty seed, compute its component server-side (`dissolve.py` → `dissolve_component`, the joinable face graph walked from the seed), and persist batches of components through a `FacePersister` (`persist.py`) built on the primitive CRUD in `store.py` (`MapFaceStore` → the `map_face_*` SQL functions in `fixtures/07.1-map-face-elements.sql`). Persisting a component may *re-seed* primitives — the remainder of any existing face that lost primitives — which go back on the queue; that is what splits a face whose remainder is disconnected and rebuilds a face that would otherwise be left without one. Components containing the universal face (0) only *release* primitives. `--incremental`/`persist_interval` set the batch size (every statement commits anyway; each component is persisted atomically by a single PL/pgSQL call). With `--engine plpgsql` (`TOPO_ENGINE`) the same loop runs server-side in chunks (`update_dirty_faces`, `fixtures/07.2-update-faces-loop.sql`, driven by `ServerSideFaceUpdateLoop`): one round trip per chunk instead of two per component, which matters when the database is remote.
 4. `_clean_topology` (post-faces)
 
 **Performance-critical paths:**
-- `toTopoGeom` (in `update_boundary_topo`) — most expensive per-line operation; modifies topology primitives
+- `toTopoGeom` (in `update_boundary_topo`, both forms) — most expensive per-row operation; modifies topology primitives. Each call also snapshots the edges within twice the tolerance of the geometry, before and after, to mark the faces of created and modified edges (`mark_noded_faces`); for a piece that is a handful of edges, for a whole large row it is bounded by the noding itself
 - Face dissolving (`fixtures/07-get-adjacent-faces.sql`). The joinable face graph comes from `joinable_face_edges(map_layer)`: an edge is crossable when `layers_are_joinable(...) OR faces_are_joinable(...)` (a layer's barriers are its `constraining_layers`: its ancestors plus its composition closure from `map_layer_composition`; strategies with `bulk_identity` supply `resolve_layer_identity` so `dissolve_groups` / `update_dirty_faces` compare cached identities instead of calling `faces_are_joinable` per edge) — linework relies on the first term (a contact line blocks the join), map-area mode on the second (faces sharing a resolved identity join even across another map's footprint edge). The default `faces_are_joinable` (the `search` strategy, `fixtures/identity/search.sql`) returns **false** so linework reduces to `layers_are_joinable` alone; the `direct` strategy compares stored identities. Connected components are found **server-side** in `dissolve_groups(map_layer)`: it builds the joinable graph once into an indexed temp table and expands each dirty face's component with a recursive walk, returning each group's faces + the map_faces it replaces (so only O(V) groups cross the wire, not the O(E) edge list). `get_adjacent_faces_core` keeps the single-seed recursive traversal for callers that need one face's component. Checkpointing (`--incremental`) is safe because persisting a map_face does **not** change the dissolve graph — it only adds `relation` rows over existing primitives; joinability comes from `__edge_relation` + boundary identity, never from `map_face` contents. (A future strategy that fed persisted face identity back into `faces_are_joinable` would break that invariant — that's the deferred "reactive graph" case.)
 - `RemoveUnusedPrimitives` — scans the whole topology; avoid calling when no contacts changed (already gated)
 - Persisting faces (`fixtures/07.1-map-face-elements.sql`). A component's geometry is resolved from the topology once per touched face (`__faces_geometry`, the same work as `createTopoGeom` + `topo::geometry`) — this is the expensive step, tens of seconds for faces with tens of thousands of complex primitives. `move` mode saves the *churn*, not the resolution: an overlapping face keeps its row and its unchanged `relation` rows and only the difference is written; `replace` deletes and recreates. Faces that lose primitives have their remainder re-marked dirty and are resolved when the loop revisits them, so each face is resolved at most once per update.
@@ -201,6 +212,10 @@ holes: that is the historical behaviour it preserves.
 
 - SQL files under `procedures/` are loaded by name via `sql("path/to/file")` in Python; no `.sql` extension in the call.
 - Template variables like `{topo_schema}`, `{data_schema}`, `{topo_name_literal}` are substituted at load time by the database layer — they are not SQL parameters.
+- The database merges the context's instance params (`topo_schema`, `srid`, `tolerance`,
+  `boundary_table`, ...) *over* a call's params, so a bind parameter must not reuse one of
+  those names — `:tolerance` in a procedure silently becomes the topology precision, which
+  is why the noding procedures bind `:noding_tolerance`.
 - Named parameters in SQL use SQLAlchemy `:name` syntax — but not inside the body of
   a stored function (`$$ ... $$`): there, only the client-side template variables
   (`{topo_schema}`, `{face_identity_column}`, `{srid_literal}`, `{topo_name_literal}`,

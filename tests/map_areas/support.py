@@ -159,3 +159,75 @@ def face_primitives(db: Database, map_face_id: int) -> set[int]:
             dict(id=map_face_id),
         ).scalars()
     )
+
+
+def boundary_primitives(db: Database, map_id: int) -> set[int]:
+    """The primitive faces a map area's topogeometry references."""
+    return set(
+        db.run_query(
+            """
+            SELECT r.element_id
+            FROM map_bounds.map_area a
+            JOIN {topo_schema}.relation r
+              ON r.topogeo_id = (a.topo).id
+             AND r.layer_id = (a.topo).layer_id
+             AND r.element_type = 3
+            WHERE a.id = :id
+            """,
+            dict(id=map_id),
+        ).scalars()
+    )
+
+
+def boundary_topogeom_id(db: Database, map_id: int):
+    return db.run_query(
+        "SELECT (topo).id FROM map_bounds.map_area WHERE id = :id", dict(id=map_id)
+    ).scalar()
+
+
+def complete_boundary(db: Database, map_id: int):
+    """What a host does once every piece of a row is noded: record that the
+    topogeometry was built from the row's current geometry."""
+    db.run_query(
+        """
+        UPDATE map_bounds.map_area
+        SET geometry_hash = {topo_schema}.hash_geometry(geometry)
+        WHERE id = :id
+        """,
+        dict(id=map_id),
+    )
+    db.session.commit()
+
+
+def dirty_set(db: Database) -> set[tuple[int, int]]:
+    return set(
+        (r.id, r.map_layer)
+        for r in db.run_query(
+            "SELECT id, map_layer FROM {topo_schema}.dirty_face"
+        ).all()
+    )
+
+
+def install_noding_fault(db: Database):
+    """Make every `toTopoGeom` into the boundary layer fail, by raising from a
+    row trigger on `relation`. The exception surfaces inside `toTopoGeom`, so
+    the library sees exactly what a real noding failure looks like."""
+    db.run_sql("""
+        CREATE OR REPLACE FUNCTION {topo_schema}.__induced_noding_fault()
+        RETURNS trigger AS $$
+        BEGIN
+          RAISE EXCEPTION 'induced noding failure';
+        END;
+        $$ LANGUAGE plpgsql;
+        CREATE TRIGGER induced_noding_fault
+        BEFORE INSERT ON {topo_schema}.relation
+        FOR EACH ROW
+        WHEN (NEW.layer_id <> {topo_schema}.__map_face_layer_id())
+        EXECUTE FUNCTION {topo_schema}.__induced_noding_fault();
+        """)
+    db.session.commit()
+
+
+def remove_noding_fault(db: Database):
+    db.run_sql("DROP TRIGGER IF EXISTS induced_noding_fault ON {topo_schema}.relation")
+    db.session.commit()

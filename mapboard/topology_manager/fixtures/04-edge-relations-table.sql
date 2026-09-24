@@ -440,7 +440,19 @@ RETURNS trigger AS $$
 BEGIN
 
   IF TG_OP = 'UPDATE' THEN
-    -- not sure if we need to delete on update
+    -- An update that keeps the same topogeometry (and layer) is an accumulating
+    -- noding call or an edit of some other column. The relation-row triggers
+    -- above already follow the primitives such a call adds or removes -- row by
+    -- row for edges, through the dirty queue for faces -- so recomputing the
+    -- whole feature here would make every piece cost as much as the row.
+    IF (
+      OLD.topo IS NOT NULL
+      AND (OLD.topo).id = (NEW.topo).id
+      AND (OLD.topo).layer_id = (NEW.topo).layer_id
+      AND OLD.map_layer IS NOT DISTINCT FROM NEW.map_layer
+    ) THEN
+      RETURN NEW;
+    END IF;
     DELETE FROM {topo_schema}.__edge_relation
     WHERE line_id = OLD.id;
   END IF;

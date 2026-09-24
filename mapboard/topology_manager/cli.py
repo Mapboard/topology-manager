@@ -5,6 +5,7 @@ from rich.prompt import Confirm
 from typer import Option, Typer
 
 from .commands import create_tables, clean_topology, update_contacts, update_faces
+from .commands.update_contacts import failed_boundaries
 from .commands.edge_relations import rebuild_edge_relations
 from .commands.update_topology import update
 from .watcher import start_watcher
@@ -77,10 +78,32 @@ def _update(
 
 
 @app.command(name="update-contacts")
-def _update_contacts(fix_failed: bool = False):
-    """Update contacts"""
+def _update_contacts(
+    fix_failed: bool = Option(
+        False, help="Clear recorded errors, then retry those rows"
+    ),
+    include_failed: bool = Option(
+        False, help="Also retry rows with a recorded error (without clearing it first)"
+    ),
+    tolerance: Optional[float] = Option(
+        None,
+        help="Snapping tolerance for noding (defaults to the topology's precision)",
+    ),
+    filter: Optional[str] = Option(
+        None,
+        "--filter",
+        help="SQL condition over the boundary table aliased `l`, e.g. 'l.map_layer = 3'",
+    ),
+):
+    """Node pending boundary rows into the topology"""
     ctx = get_context()
-    update_contacts(ctx, fix_failed)
+    update_contacts(
+        ctx,
+        fix_failed,
+        include_failed=include_failed,
+        tolerance=tolerance,
+        row_filter=filter,
+    )
 
 
 @app.command(name="update-faces")
@@ -141,8 +164,6 @@ for op in ["delete", "reset"]:
 @app.command(name="show-errors")
 def show_errors():
     """Show topology errors"""
-    db = get_database()
-    _query = sql("procedures/get-contacts-with-errors")
-    res = db.run_query(_query)
-    for row in res:
+    ctx = get_context()
+    for row in failed_boundaries(ctx):
         console.print(f"[dim]{row.id}[/dim] [red]{row.topology_error}[/red]")
