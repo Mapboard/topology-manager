@@ -1,7 +1,7 @@
 """Stress cases, deselected unless pytest is given `--pathological`.
 
-    uv run pytest tests/map_areas/test_pathological.py --pathological
-    TOPO_PATHOLOGICAL_SIZE=24 uv run pytest tests/map_areas/test_pathological.py --pathological -s
+uv run pytest tests/map_areas/test_pathological.py --pathological
+TOPO_PATHOLOGICAL_SIZE=24 uv run pytest tests/map_areas/test_pathological.py --pathological -s
 """
 
 import os
@@ -45,7 +45,9 @@ class TestBrickWall:
             for i in range(n):
                 x = offset + i
                 bricks.append(
-                    add_map(db, f"ST_MakeEnvelope({x}, {row}, {x + 1}, {row + 1})", "large")
+                    add_map(
+                        db, f"ST_MakeEnvelope({x}, {row}, {x + 1}, {row + 1})", "large"
+                    )
                 )
             t0 = perf_counter()
             update(ctx)
@@ -120,19 +122,19 @@ class TestRefreshCost:
         # The whole-map rebuild the refresh replaced: every boundary's edges, derived
         # from all of its faces. Read-only, so it can be timed in place.
         t0 = perf_counter()
-        db.run_query(
-            """
+        db.run_query("""
             SELECT count(*)
             FROM map_bounds.map_area l
             CROSS JOIN LATERAL {topo_schema}.__topogeom_edges((l.topo).id, (l.topo).layer_id) e
             WHERE l.topo IS NOT NULL
-            """
-        ).scalar()
+            """).scalar()
         t_whole = perf_counter() - t0
 
         mark_dirty(db, faces, layer)
         t0 = perf_counter()
-        db.run_query("SELECT {topo_schema}.refresh_dirty_face_edge_relations()").scalar()
+        db.run_query(
+            "SELECT {topo_schema}.refresh_dirty_face_edge_relations()"
+        ).scalar()
         t_refresh = perf_counter() - t0
         assert validate_edge_relations(ctx).in_sync
 

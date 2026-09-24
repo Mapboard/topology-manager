@@ -4,7 +4,6 @@ from .test_helpers import TopologyInspector
 
 from .commands import update
 
-
 __all__ = [
     "TopologyManager",
     "create_context",

@@ -10,7 +10,7 @@ update_in_progress = ContextVar("update_in_progress", default=False)
 needs_update = ContextVar("needs_update", default=True)
 
 
-def start_watcher(ctx = None, **kwargs):
+def start_watcher(ctx=None, **kwargs):
     if ctx is None:
         ctx = get_context()
 
