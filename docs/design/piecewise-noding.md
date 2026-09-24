@@ -48,10 +48,11 @@ complete:
 UPDATE <boundary_table> SET geometry_hash = <topo_schema>.hash_geometry(geometry) WHERE id = …
 ```
 
-Until then the row is *pending* to `update_contacts`, which would empty it and node
-the whole geometry. A host mid-way through a row's pieces therefore runs the face
-update alone (`update(ctx, boundaries=False)` / `update_faces`) or keeps such rows
-out of `update_contacts` with a row filter.
+A NULL `geometry_hash` means "this row needs noding", and `update_contacts` is the
+whole-row worker for rows in that state. A host noding a row piece by piece is doing
+that work itself, so while it does it runs the face update alone
+(`update(ctx, boundaries=False)` / `update_faces`), or keeps its rows out of
+`update_contacts` with a row filter, until it sets the hash.
 
 ## What the library guarantees
 
