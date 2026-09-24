@@ -15,7 +15,12 @@ disable_loggers = ["macrostrat.database.utils"]
 # disable_loggers = []
 
 
-def pytest_configure():
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "pathological: slow stress cases, run only with --pathological",
+    )
+
     # Quiet verbose logging
     for logger_name in disable_loggers:
         logger = logging.getLogger(logger_name)
@@ -39,6 +44,25 @@ def pytest_addoption(parser):
         default=False,
         help="Commit the database after tests",
     )
+    parser.addoption(
+        "--pathological",
+        action="store_true",
+        default=False,
+        help="Also run the slow stress cases marked `pathological`",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Deselect the `pathological` stress cases unless asked for, so an ordinary
+    run reports nothing skipped."""
+    if config.getoption("--pathological"):
+        return
+    kept, deselected = [], []
+    for item in items:
+        (deselected if "pathological" in item.keywords else kept).append(item)
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = kept
 
 @fixture(scope="session")
 def empty_db(pytestconfig):

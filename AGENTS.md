@@ -96,6 +96,7 @@ Run both when changing shared `fixtures/` SQL. Useful invocations:
 uv run pytest tests/map_areas -k move            # one mode of the map-area suite
 uv run pytest tests/core/test_05_map_faces.py    # one file
 uv run pytest -x --log-level=INFO -s              # stop on first failure, see SQL logs
+uv run pytest tests/map_areas/test_pathological.py --pathological -s   # opt-in stress cases (TOPO_PATHOLOGICAL_SIZE)
 MAPBOARD_FACE_UPDATE_MODE=replace uv run pytest tests/core   # core suite in replace mode
 ```
 
@@ -192,7 +193,7 @@ holes: that is the historical behaviour it preserves.
 - `fixtures/` SQL files — define the schema, triggers, and stored functions. Changes require re-running `topo create-tables` and may require a migration for existing deployments.
 - The `topology.layer` catalog — PostGIS topology metadata. Never delete or rename rows manually; use topology API functions.
 - `__edge_relation` triggers — if disabled for bulk loads, remember to re-enable and rebuild the cache (`topo rebuild-edge-relations`, or `rebuild_edge_relations(ctx)` / `validate_edge_relations(ctx)`) before running the update pipeline.
-- For face-based boundaries the `__edge_relation` cache is maintained *lazily*: relation-row triggers only queue the touched topogeometry in `__edge_relation_dirty`, and `rebuild_dirty_edge_relations()` recomputes those entries. The pipeline calls it after `update_contacts` and at the start of `update_faces`; anything that reads the joinable graph outside the pipeline (e.g. `get_adjacent_faces` right after inserting a map area) should call it first, or the graph may miss a barrier.
+- For face-based boundaries the `__edge_relation` cache is maintained *lazily*: relation-row triggers only queue the touched topogeometry in `__edge_relation_dirty`, and `rebuild_dirty_edge_relations()` recomputes those entries. An edge split by another boundary changes no relation row, so it also re-derives the rows of every edge bordering a dirty face (`refresh_dirty_face_edge_relations`) -- local to those edges, never a whole map's registry. The pipeline calls it after `update_contacts` and at the start of `update_faces`; anything that reads the joinable graph outside the pipeline (e.g. `get_adjacent_faces` right after inserting a map area) should call it first, or the graph may miss a barrier.
 - Host identity functions must match relation rows on **both** `topogeo_id` and `layer_id` (topogeometry ids are only unique per topology layer); otherwise a `map_face` topogeometry can be mistaken for a boundary feature with the same id. See `identity_for_face` in `tests/map_areas/fixtures/03-identity-management.sql`.
 - Topology tolerance (`__topo_precision()`) — set at schema creation time; changing it on an existing topology will produce inconsistent results.
 

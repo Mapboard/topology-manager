@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- Split boundary edges are registered. An edge split by another map changes no
+  `relation` row, so its new pieces were never added to `__edge_relation` and the
+  dissolve crossed them regardless of identity. `rebuild_dirty_edge_relations`
+  now re-derives the rows of every edge bordering a dirty face. Opt-in stress
+  cases run with `--pathological`
 - The face loop commits after each batch/chunk. Nothing committed before: `run_query`
   abandons the generator that holds its commit, and `update_dirty_faces` is a function,
   which cannot COMMIT. The `plpgsql` engine therefore ran an entire update in one
