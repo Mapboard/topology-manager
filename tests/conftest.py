@@ -64,6 +64,7 @@ def pytest_collection_modifyitems(config, items):
         config.hook.pytest_deselected(items=deselected)
         items[:] = kept
 
+
 @fixture(scope="session")
 def empty_db(pytestconfig):
 
@@ -80,4 +81,3 @@ def empty_db(pytestconfig):
     with temporary_database(testing_db, drop=False, ensure_empty=True) as engine:
         database = Database(engine.url)
         yield database
-

@@ -256,12 +256,10 @@ def create_composite_layers(db):
     grandparent_lyr = create_map_layer(db, "map-area")
     parent_lyr = create_map_layer(db, "tectonic-block", parent=grandparent_lyr)
 
-    db.run_sql(
-        """
+    db.run_sql("""
         INSERT INTO {data_schema}.polygon_type (id)
         VALUES ('unit0'), ('none') ON CONFLICT DO NOTHING;
-        """
-    )
+        """)
 
     _layers = Dict(
         {

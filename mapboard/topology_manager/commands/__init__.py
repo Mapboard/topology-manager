@@ -6,6 +6,6 @@ from .edge_relations import (
     rebuild_edge_relations,
     validate_edge_relations,
 )
-from .update_contacts import update_contacts
+from .update_contacts import failed_boundaries, update_boundary_piece, update_contacts
 from .update_faces import update_faces
 from .update_topology import update

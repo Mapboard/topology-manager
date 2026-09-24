@@ -34,12 +34,10 @@ def db(base_db, pytestconfig):
 @fixture()
 def layers(db):
     """Fixture to create a composite layer for testing."""
-    db.run_sql(
-        """
+    db.run_sql("""
         INSERT INTO {data_schema}.polygon_type (id)
         VALUES ('unit0'), ('none') ON CONFLICT DO NOTHING;
-        """
-    )
+        """)
 
     _layers = Dict(
         {
@@ -140,12 +138,10 @@ def test_non_topological_lines_in_composite_layer(layers, mgr, db):
     """Test that non topological lines in the composite layer are updated correctly"""
     mgr.database = db
     # Create a non-topological line type
-    db.run_sql(
-        """
+    db.run_sql("""
         INSERT INTO {data_schema}.linework_type (id, topological)
         VALUES ('non-topological', false);
-        """
-    )
+        """)
 
     for lyr in [layers.basement, layers.composite]:
         add_linework_type_to_layer(db, lyr, "non-topological")
@@ -225,12 +221,10 @@ def test_non_topological_lines_removed_from_composite_layer(layers, mgr, db):
     """Non-topological lines should be carried into composite layers"""
     mgr.database = db
     # Create a non-topological line type
-    db.run_sql(
-        """
+    db.run_sql("""
         INSERT INTO {data_schema}.linework_type (id, topological)
         VALUES ('non-topological', false);
-        """
-    )
+        """)
 
     for lyr in [layers.basement, layers.composite]:
         add_linework_type_to_layer(db, lyr, "non-topological")
