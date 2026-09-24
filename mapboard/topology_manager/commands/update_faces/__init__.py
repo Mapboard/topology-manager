@@ -1,21 +1,53 @@
-import warnings
-from threading import Timer
+"""Resolve dirty topology primitives into `map_face` polygons.
 
+The package is organised around the loop's three concerns:
+
+- `dissolve`  — compute the joinable component around a seed (server-side).
+- `persist`   — settle a component onto map faces (`move` or `replace` mode),
+                built on the primitive CRUD in `store`.
+- `loop`      — the queue that drains `dirty_face`, feeding shed remainders back
+                in so faces are split and holes are filled. `FaceUpdateLoop`
+                runs it from Python; `ServerSideFaceUpdateLoop` runs whole
+                chunks in PL/pgSQL (`update_dirty_faces`, `--engine plpgsql`).
+
+`helpers` re-exports the historical names for compatibility.
+"""
+
+import warnings
 from collections import defaultdict
-from typer import Option, Argument
 from time import perf_counter
+from typing import Optional
+
 from macrostrat.database import Database
 from macrostrat.utils.timer import Timer
-from enum import Enum
-from typing import Optional
-from rich.progress import Progress
+from typer import Argument, Option
+from typer.models import OptionInfo
 
-from ...config import TopologyContext, sql, get_context
-from .helpers import (
-    dissolve_layer_groups,
-    log,
+from ...config import (
+    FaceUpdateEngine,
+    FaceUpdateMode,
+    TopologyContext,
+    get_context,
+    sql,
+)
+from ..edge_relations import rebuild_dirty_edge_relations
+from .dissolve import dissolve_component, get_adjacent_faces, log, update_map_face
+from .loop import FaceUpdateLoop, ServerSideFaceUpdateLoop
+from .models import (
+    DirtyFace,
+    FaceOverlap,
+    FaceUpdateResult,
+    FaceUpdateStats,
+    MapFaceChange,
+)
+from .persist import (
+    FacePersister,
+    MoveFacesPersister,
+    ReplaceFacesPersister,
+    get_persister,
     persist_map_face_updates,
 )
+from .store import MapFaceStore
 
 count_ = "SELECT count(*)::integer nfaces FROM {topo_schema}.dirty_face"
 
@@ -30,9 +62,9 @@ def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:
     return db.run_query(sql, params).scalar()
 
 
-class Engine(str, Enum):
-    PYTHON = "python"
-    PLPGSQL = "plpgsql"
+# The engine is a context setting (`config.FaceUpdateEngine`); this name is kept
+# because the CLI option and callers refer to it.
+Engine = FaceUpdateEngine
 
 
 def update_faces(
@@ -40,18 +72,39 @@ def update_faces(
     *,
     reset: bool = Option(False, help="Rebuild from scratch"),
     fill_holes: bool = Option(False, help="Try to fill all holes"),
-    engine: Engine = Option(
-        Engine.PYTHON,
-        help="Use Python or PL/pgSQL (not yet implemented)",
+    engine: Optional[Engine] = Option(
+        None,
+        help="Where the loop runs: 'python' (one round trip per step) or "
+        "'plpgsql' (whole chunks server-side; defaults to TOPO_ENGINE / python)",
         envvar="TOPO_ENGINE",
     ),
     incremental: bool = Option(True, help="Incremental update"),
     persist_interval: int = 100,
-):
+    face_update_mode: Optional[FaceUpdateMode] = Option(
+        None,
+        help="How to persist faces: 'move' (update an existing topogeometry in "
+        "place) or 'replace' overlapping faces (defaults to the context setting)",
+        envvar="MAPBOARD_FACE_UPDATE_MODE",
+    ),
+) -> FaceUpdateStats:
     """Update faces"""
-    log.info("Updating faces with engine %s", engine)
-
+    # Called directly (not through the CLI) the typer defaults arrive as
+    # OptionInfo objects; resolve them so e.g. `reset` is not truthy.
+    reset, fill_holes, engine, incremental, persist_interval, face_update_mode = (
+        _resolve_default(v)
+        for v in (
+            reset,
+            fill_holes,
+            engine,
+            incremental,
+            persist_interval,
+            face_update_mode,
+        )
+    )
     db = ctx.database
+    mode = FaceUpdateMode(face_update_mode or ctx.face_update_mode)
+    engine = FaceUpdateEngine(engine or ctx.face_update_engine)
+    log.info("Updating faces with engine %s", engine.value)
 
     if fill_holes:
         warnings.warn("The 'fill_holes' option has been removed", DeprecationWarning)
@@ -62,64 +115,50 @@ def update_faces(
 
     Timer.add_step("prepare-update-face")
     t1 = perf_counter()
-
     log.info(f"Prepared to update faces in {t1 - t0:.2f} seconds")
 
-    t0 = perf_counter()
+    # Face-based boundaries queue their edge-relation cache updates; drain them
+    # so the joinable graph sees every barrier (no-op when nothing is pending).
+    rebuild_dirty_edge_relations(ctx)
 
-    dirty_faces = db.run_query(
-        "SELECT id, map_layer FROM {topo_schema}.dirty_face"
-    ).all()
-    init_n_faces = len(dirty_faces)
-    map_layers = set(d.map_layer for d in dirty_faces)
-    print(f"{init_n_faces} dirty faces to update, across {len(map_layers)} layers")
+    store = MapFaceStore(db)
+    dirty_faces = store.dirty_faces()
     ix = get_dirty_faces_layer_index(dirty_faces)
+    print(
+        f"{len(dirty_faces)} dirty faces to update, across {len(ix)} layers "
+        f"({mode.value} mode, {engine.value} engine)"
+    )
     log.info(
         "Dirty faces in layers: %s",
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
 
-    # Dissolve is driven layer by layer, in batches: the database walks each
-    # component and returns a batch of them in one round trip, then the batch is
-    # persisted -- which unmarks its faces, so the next call sees a smaller dirty
-    # set. `persist_interval` is the batch size. Previously this loop made one
-    # round trip per dirty face, which left the database idle waiting on the
-    # client for roughly a third of a bulk update.
-    niter = 0
-    # `incremental` still means "checkpoint as you go": it is the batch size that
-    # provides it now, so a non-incremental run simply takes every group at once.
-    batch_size = persist_interval if incremental else None
-    with Progress() as progress:
-        bar = progress.add_task("Updating faces", total=init_n_faces)
-        for map_layer in sorted(map_layers):
-            remaining = n_dirty_faces(db, map_layer)
-            while remaining > 0:
-                results = dissolve_layer_groups(db, map_layer, max_groups=batch_size)
-                if not results:
-                    break
-                persist_map_face_updates(db, results)
-                niter += len(results)
+    kwargs = {}
+    if engine != Engine.PLPGSQL:
+        # The server-side loop reads this from the `{bulk_identity}` template var
+        # when its SQL is built; the Python loop has to be told.
+        kwargs["bulk_identity"] = ctx.identity_strategy.bulk_identity
 
-                prev, remaining = remaining, n_dirty_faces(db, map_layer)
-                progress.update(
-                    bar, completed=max(0, init_n_faces - n_dirty_faces(db))
-                )
-                # A group that dissolves nothing leaves its faces marked, so
-                # without this the layer would loop forever.
-                if remaining >= prev:
-                    log.warning(
-                        "No progress on %d dirty faces in layer %s; moving on",
-                        remaining,
-                        map_layer,
-                    )
-                    break
-
-    t1 = perf_counter()
-    log.info(
-        f"Updated {init_n_faces} faces in {t1 - t0:.2f} seconds ({niter} iterations)"
+    loop_class = (
+        ServerSideFaceUpdateLoop if engine == Engine.PLPGSQL else FaceUpdateLoop
     )
+    loop = loop_class(
+        db,
+        get_persister(db, mode),
+        batch_size=persist_interval if incremental else None,
+        **kwargs,
+    )
+    stats = loop.run(dirty_faces)
 
     db.run_sql(sql("procedures/update-faces/post-update-faces"))
+    return stats
+
+
+def _resolve_default(value):
+    """Unwrap a typer ``Option(...)`` default when the command is called as a function."""
+    if isinstance(value, OptionInfo):
+        return value.default
+    return value
 
 
 def _update_faces(*args, **kwargs):
@@ -131,7 +170,7 @@ def _update_faces(*args, **kwargs):
     update_faces(*args, **kwargs)
 
 
-def get_dirty_faces_layer_index(dirty_faces: list[dict]) -> dict[int, int]:
+def get_dirty_faces_layer_index(dirty_faces: list) -> dict[int, int]:
     face_ix = defaultdict(int)
     for face in dirty_faces:
         face_ix[face.map_layer] += 1
@@ -145,3 +184,28 @@ def get_n_dirty_faces(db: Database) -> int:
     if result is None:
         return 0
     return result
+
+
+__all__ = [
+    "update_faces",
+    "n_dirty_faces",
+    "get_n_dirty_faces",
+    "Engine",
+    "FaceUpdateMode",
+    "FaceUpdateLoop",
+    "ServerSideFaceUpdateLoop",
+    "FaceUpdateStats",
+    "FaceUpdateResult",
+    "FaceOverlap",
+    "MapFaceChange",
+    "MapFaceStore",
+    "FacePersister",
+    "MoveFacesPersister",
+    "ReplaceFacesPersister",
+    "get_persister",
+    "persist_map_face_updates",
+    "dissolve_component",
+    "get_adjacent_faces",
+    "update_map_face",
+    "DirtyFace",
+]

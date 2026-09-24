@@ -47,6 +47,20 @@ class EdgeRelationReport:
         return self.missing == 0 and self.extra == 0
 
 
+def rebuild_dirty_edge_relations(ctx: TopologyContext) -> int:
+    """Recompute cached edge relations for boundary topogeometries whose
+    primitives changed since they were cached (the deferred work queued by the
+    ``update_face_edge_relation`` trigger). Cheap when nothing is pending; the
+    update pipeline runs it before dissolving faces so the joinable graph never
+    sees a stale barrier. Returns the number of topogeometries recomputed."""
+    n = ctx.database.run_query(
+        "SELECT {topo_schema}.rebuild_dirty_edge_relations()"
+    ).scalar()
+    if n:
+        log.info("Recomputed edge relations for %d boundary topogeometries", n)
+    return n
+
+
 def validate_edge_relations(ctx: TopologyContext) -> EdgeRelationReport:
     """Compare the cached ``__edge_relation`` table against its authoritative view,
     without modifying anything."""
