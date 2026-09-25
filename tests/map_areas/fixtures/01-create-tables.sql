@@ -40,7 +40,7 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line m
 SELECT ml.id
 FROM map_bounds.map_layer ml
 WHERE ml.id = $1.map_layer
-  AND ml.composited_from IS NULL
+  AND NOT map_bounds.is_composite_layer(ml.id)
   AND ml.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
@@ -76,15 +76,23 @@ VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 /** Composite compilations */
-INSERT INTO map_bounds.map_layer (slug, name, bounds, topological, editable, composited_from)
+INSERT INTO map_bounds.map_layer (slug, name, bounds, topological, editable)
 VALUES
  ('carto-small', 'Carto small',
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('tiny'), map_bounds.layer_id('small')]),
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
  ('carto-medium', 'Carto medium',
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('small'), map_bounds.layer_id('medium')]),
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
  ('carto-large', 'Carto large',
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('medium'), map_bounds.layer_id('large')])
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false)
 ON CONFLICT (slug) DO NOTHING;
+
+/** Membership: priority ascends bottom-to-top, so the second member wins. */
+INSERT INTO map_bounds.map_layer_composition (parent_id, member_id, priority)
+VALUES
+ (map_bounds.layer_id('carto-small'),  map_bounds.layer_id('tiny'),   1),
+ (map_bounds.layer_id('carto-small'),  map_bounds.layer_id('small'),  2),
+ (map_bounds.layer_id('carto-medium'), map_bounds.layer_id('small'),  1),
+ (map_bounds.layer_id('carto-medium'), map_bounds.layer_id('medium'), 2),
+ (map_bounds.layer_id('carto-large'),  map_bounds.layer_id('medium'), 1),
+ (map_bounds.layer_id('carto-large'),  map_bounds.layer_id('large'),  2)
+ON CONFLICT (parent_id, member_id) DO NOTHING;

@@ -9,7 +9,6 @@ from mapboard.topology_manager.config import create_context
 from mapboard.topology_manager.manager import TopologyManager
 from .demo_units import create_demo_units
 
-
 log = get_logger(__name__)
 
 

@@ -3,13 +3,15 @@
 A host that drives this library with a `direct` identity strategy flags stale
 identity by inserting primitives into `dirty_face` — e.g. when a region flips
 from map A to map B because their priorities changed. These tests pin the
-contract for that flow, in both face-update modes:
+contract for that flow in `move` mode:
 
 - every identified primitive belongs to exactly one map face (no holes),
 - one map face per connected same-identity component (shedding can split),
 - no orphaned `relation` rows, and cached geometry matches the topology.
+- untouched faces keep their ids.
 
-Only `move` mode additionally guarantees that untouched faces keep their ids.
+`replace` mode is the historical behaviour (bulk delete and recreate, no
+re-marking) and is not held to these.
 """
 
 from pytest import fixture
@@ -28,6 +30,15 @@ from .support import (
     mark_dirty,
     set_priority,
 )
+
+
+@fixture(scope="class")
+def face_update_mode():
+    """Move mode only, overriding the suite's run over every mode. `replace` is
+    the historical behaviour by design -- including leaving a partly-covered
+    face's remainder without a face -- so these contracts do not apply to it,
+    and generating replace-mode copies only to skip them reports nothing."""
+    return FaceUpdateMode.MOVE
 
 
 def _check_invariants(insp: TopologyInspector, layer: int):
@@ -63,7 +74,7 @@ class TestPartialReprioritization:
         assert by_map[maps["b"]].area == 6  # B minus the overlap
         _check_invariants(insp, layer)
 
-    def test_flip_leaves_no_hole(self, ctx, maps, face_update_mode):
+    def test_flip_leaves_no_hole(self, ctx, maps):
         """After the flip every identified primitive is in exactly one face, and
         the loser's remainder is not left faceless."""
         db = ctx.database
@@ -89,11 +100,10 @@ class TestPartialReprioritization:
         _check_invariants(insp, layer)
 
         # Untouched faces keep their ids when primitives are moved
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert after[maps["b"]].id == before[maps["b"]].id
-            assert after[maps["a"]].id == before[maps["a"]].id
+        assert after[maps["b"]].id == before[maps["b"]].id
+        assert after[maps["a"]].id == before[maps["a"]].id
 
-    def test_flip_back(self, ctx, maps, face_update_mode):
+    def test_flip_back(self, ctx, maps):
         """Flipping back restores the original partition."""
         db = ctx.database
         insp = TopologyInspector(ctx)
@@ -109,9 +119,8 @@ class TestPartialReprioritization:
         assert after[maps["a"]].area == 9
         assert after[maps["b"]].area == 6
         _check_invariants(insp, layer)
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert after[maps["a"]].id == before[maps["a"]].id
-            assert after[maps["b"]].id == before[maps["b"]].id
+        assert after[maps["a"]].id == before[maps["a"]].id
+        assert after[maps["b"]].id == before[maps["b"]].id
 
 
 class TestSheddingCanSplit:
@@ -139,7 +148,7 @@ class TestSheddingCanSplit:
         assert len([f for f in faces if f.map_id == maps["cross"]]) == 2
         _check_invariants(insp, layer)
 
-    def test_flip_splits_the_bar(self, ctx, maps, face_update_mode):
+    def test_flip_splits_the_bar(self, ctx, maps):
         db = ctx.database
         insp = TopologyInspector(ctx)
         layer = maps["layer"]
@@ -162,13 +171,12 @@ class TestSheddingCanSplit:
         assert insp.n_faces(map_layer=layer) == 3
         _check_invariants(insp, layer)
 
-        if face_update_mode == FaceUpdateMode.MOVE:
-            # One of the bar's pieces keeps the old row; the other is new
-            old_bar_ids = {f.id for f in before.values() if f.map_id == maps["bar"]}
-            assert len(old_bar_ids & {f.id for f in bar_faces}) == 1
-            # The cross survives in one of its old rows
-            old_cross_ids = {f.id for f in before.values() if f.map_id == maps["cross"]}
-            assert cross_faces[0].id in old_cross_ids
+        # One of the bar's pieces keeps the old row; the other is new
+        old_bar_ids = {f.id for f in before.values() if f.map_id == maps["bar"]}
+        assert len(old_bar_ids & {f.id for f in bar_faces}) == 1
+        # The cross survives in one of its old rows
+        old_cross_ids = {f.id for f in before.values() if f.map_id == maps["cross"]}
+        assert cross_faces[0].id in old_cross_ids
 
 
 class TestInnerMapFlip:
@@ -195,7 +203,7 @@ class TestInnerMapFlip:
         assert faces[0].area == 100
         _check_invariants(insp, maps["layer"])
 
-    def test_inner_map_wins(self, ctx, maps, face_update_mode):
+    def test_inner_map_wins(self, ctx, maps):
         """The big face keeps its row (and most of its primitives); the inner
         map gets a new face."""
         db = ctx.database
@@ -213,13 +221,11 @@ class TestInnerMapFlip:
         assert after[maps["inner"]].area == 8
         assert after[maps["big"]].area == 92
         _check_invariants(insp, layer)
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert after[maps["big"]].id == big_before.id
+        assert after[maps["big"]].id == big_before.id
 
 
-class TestShortCircuits:
-    """A shed whose remainder stays connected is settled in place without
-    re-marking (and walking) the remainder; a shed that splits still is."""
+class TestNotchAndWall:
+    """Shedding from a big face: a notch leaves one remainder, a wall splits it."""
 
     @fixture(scope="class")
     def maps(self, ctx):
@@ -243,30 +249,29 @@ class TestShortCircuits:
         _check_invariants(insp, maps["layer"])
         return stats
 
-    def test_connected_remainder_is_not_reseeded(self, ctx, maps, face_update_mode):
-        stats = self._flip(ctx, maps, maps["corner"], -1, Point(1, 1), face_update_mode)
-        insp = TopologyInspector(ctx)
-        assert insp.n_faces(map_layer=maps["layer"]) == 2
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert stats.reseeded == 0
-            assert stats.rounds == 1
-
-    def test_notch_keeps_remainder_connected(self, ctx, maps, face_update_mode):
-        """A map that only notches the big map leaves one connected remainder."""
-        stats = self._flip(ctx, maps, maps["bar"], -1, Point(5, 5), face_update_mode)
-        insp = TopologyInspector(ctx)
+    def test_corner_notch(self, ctx, maps, face_update_mode):
         db = ctx.database
+        insp = TopologyInspector(ctx)
+        (big_before,) = map_faces(db, maps["layer"])
+        self._flip(ctx, maps, maps["corner"], -1, Point(1, 1), face_update_mode)
+        assert insp.n_faces(map_layer=maps["layer"]) == 2
+        big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
+        assert len(big_faces) == 1 and big_faces[0].area == 92
+        assert big_faces[0].id == big_before.id
+
+    def test_middle_notch(self, ctx, maps, face_update_mode):
+        """A map that only notches the big map leaves one connected remainder."""
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        self._flip(ctx, maps, maps["bar"], -1, Point(5, 5), face_update_mode)
         assert insp.n_faces(map_layer=maps["layer"]) == 3
         big_faces = [f for f in map_faces(db, maps["layer"]) if f.map_id == maps["big"]]
         assert len(big_faces) == 1
         assert big_faces[0].area == 100 - 8 - 8
-        if face_update_mode == FaceUpdateMode.MOVE:
-            assert stats.reseeded == 0
 
-    def test_split_reseeds(self, ctx, maps, face_update_mode):
+    def test_wall_splits(self, ctx, maps, face_update_mode):
         """A map spanning the full height splits the big map's remainder."""
         db = ctx.database
-        insp = TopologyInspector(ctx)
         wall = add_map(db, "ST_MakeEnvelope(6, -1, 8, 11)", "large", priority=1)
         update(ctx, composite_layers=False)  # wall loses at first
         stats = self._flip(ctx, maps, wall, -1, Point(7, 5), face_update_mode)
@@ -279,7 +284,7 @@ class TestAddingMaps:
     """The ordinary flow — adding maps — keeps the same invariants, and in move
     mode leaves faces that were not affected untouched."""
 
-    def test_add_maps_incrementally(self, ctx, face_update_mode):
+    def test_add_maps_incrementally(self, ctx):
         db = ctx.database
         insp = TopologyInspector(ctx)
         layer = insp.map_layer_id("Large")

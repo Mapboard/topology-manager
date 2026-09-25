@@ -1,3 +1,4 @@
+from pytest import approx
 from shapely.geometry import Point
 
 from mapboard.topology_manager.commands import (
@@ -8,7 +9,7 @@ from mapboard.topology_manager.commands.update_topology import update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from mapboard.topology_manager import TopologyInspector
 
-from .support import add_map, geom, row_count
+from .support import add_map, geom, map_faces, mark_dirty, row_count, set_priority
 
 
 class TestMapTopology:
@@ -125,3 +126,73 @@ class TestMapTopology:
         assert insp.n_faces(map_layer="Carto medium") == 1
         assert insp.n_faces(map_layer="Carto small") == 0
         assert insp.n_faces() == 4 + 4 + 1
+
+
+class TestSplitBoundaryEdges:
+    """A boundary edge split by another map is still registered as a barrier.
+
+    `b` is added beside `a` with its left edge along part of `a`'s right edge.
+    That splits `a`'s edge but not `a`'s face, so no relation row of `a` changes
+    and nothing queues it for an edge-relation rebuild. Unregistered, the new
+    pieces between `a` and the map `c` beneath it are crossable, and `a`'s face
+    dissolves into `c`'s.
+    """
+
+    def test_split_edges_are_registered(self, ctx):
+        db = ctx.database
+        c = add_map(db, "ST_MakeEnvelope(-2, -2, 6, 4)", "large", priority=10)
+        a = add_map(db, "ST_MakeEnvelope(0, 0, 2, 2)", "large")
+        update(ctx)
+
+        b = add_map(db, "ST_MakeEnvelope(2, 0.5, 4, 1.5)", "large")
+        update(ctx)
+
+        assert validate_edge_relations(ctx).in_sync
+        layer = TopologyInspector(ctx).map_layer_id("Large")
+        faces = map_faces(db, layer)
+        assert sorted(f.map_id for f in faces) == sorted([a, b, c])
+        areas = {f.map_id: f.area for f in faces}
+        assert areas[a] == approx(4)
+        assert areas[b] == approx(2)
+
+
+class TestIdentityFromPrimitives:
+    """A dissolved face takes the identity its primitives resolve to.
+
+    The dissolve joins primitives by `identity_for_face` (cached through
+    `resolve_layer_identity`), so a component's identity is already decided.
+    Deriving it again from the face's geometry (`identity_for_area`) was slower
+    and could disagree -- a host whose spatial lookup reads raw bounds rather
+    than noded topogeometries got a different owner on slivers, which its
+    stale-identity check then re-marked on every run. `identity_for_area` is
+    replaced here with a decoy, so any face that consults it is unidentified.
+    """
+
+    def test_faces_ignore_area_identity(self, ctx):
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        layer = insp.map_layer_id("Large")
+        db.run_sql(
+            """
+            CREATE OR REPLACE FUNCTION {topo_schema}.identity_for_area(
+              geom geometry, _map_layer integer
+            ) RETURNS integer AS $$ SELECT NULL::integer $$ LANGUAGE sql;
+            """
+        )
+        a = add_map(db, "ST_MakeEnvelope(0, 0, 3, 3)", "large", priority=0)
+        b = add_map(db, "ST_MakeEnvelope(2, 0, 5, 3)", "large", priority=1)
+        update(ctx, composite_layers=False)
+
+        areas = {f.map_id: f.area for f in map_faces(db, layer)}
+        assert areas == {a: approx(9), b: approx(6)}
+
+        # The overlap flips to B: absorbed into B's face in move mode, a new face
+        # in replace mode, and identified from its primitives either way.
+        overlap = insp.get_face_id(geom(Point(2.5, 1.5)))
+        set_priority(db, b, -1)
+        mark_dirty(db, [overlap], layer)
+        update(ctx, composite_layers=False)
+
+        faces = map_faces(db, layer)
+        assert None not in {f.map_id for f in faces}
+        assert {f.map_id: f.area for f in faces if f.map_id == b} == {b: approx(9)}

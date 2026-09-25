@@ -18,18 +18,21 @@ class Database(BaseDatabase):
 class FaceUpdateMode(str, Enum):
     """How the face-update loop persists a dissolved component onto `map_face`.
 
-    - ``move`` (default): move topology primitives between existing map faces
-      (`map_face_absorb`). Faces that overlap the component shed the component's
-      primitives, one survivor gains them, and only the primitives that moved or
-      were reshaped are resolved from the topology. Untouched faces keep their
-      ids and geometry, so the cost of a change scales with the change.
-    - ``replace``: the historical behaviour — delete every overlapping map face
-      and create a new one for the component (`map_face_replace`). Simpler and
-      fully re-resolves geometry, but costs O(size of the neighbouring faces).
+    - ``replace``: the historical behaviour, unchanged — delete every map face the
+      component overlaps (bulk, plain DELETE; relation rows are reclaimed by the
+      clean step) and create a new topogeometry for the component. A face only
+      partly covered by the component loses its remainder, as it always did.
+    - ``move`` (default): reuse an existing topogeometry. When a face overlaps the
+      component (`map_face_absorb`), its `relation` rows are updated in place to
+      hold exactly the component and its geometry and identity are re-resolved;
+      other overlapping faces lose the component's primitives and have *one*
+      remaining primitive re-marked dirty, so their remainder is rebuilt (and
+      split if disconnected) by the loop. A new topogeometry is created only when
+      no suitable face exists. Untouched faces keep their ids.
 
-    Both modes re-mark the remainder of any face they take primitives from as
-    dirty, so no region is left without a face and disconnected remainders are
-    split into one face per component.
+    Both resolve geometry from the topology the same way; `move` saves the
+    delete-and-recreate churn on `map_face` and `relation`, `replace` saves the
+    remainder work. `benchmarks/bulk_update.py` compares them.
     """
 
     MOVE = "move"
@@ -37,6 +40,26 @@ class FaceUpdateMode(str, Enum):
 
 
 DEFAULT_FACE_UPDATE_MODE = FaceUpdateMode.MOVE
+
+
+class FaceUpdateEngine(str, Enum):
+    """Where the face-update loop runs.
+
+    - ``python`` (default): the loop lives in the client (`FaceUpdateLoop`), one
+      round trip per component, and re-seeded primitives are carried in memory.
+    - ``plpgsql``: whole chunks run server-side (`update_dirty_faces`), one round
+      trip per chunk. `dirty_face` itself is the queue, so a re-seed reaches the
+      next iteration only if it was written there.
+
+    Both commit per checkpoint and must produce the same faces; CI runs the suites
+    under each, crossed with both `FaceUpdateMode`s.
+    """
+
+    PYTHON = "python"
+    PLPGSQL = "plpgsql"
+
+
+DEFAULT_FACE_UPDATE_ENGINE = FaceUpdateEngine.PYTHON
 
 
 @dataclass
@@ -62,6 +85,21 @@ class IdentityStrategy:
     # Reserved: the SQL currently hardcodes "or"; "and" is for the future
     # direct-identity linework mode.
     combinator: str = "or"
+    # Whether a composite layer can be *solved* by dissolving, rather than filled
+    # by the painter's-algorithm overlay. True only when `faces_are_joinable` is
+    # meaningful and identity resolves across a layer's composition closure --
+    # the `search` strategy has neither, so it keeps the overlay. This gates
+    # whether a change in a layer marks its composition parents dirty: doing so
+    # for a strategy that cannot solve them would dissolve a composite into one
+    # face.
+    solves_composites: bool = False
+    # Whether the strategy installs `resolve_layer_identity(map_layer)` -- a
+    # set-oriented form of `identity_for_face` returning `(face_id, identity)` for
+    # a whole layer. When true, `dissolve_groups` materialises it once per layer
+    # and compares cached identities instead of calling `faces_are_joinable` on
+    # every candidate edge, which otherwise re-resolves each face's identity once
+    # per incident edge.
+    bulk_identity: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +145,8 @@ class TopologyContext:
     notify_triggers: bool = True
     # How dissolved components are persisted onto map_face (see FaceUpdateMode).
     face_update_mode: FaceUpdateMode = DEFAULT_FACE_UPDATE_MODE
+    # Where the face-update loop runs (see FaceUpdateEngine).
+    face_update_engine: FaceUpdateEngine = DEFAULT_FACE_UPDATE_ENGINE
 
     @property
     def manage_data_tables(self) -> bool:
@@ -142,6 +182,7 @@ def create_context(
     create_data_tables: Optional[Callable[["TopologyContext"], None]] = None,
     notify_triggers: bool = True,
     face_update_mode: Optional[FaceUpdateMode | str] = None,
+    face_update_engine: Optional[FaceUpdateEngine | str] = None,
     **kwargs,
 ) -> TopologyContext:
     """Create a new TopologyContext instance to configure the topology manager application"""
@@ -172,6 +213,10 @@ def create_context(
         )
     face_update_mode = FaceUpdateMode(face_update_mode)
 
+    if face_update_engine is None:
+        face_update_engine = env.get("TOPO_ENGINE", DEFAULT_FACE_UPDATE_ENGINE)
+    face_update_engine = FaceUpdateEngine(face_update_engine)
+
     _database = Database(database.engine.url)
     _database.instance_params = {
         "data_schema": Identifier(data_schema),
@@ -188,6 +233,8 @@ def create_context(
         "boundary_table": Identifier(data_schema, boundary_table),
         "boundary_table_literal": Literal(boundary_table),
         "face_identity_column": Identifier(face_identity_column),
+        "solves_composites": SQL("true" if strategy.solves_composites else "false"),
+        "bulk_identity": SQL("true" if strategy.bulk_identity else "false"),
     }
 
     ctx = TopologyContext(
@@ -203,6 +250,7 @@ def create_context(
         create_data_tables=create_data_tables,
         notify_triggers=notify_triggers,
         face_update_mode=face_update_mode,
+        face_update_engine=face_update_engine,
     )
 
     _side_effects(ctx)

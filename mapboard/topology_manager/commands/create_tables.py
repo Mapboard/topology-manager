@@ -36,8 +36,9 @@ def create_tables(ctx: TopologyContext, *, check: bool = True):
     if not ctx.notify_triggers:
         skipped += ["notify"]
     if not ctx.manage_data_tables:
-        # Polygon triggers act on the library-owned polygon table.
-        skipped += ["polygon-triggers"]
+        # Polygon triggers act on the library-owned polygon table, and the face
+        # display view joins its polygon types.
+        skipped += ["polygon-triggers", "face-display"]
 
     did_data_tables = False
     did_setup_identity = False

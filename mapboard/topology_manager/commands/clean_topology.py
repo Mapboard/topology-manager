@@ -35,8 +35,7 @@ verbose = True
 
 
 def remove_empty_topogeometries(db):
-    layers = db.run_query(
-        """
+    layers = db.run_query("""
       SELECT
           l.topology_id,
           l.layer_id,
@@ -47,8 +46,7 @@ def remove_empty_topogeometries(db):
       FROM topology.layer l
       JOIN topology.topology t ON t.id = l.topology_id
       WHERE t.name = :topo_name
-    """
-    ).all()
+    """).all()
 
     for lyr in layers:
         with db.session.begin_nested():

@@ -13,10 +13,8 @@ The package is organised around the loop's three concerns:
 `helpers` re-exports the historical names for compatibility.
 """
 
-import os
 import warnings
 from collections import defaultdict
-from enum import Enum
 from time import perf_counter
 from typing import Optional
 
@@ -25,7 +23,13 @@ from macrostrat.utils.timer import Timer
 from typer import Argument, Option
 from typer.models import OptionInfo
 
-from ...config import FaceUpdateMode, TopologyContext, get_context, sql
+from ...config import (
+    FaceUpdateEngine,
+    FaceUpdateMode,
+    TopologyContext,
+    get_context,
+    sql,
+)
 from ..edge_relations import rebuild_dirty_edge_relations
 from .dissolve import dissolve_component, get_adjacent_faces, log, update_map_face
 from .loop import FaceUpdateLoop, ServerSideFaceUpdateLoop
@@ -58,9 +62,9 @@ def n_dirty_faces(db: Database, map_layer: Optional[int] = None) -> int:
     return db.run_query(sql, params).scalar()
 
 
-class Engine(str, Enum):
-    PYTHON = "python"
-    PLPGSQL = "plpgsql"
+# The engine is a context setting (`config.FaceUpdateEngine`); this name is kept
+# because the CLI option and callers refer to it.
+Engine = FaceUpdateEngine
 
 
 def update_faces(
@@ -78,8 +82,8 @@ def update_faces(
     persist_interval: int = 100,
     face_update_mode: Optional[FaceUpdateMode] = Option(
         None,
-        help="How to persist faces: 'move' primitives between existing faces, "
-        "or 'replace' overlapping faces (defaults to the context setting)",
+        help="How to persist faces: 'move' (update an existing topogeometry in "
+        "place) or 'replace' overlapping faces (defaults to the context setting)",
         envvar="MAPBOARD_FACE_UPDATE_MODE",
     ),
 ) -> FaceUpdateStats:
@@ -97,11 +101,10 @@ def update_faces(
             face_update_mode,
         )
     )
-    engine = Engine(engine or os.environ.get("TOPO_ENGINE", Engine.PYTHON))
-    log.info("Updating faces with engine %s", engine.value)
-
     db = ctx.database
     mode = FaceUpdateMode(face_update_mode or ctx.face_update_mode)
+    engine = FaceUpdateEngine(engine or ctx.face_update_engine)
+    log.info("Updating faces with engine %s", engine.value)
 
     if fill_holes:
         warnings.warn("The 'fill_holes' option has been removed", DeprecationWarning)
@@ -130,6 +133,12 @@ def update_faces(
         ", ".join(f"{k}: {v}" for k, v in ix.items() if v > 0),
     )
 
+    kwargs = {}
+    if engine != Engine.PLPGSQL:
+        # The server-side loop reads this from the `{bulk_identity}` template var
+        # when its SQL is built; the Python loop has to be told.
+        kwargs["bulk_identity"] = ctx.identity_strategy.bulk_identity
+
     loop_class = (
         ServerSideFaceUpdateLoop if engine == Engine.PLPGSQL else FaceUpdateLoop
     )
@@ -137,6 +146,7 @@ def update_faces(
         db,
         get_persister(db, mode),
         batch_size=persist_interval if incremental else None,
+        **kwargs,
     )
     stats = loop.run(dirty_faces)
 
