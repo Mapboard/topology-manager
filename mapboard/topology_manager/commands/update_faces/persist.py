@@ -33,6 +33,9 @@ class FacePersister:
     """Persists components one at a time; subclasses decide how."""
 
     mode: FaceUpdateMode
+    #: Read component identity from `_layer_identity`. Set by a loop that fills
+    #: that cache for the layer before persisting its components.
+    use_identity_cache: bool = False
 
     def __init__(self, db: Database):
         self.db = db
@@ -90,7 +93,11 @@ class MoveFacesPersister(FacePersister):
     def apply(self, component: FaceUpdateResult) -> MapFaceChange:
         if component.touches_universe:
             return self.store.release(component.dissolved_faces, component.map_layer)
-        return self.store.absorb(component.dissolved_faces, component.map_layer)
+        return self.store.absorb(
+            component.dissolved_faces,
+            component.map_layer,
+            use_identity_cache=self.use_identity_cache,
+        )
 
 
 class ReplaceFacesPersister(FacePersister):
@@ -116,7 +123,11 @@ class ReplaceFacesPersister(FacePersister):
         created = defaultdict(int)
         for component in components:
             if not component.touches_universe:
-                self.store.create_plain(component.dissolved_faces, component.map_layer)
+                self.store.create_plain(
+                    component.dissolved_faces,
+                    component.map_layer,
+                    use_identity_cache=self.use_identity_cache,
+                )
                 created[component.map_layer] += 1
             self.stats.components += 1
         self.stats.created += sum(created.values())
@@ -136,6 +147,7 @@ class ReplaceFacesPersister(FacePersister):
             component.dissolved_faces,
             component.map_layer,
             create=not component.touches_universe,
+            use_identity_cache=self.use_identity_cache,
         )
 
 

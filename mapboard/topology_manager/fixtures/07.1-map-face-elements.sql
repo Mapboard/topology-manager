@@ -56,6 +56,42 @@ RETURNS geometry AS $$
   WHERE f.face_id IS NOT NULL AND f.face_id <> 0;
 $$ LANGUAGE SQL STABLE;
 
+/** The identity a dissolved component takes.
+
+With a strategy whose identity is per primitive (`bulk_identity`: its
+`resolve_layer_identity` is the set form of `identity_for_face`), the dissolve
+has already decided it -- a component is primitives that share one identity -- so
+it is read off one of them: from the layer's identity cache when the caller has
+filled it (`_use_identity_cache`, as for `dissolve_component`), else from
+`identity_for_face`. Re-deriving it from the geometry was the costlier call in
+settling a small component, and could name a different owner than the dissolve
+joined on, which a host checking faces against its resolver then found stale on
+every run. Other strategies derive a component's identity from its area. */
+DROP FUNCTION IF EXISTS {topo_schema}.__component_identity(integer[], integer, geometry);
+CREATE OR REPLACE FUNCTION {topo_schema}.__component_identity(
+  _faces integer[],
+  _map_layer integer,
+  _geom geometry,
+  _use_identity_cache boolean DEFAULT false
+)
+RETURNS {topo_schema}.map_face.{face_identity_column}%TYPE AS $$
+DECLARE
+  _seed integer;
+  _identity {topo_schema}.map_face.{face_identity_column}%TYPE;
+BEGIN
+  IF NOT {bulk_identity} THEN
+    RETURN {topo_schema}.identity_for_area(_geom, _map_layer);
+  END IF;
+  SELECT min(f.face_id) INTO _seed FROM unnest(_faces) AS f(face_id) WHERE f.face_id <> 0;
+  IF NOT _use_identity_cache THEN
+    RETURN {topo_schema}.identity_for_face(_seed, _map_layer);
+  END IF;
+  -- Absent from the cache means no owner, as it does to the dissolve.
+  SELECT il.identity INTO _identity FROM _layer_identity il WHERE il.face_id = _seed;
+  RETURN _identity;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
 /* Earlier revisions kept per-run "reshaped region" state in the session and
    assembled geometry incrementally from it; that machinery is gone. */
 DROP FUNCTION IF EXISTS {topo_schema}.set_reshaped_faces(integer, integer[]);
@@ -147,16 +183,18 @@ $$ LANGUAGE SQL STABLE;
 
 /** Create a map face over a set of primitives. The geometry is resolved from the
 topology unless the caller already resolved it (`_geometry`); identity is
-resolved from the geometry. Returns the new face id. */
+`__component_identity`. Returns the new face id. */
 DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer);
 DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer, geometry);
+DROP FUNCTION IF EXISTS {topo_schema}.map_face_create(integer[], integer, geometry, boolean);
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_create(
   _faces integer[],
   _map_layer integer,
   _geometry geometry DEFAULT NULL,
   -- Register face identity now (move mode) or leave it to the trigger /
   -- post-update step as the original pipeline did (replace mode).
-  _register boolean DEFAULT true
+  _register boolean DEFAULT true,
+  _use_identity_cache boolean DEFAULT false
 )
 RETURNS integer AS $$
 DECLARE
@@ -173,7 +211,7 @@ BEGIN
 
   INSERT INTO {topo_schema}.map_face ({face_identity_column}, topo, map_layer, geometry)
   SELECT
-    {topo_schema}.identity_for_area(g.geom, _map_layer),
+    {topo_schema}.__component_identity(_faces, _map_layer, g.geom, _use_identity_cache),
     t.topo,
     _map_layer,
     g.geom
@@ -341,8 +379,8 @@ $$ LANGUAGE plpgsql;
 /** Settle a dissolved component (a maximal set of joinable primitives) onto a
 single map face, reusing an existing topogeometry when one is available.
 
-1. Resolve the component's geometry from the topology and its identity from
-   the geometry — the same work creating a face does.
+1. Resolve the component's geometry from the topology, and its identity
+   (`__component_identity`) — the same work creating a face does.
 2. Find the existing faces holding any of the component's primitives. None →
    create a new face.
 3. Choose the face to update: an overlapping face with the same identity
@@ -355,7 +393,12 @@ single map face, reusing an existing topogeometry when one is available.
    its primitives outside the component (re-marked dirty), gains the missing
    ones, and takes the resolved geometry and identity.
 */
-CREATE OR REPLACE FUNCTION {topo_schema}.map_face_absorb(_faces integer[], _map_layer integer)
+DROP FUNCTION IF EXISTS {topo_schema}.map_face_absorb(integer[], integer);
+CREATE OR REPLACE FUNCTION {topo_schema}.map_face_absorb(
+  _faces integer[],
+  _map_layer integer,
+  _use_identity_cache boolean DEFAULT false
+)
 RETURNS {topo_schema}.map_face_change AS $$
 DECLARE
   _geom geometry;
@@ -393,11 +436,11 @@ BEGIN
 
   -- 1. Geometry and identity, resolved from the topology
   _geom := {topo_schema}.__faces_geometry(_faces);
-  _identity := {topo_schema}.identity_for_area(_geom, _map_layer);
+  _identity := {topo_schema}.__component_identity(_faces, _map_layer, _geom, _use_identity_cache);
 
   -- 2. No existing face → create one
   IF NOT EXISTS (SELECT 1 FROM _mfc_overlap) THEN
-    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, _geom);
+    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, _geom, true, _use_identity_cache);
     _res.created := true;
     _res.added := array(SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) ORDER BY 1);
     RETURN _res;
@@ -431,7 +474,7 @@ BEGIN
   END LOOP;
 
   IF _survivor IS NULL THEN
-    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, _geom);
+    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, _geom, true, _use_identity_cache);
     _res.created := true;
     _res.added := array(SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) ORDER BY 1);
     RETURN _res;
@@ -490,10 +533,12 @@ the component's primitives with a plain DELETE (relation rows are reclaimed by
 `remove_empty_topogeometries` in the clean step, as before), then create a fresh
 face for the component. Nothing is re-marked dirty, so a face only partly covered
 by the component loses its remainder — exactly as the original pipeline did. */
+DROP FUNCTION IF EXISTS {topo_schema}.map_face_replace(integer[], integer, boolean);
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_replace(
   _faces integer[],
   _map_layer integer,
-  _create boolean DEFAULT true
+  _create boolean DEFAULT true,
+  _use_identity_cache boolean DEFAULT false
 )
 RETURNS {topo_schema}.map_face_change AS $$
 DECLARE
@@ -516,7 +561,7 @@ BEGIN
   SELECT coalesce(array_agg(id ORDER BY id), ARRAY[]::integer[]) INTO _res.deleted FROM gone;
 
   IF _create AND NOT (0 = ANY(_faces)) THEN
-    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, NULL, false);
+    _res.map_face := {topo_schema}.map_face_create(_faces, _map_layer, NULL, false, _use_identity_cache);
     _res.created := true;
     _res.added := array(SELECT DISTINCT f.face_id FROM unnest(_faces) AS f(face_id) ORDER BY 1);
   END IF;

@@ -83,10 +83,10 @@ BEGIN
       IF 0 = ANY(_faces) THEN
         _change := {topo_schema}.map_face_release(_faces, _map_layer);
       ELSE
-        _change := {topo_schema}.map_face_absorb(_faces, _map_layer);
+        _change := {topo_schema}.map_face_absorb(_faces, _map_layer, _cached);
       END IF;
     ELSE
-      _change := {topo_schema}.map_face_replace(_faces, _map_layer, NOT (0 = ANY(_faces)));
+      _change := {topo_schema}.map_face_replace(_faces, _map_layer, NOT (0 = ANY(_faces)), _cached);
     END IF;
 
     -- The component is settled; re-seeded primitives lie outside it and stay dirty

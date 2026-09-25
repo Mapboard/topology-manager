@@ -53,9 +53,10 @@ class FaceUpdateLoop:
         self.batch_size = batch_size
         self.progress = progress
         # `dissolve_groups` fills the identity cache itself when the strategy
-        # offers one; the flag is accepted for interface parity with the
-        # server-side loop.
+        # offers one, and each batch is persisted in the same transaction right
+        # after, so the persister can read component identity from it.
         self.bulk_identity = bulk_identity
+        persister.use_identity_cache = bulk_identity
 
     def run(self, seeds: Iterable[DirtyFace]) -> FaceUpdateStats:
         seeds = list(seeds)

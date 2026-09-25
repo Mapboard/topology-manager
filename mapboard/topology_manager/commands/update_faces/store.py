@@ -66,14 +66,18 @@ class MapFaceStore:
             dict(map_faces=list(map_faces)),
         ).scalar()
 
-    def create_plain(self, faces: list[int], map_layer: int):
+    def create_plain(
+        self, faces: list[int], map_layer: int, *, use_identity_cache: bool = False
+    ):
         """Create a map face exactly as the original pipeline did
         (`procedures/update-faces/insert-face-topogeom.sql`)."""
         self.db.run_query(
             sql("procedures/update-faces/insert-face-topogeom"),
             dict(
                 map_layer=map_layer,
+                faces=list(faces),
                 topo_element_array=[[face_id, 3] for face_id in faces],
+                use_identity_cache=use_identity_cache,
             ),
         )
 
@@ -88,11 +92,14 @@ class MapFaceStore:
 
     # -- moving primitives -----------------------------------------------------
 
-    def absorb(self, faces: list[int], map_layer: int) -> MapFaceChange:
-        """Settle a component onto one surviving map face (creating one if needed)."""
+    def absorb(
+        self, faces: list[int], map_layer: int, *, use_identity_cache: bool = False
+    ) -> MapFaceChange:
+        """Settle a component onto one surviving map face (creating one if needed).
+        `use_identity_cache` only once `_layer_identity` holds this layer."""
         return self._change(
-            "SELECT * FROM {topo_schema}.map_face_absorb(:faces, :map_layer)",
-            dict(faces=list(faces), map_layer=map_layer),
+            "SELECT * FROM {topo_schema}.map_face_absorb(:faces, :map_layer, :cached)",
+            dict(faces=list(faces), map_layer=map_layer, cached=use_identity_cache),
         )
 
     def release(self, faces: list[int], map_layer: int) -> MapFaceChange:
@@ -103,12 +110,23 @@ class MapFaceStore:
         )
 
     def replace(
-        self, faces: list[int], map_layer: int, *, create: bool = True
+        self,
+        faces: list[int],
+        map_layer: int,
+        *,
+        create: bool = True,
+        use_identity_cache: bool = False,
     ) -> MapFaceChange:
         """Delete every overlapping map face and (optionally) create a new one."""
         return self._change(
-            "SELECT * FROM {topo_schema}.map_face_replace(:faces, :map_layer, :create)",
-            dict(faces=list(faces), map_layer=map_layer, create=create),
+            "SELECT * FROM {topo_schema}.map_face_replace("
+            ":faces, :map_layer, :create, :cached)",
+            dict(
+                faces=list(faces),
+                map_layer=map_layer,
+                create=create,
+                cached=use_identity_cache,
+            ),
         )
 
     def _change(self, query: str, params: dict) -> MapFaceChange:
