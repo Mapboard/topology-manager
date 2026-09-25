@@ -17,11 +17,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   exterior bounding edges of each area)
 - Add `rebuild-edge-relations` (and a `validate_edge_relations` API) to repair the
   `__edge_relation` cache if its triggers fall out of sync
-- Speed up face dissolving: connected components are computed server-side
-  (PL/pgSQL `dissolve_groups`) over a joinable face graph built once per layer,
-  replacing the per-dirty-face graph rebuild.
-- `incremental` face updates now mean *checkpointed persistence* (commit per
-  dissolve group), decoupling persistence from the adjacency join graph
+- Speed up face dissolving: each dirty face's component is expanded lazily
+  server-side (PL/pgSQL `dissolve_component`, a frontier BFS over indexed temp
+  tables that only touches edges incident to faces already reached), replacing
+  the per-dirty-face rebuild of the whole joinable graph. Python filters already-
+  dissolved faces out of the dirty list so each component is computed once.
+- `incremental` face updates now mean *checkpointed persistence* (commit every
+  `persist_interval` dissolves, default 100), decoupling persistence from the
+  adjacency join graph
 - Add a post-installation setup check (`check_topology_setup` /
   `assert_topology_setup`, run by `create_tables`) that verifies the identity
   column, identity functions, and boundary table/topogeometry exist — surfacing a

@@ -111,10 +111,11 @@ $$ LANGUAGE SQL STABLE;
 
 
 /** Dissolve a single joinable component, expanded lazily outward from a seed
-face. Unlike dissolve_groups (which builds the whole layer's adjacency up front),
-this touches only edges incident to faces already reached, so its cost is
+face. Unlike joinable_face_edges (which builds the whole layer's adjacency up
+front), this touches only edges incident to faces already reached, so its cost is
 proportional to the component, not the layer — the right shape for incremental,
-dirty-face-driven updates where the caller loops one component at a time. Returns
+dirty-face-driven updates where the caller (update_faces in Python) loops one
+dirty face at a time and drops already-dissolved faces from its work list. Returns
 the component's primitive faces and the existing map_faces they replace.
 Membership is held in indexed temp tables so large components stay efficient. */
 CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(

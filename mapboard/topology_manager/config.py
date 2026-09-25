@@ -33,7 +33,8 @@ class IdentityStrategy:
     # define identity_for_area / identity_for_face / faces_are_joinable /
     # map_face_is_identified.
     install: Callable[["TopologyContext"], None]
-    # How identity combines with the contact barrier in get_adjacent_faces_core.
+    # How identity combines with the contact barrier in dissolve_component
+    # (fixtures/07-get-adjacent-faces.sql).
     # Reserved: the SQL currently hardcodes "or"; "and" is for the future
     # direct-identity linework mode.
     combinator: str = "or"

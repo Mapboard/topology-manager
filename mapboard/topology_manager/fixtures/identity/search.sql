@@ -72,7 +72,8 @@ on the basis of a shared identity.
 This (search) strategy returns false: faces carry no intrinsic identity, so
 whether two faces dissolve together is governed entirely by `layers_are_joinable`
 (i.e. whether a contact separates them). See the join condition in
-`get_adjacent_faces_core`, which combines the two with OR. */
+`dissolve_component` (and `joinable_face_edges`) in 07-get-adjacent-faces.sql,
+which combines the two with OR. */
 CREATE OR REPLACE FUNCTION {topo_schema}.faces_are_joinable(
   f1 integer, f2 integer, _map_layer integer
 ) RETURNS boolean
