@@ -284,28 +284,19 @@ is not re-marked for that.
 -- two would be ambiguous.
 DROP FUNCTION IF EXISTS {topo_schema}.update_boundary_topo({boundary_table});
 
-/** `TopoGeo_AddPolygon`, without building faces that cannot be covered.
-PostGIS nodes the rings, then builds the geometry of every face whose MBR
-overlaps the polygon and tests a point on it (`lwt_AddPolygon`, unchanged
-through 3.5). A face spanning the world is therefore rebuilt for every polygon
-added anywhere: 6 s a piece on Macrostrat's development topology. Once the
-rings are noded, every face touching the polygon has an edge within tolerance
-of it -- faces inside, neighbours outside, faces the ring snapped against, and a
-face the ring runs through -- so a face with no such edge is disjoint from the
-polygon and the point test would reject it. Those are skipped; the candidates
-and the test are otherwise PostGIS's own, so the faces chosen are the same.
-Face MBRs cannot be used for this: a split face keeps its pre-split MBR within
-the transaction. */
-CREATE OR REPLACE FUNCTION {topo_schema}.__add_polygon(_poly geometry, _tol float8)
+/** The faces covered by `_poly` once its rings are noded, by PostGIS's test.
+`lwt_AddPolygon` (unchanged through 3.5) builds the geometry of every face whose
+MBR overlaps the polygon and tests a point on it. A face with no edge within
+tolerance of the polygon is disjoint from it, so those are skipped: a face
+spanning the world would otherwise be rebuilt for every polygon added anywhere.
+Face MBRs cannot narrow this further: a split face keeps its pre-split MBR
+within the transaction. */
+CREATE OR REPLACE FUNCTION {topo_schema}.__faces_covered(_poly geometry, _tol float8)
 RETURNS SETOF integer AS $$
 DECLARE
-  _ring geometry;
   -- Snapping may move an edge by up to the tolerance, as PostGIS allows for.
   _box geometry := ST_Expand(ST_Envelope(_poly), _tol);
 BEGIN
-  FOR _ring IN SELECT geom FROM ST_DumpRings(_poly) LOOP
-    PERFORM topology.TopoGeo_AddLinestring({topo_name_literal}, ST_ExteriorRing(_ring), _tol);
-  END LOOP;
   RETURN QUERY
     WITH candidates AS MATERIALIZED (
       SELECT f.face_id FROM {topo_schema}.face f WHERE f.face_id <> 0 AND f.mbr && _box
@@ -326,6 +317,96 @@ BEGIN
       _poly,
       ST_PointOnSurface(topology.ST_GetFaceGeometry({topo_name_literal}, t.face_id))
     );
+END;
+$$ LANGUAGE plpgsql;
+
+/** `TopoGeo_AddPolygon`, choosing the covered faces by walking the topology.
+Building a face's geometry for PostGIS's test costs ~5 ms, and a re-noded piece
+encloses dozens of faces. Instead: orient the rings so the polygon lies to their
+left, take the face on that side of each ring edge, and grow across every edge
+that is not a ring edge. The result is the faces the noded rings enclose. It
+differs from PostGIS's test only in slivers within tolerance of a ring, where
+this follows the ring as noded and PostGIS the input polygon.
+
+An edge returned twice (a hole snapped onto the shell, or a ring doubling back)
+has the outside on both sides, so it bounds the walk but seeds nothing. If the
+walk reaches the universal face or a face outside some ring edge, the rings do
+not separate the polygon as assumed, and PostGIS's test decides instead. */
+CREATE OR REPLACE FUNCTION {topo_schema}.__add_polygon(_poly geometry, _tol float8)
+RETURNS SETOF integer AS $$
+DECLARE
+  _oriented geometry := ST_ForcePolygonCCW(_poly);
+  _ring geometry;
+  _rings geometry[] := ARRAY[]::geometry[];
+  _edges integer[] := ARRAY[]::integer[];
+  _edge_ring integer[] := ARRAY[]::integer[];
+  _inside integer[];
+  _outside integer[];
+  _faces integer[];
+  _frontier integer[];
+  _leaked boolean;
+BEGIN
+  FOR _ring IN
+    SELECT ST_ExteriorRing(_oriented)
+    UNION ALL
+    SELECT ST_InteriorRingN(_oriented, i)
+    FROM generate_series(1, ST_NumInteriorRings(_oriented)) i
+  LOOP
+    _rings := _rings || _ring;
+    SELECT _edges || array_agg(abs(e)), _edge_ring || array_agg(cardinality(_rings))
+    INTO _edges, _edge_ring
+    FROM topology.TopoGeo_AddLinestring({topo_name_literal}, _ring, _tol) AS e;
+  END LOOP;
+
+  -- Sides are read once every ring is in: a later ring can split an earlier one's faces.
+  SELECT
+    coalesce(array_agg(DISTINCT CASE WHEN s.forward THEN s.left_face ELSE s.right_face END), ARRAY[]::integer[]),
+    coalesce(array_agg(DISTINCT CASE WHEN s.forward THEN s.right_face ELSE s.left_face END), ARRAY[]::integer[])
+  INTO _inside, _outside
+  FROM (
+    SELECT
+      e.left_face,
+      e.right_face,
+      -- Cyclic order along the ring, so the ring's start point does not matter.
+      (l.b - l.a) - floor(l.b - l.a) < (l.c - l.a) - floor(l.c - l.a) AS forward
+    FROM (
+      SELECT x.edge_id, min(x.ring) AS ring
+      FROM unnest(_edges, _edge_ring) AS x(edge_id, ring)
+      GROUP BY x.edge_id
+      HAVING count(*) = 1
+    ) r
+    JOIN {topo_schema}.edge_data e ON e.edge_id = r.edge_id
+    CROSS JOIN LATERAL (
+      SELECT
+        ST_LineLocatePoint(_rings[r.ring], ST_StartPoint(e.geom)) AS a,
+        ST_LineLocatePoint(_rings[r.ring], ST_LineInterpolatePoint(e.geom, 1.0 / 3)) AS b,
+        ST_LineLocatePoint(_rings[r.ring], ST_LineInterpolatePoint(e.geom, 2.0 / 3)) AS c
+    ) l
+    WHERE e.left_face <> e.right_face
+  ) s;
+
+  _faces := _inside;
+  _frontier := _inside;
+  _leaked := cardinality(_inside) = 0 OR 0 = ANY(_inside) OR _inside && _outside;
+  WHILE NOT _leaked AND cardinality(_frontier) > 0 LOOP
+    _frontier := array(
+      SELECT CASE WHEN e.left_face = ANY(_frontier) THEN e.right_face ELSE e.left_face END
+      FROM {topo_schema}.edge_data e
+      WHERE (e.left_face = ANY(_frontier) OR e.right_face = ANY(_frontier))
+        AND e.left_face <> e.right_face
+        AND e.edge_id <> ALL(_edges)
+      EXCEPT
+      SELECT unnest(_faces)
+    );
+    _leaked := 0 = ANY(_frontier) OR _frontier && _outside;
+    _faces := _faces || _frontier;
+  END LOOP;
+
+  IF _leaked THEN
+    RETURN QUERY SELECT * FROM {topo_schema}.__faces_covered(_poly, _tol);
+  ELSE
+    RETURN QUERY SELECT unnest(_faces);
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
