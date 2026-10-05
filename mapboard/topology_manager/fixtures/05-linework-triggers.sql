@@ -232,6 +232,51 @@ is not re-marked for that.
 -- two would be ambiguous.
 DROP FUNCTION IF EXISTS {topo_schema}.update_boundary_topo({boundary_table});
 
+/** `TopoGeo_AddPolygon`, without building faces that cannot be covered.
+PostGIS nodes the rings, then builds the geometry of every face whose MBR
+overlaps the polygon and tests a point on it (`lwt_AddPolygon`, unchanged
+through 3.5). A face spanning the world is therefore rebuilt for every polygon
+added anywhere: 6 s a piece on Macrostrat's development topology. Once the
+rings are noded, every face touching the polygon has an edge within tolerance
+of it -- faces inside, neighbours outside, faces the ring snapped against, and a
+face the ring runs through -- so a face with no such edge is disjoint from the
+polygon and the point test would reject it. Those are skipped; the candidates
+and the test are otherwise PostGIS's own, so the faces chosen are the same.
+Face MBRs cannot be used for this: a split face keeps its pre-split MBR within
+the transaction. */
+CREATE OR REPLACE FUNCTION {topo_schema}.__add_polygon(_poly geometry, _tol float8)
+RETURNS SETOF integer AS $$
+DECLARE
+  _ring geometry;
+  -- Snapping may move an edge by up to the tolerance, as PostGIS allows for.
+  _box geometry := ST_Expand(ST_Envelope(_poly), _tol);
+BEGIN
+  FOR _ring IN SELECT geom FROM ST_DumpRings(_poly) LOOP
+    PERFORM topology.TopoGeo_AddLinestring({topo_name_literal}, ST_ExteriorRing(_ring), _tol);
+  END LOOP;
+  RETURN QUERY
+    WITH candidates AS MATERIALIZED (
+      SELECT f.face_id FROM {topo_schema}.face f WHERE f.face_id <> 0 AND f.mbr && _box
+    ),
+    touching AS MATERIALIZED (
+      SELECT c.face_id
+      FROM candidates c
+      WHERE EXISTS (
+        SELECT 1 FROM {topo_schema}.edge_data e
+        WHERE (e.left_face = c.face_id OR e.right_face = c.face_id)
+          AND e.geom && _box
+          AND ST_DWithin(e.geom, _poly, _tol)
+      )
+    )
+    SELECT t.face_id
+    FROM touching t
+    WHERE ST_Covers(
+      _poly,
+      ST_PointOnSurface(topology.ST_GetFaceGeometry({topo_name_literal}, t.face_id))
+    );
+END;
+$$ LANGUAGE plpgsql;
+
 /** Node `_geom` into the topogeometry of the row `line`, marking the faces it
 touches dirty. `replace_existing` empties an existing topogeometry first;
 `complete` also records `geometry_hash` and clears `topology_error`. Raises on
@@ -288,7 +333,7 @@ BEGIN
         SELECT topology.TopoGeo_AddLinestring({topo_name_literal}, _component, _tol)
           WHERE _dims = 1
         UNION ALL
-        SELECT topology.TopoGeo_AddPolygon({topo_name_literal}, _component, _tol)
+        SELECT {topo_schema}.__add_polygon(_component, _tol)
           WHERE _dims = 2
       ) AS f(p)
     LOOP
