@@ -119,3 +119,12 @@ def heal_edges_piecewise(db):
                 console.print(str(err), style="error")
 
         log.info(f"Healed {counter} edges")
+
+
+def remove_released_primitives(ctx: TopologyContext) -> int:
+    """Remove primitives released boundaries left behind, before noding over them."""
+    db = ctx.database
+    n = db.run_query("SELECT {topo_schema}.remove_released_primitives()").scalar()
+    db.session.commit()
+    log.info(f"Removed {n} primitives released by boundaries")
+    return n

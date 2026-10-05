@@ -1,5 +1,5 @@
 from .check_setup import assert_topology_setup, check_topology_setup
-from .clean_topology import clean_topology
+from .clean_topology import clean_topology, remove_released_primitives
 from .create_tables import create_tables
 from .edge_relations import (
     rebuild_dirty_edge_relations,

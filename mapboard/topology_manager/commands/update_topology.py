@@ -3,7 +3,7 @@ from typing import Optional
 
 from ..config import FaceUpdateMode, TopologyContext, get_context
 from ..utilities import console, print_step
-from .clean_topology import clean_topology
+from .clean_topology import clean_topology, remove_released_primitives
 from .update_contacts import update_contacts
 from .update_faces import update_faces
 from .update_composite_layers import update_composite_layers
@@ -41,6 +41,7 @@ def update(
 
     if boundaries:
         console.print("Updating boundaries", style="header")
+        remove_released_primitives(ctx)
         n_contacts_updated = update_contacts(
             ctx, fix_failed=fix_failed, tolerance=tolerance
         )

@@ -102,6 +102,56 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+/** Take the faces a topogeometry's release marks dirty (its own, and their
+neighbours across its edges) out of the map faces of every layer its row
+invalidates, before the topogeometry is emptied. Otherwise the map faces solved
+against the old geometry keep its edges until they are solved again. No `map_face` row is deleted, so stale geometry keeps serving until the
+face update rebuilds the area (the faces are marked dirty with the release);
+`post-update-faces` deletes rows left with no faces. The extent is queued for
+`remove_released_primitives`. */
+CREATE OR REPLACE FUNCTION {topo_schema}.__release_faces(_tg topology.topogeometry, _map_layer integer)
+RETURNS void AS $$
+DECLARE
+  _faces integer[];
+  _layers integer[] := array(SELECT {topo_schema}.dirty_layers_for(_map_layer));
+BEGIN
+  -- The faces the release marks dirty: its own and their neighbours across its edges.
+  _faces := coalesce({topo_schema}.relevant_faces(_tg), ARRAY[]::integer[]);
+  IF cardinality(_faces) = 0 THEN
+    RETURN;
+  END IF;
+
+  DELETE FROM {topo_schema}.relation r
+  USING {topo_schema}.map_face mf
+  WHERE mf.map_layer = ANY(_layers)
+    AND r.topogeo_id = (mf.topo).id
+    AND r.layer_id = (mf.topo).layer_id
+    AND r.element_type = 3
+    AND r.element_id = ANY(_faces);
+  DELETE FROM {topo_schema}.face_identity fi
+  WHERE fi.face_id = ANY(_faces) AND fi.map_layer = ANY(_layers);
+
+  INSERT INTO {topo_schema}.__released_extent (extent)
+  SELECT ST_SetSRID(ST_Extent(f.mbr)::geometry, max(ST_SRID(f.mbr)))
+  FROM {topo_schema}.face f WHERE f.face_id = ANY(_faces);
+END;
+$$ LANGUAGE plpgsql;
+
+/** Remove the primitives released boundaries no longer need, one queued extent
+at a time, before noding builds on them. Returns the number removed. */
+CREATE OR REPLACE FUNCTION {topo_schema}.remove_released_primitives()
+RETURNS integer AS $$
+DECLARE
+  _e record;
+  _n integer := 0;
+BEGIN
+  FOR _e IN DELETE FROM {topo_schema}.__released_extent RETURNING extent LOOP
+    _n := _n + topology.RemoveUnusedPrimitives({topo_name_literal}, _e.extent);
+  END LOOP;
+  RETURN _n;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION {topo_schema}.boundary_changed()
 RETURNS trigger AS $$
 DECLARE
@@ -126,6 +176,7 @@ IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   IF (TG_OP = 'UPDATE' AND OLD.topo IS NOT NULL AND NEW.topo IS NULL) THEN
     -- The row is giving up its topogeometry: release its primitives rather than
     -- leave relation rows that no row refers to.
+    PERFORM {topo_schema}.__release_faces(OLD.topo, OLD.map_layer);
     PERFORM topology.clearTopoGeom(OLD.topo);
   END IF;
 
@@ -166,6 +217,7 @@ IF (NOT OLD.geometry = NEW.geometry) THEN
     AND (NEW.topo).id = (OLD.topo).id
     AND (NEW.topo).layer_id = (OLD.topo).layer_id
   ) THEN
+    PERFORM {topo_schema}.__release_faces(OLD.topo, OLD.map_layer);
     NEW.topo := topology.clearTopoGeom(OLD.topo);
   END IF;
   RETURN NEW;

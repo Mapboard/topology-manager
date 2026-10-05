@@ -38,6 +38,13 @@ CREATE INDEX map_face_gix ON {topo_schema}.map_face USING GIST (geometry);
 CREATE INDEX IF NOT EXISTS map_face_topogeom_id_idx
   ON {topo_schema}.map_face (((topo).id));
 
+/* Extents a boundary left when its topogeometry was emptied; the primitives only
+   it needed are removed there before the next noding (`remove_released_primitives`). */
+CREATE TABLE IF NOT EXISTS {topo_schema}.__released_extent (
+  id serial PRIMARY KEY,
+  extent geometry NOT NULL
+);
+
 /* A table to hold dirty faces */
 CREATE TABLE IF NOT EXISTS {topo_schema}.dirty_face (
   id        integer REFERENCES {topo_schema}.face(face_id) ON DELETE CASCADE,
