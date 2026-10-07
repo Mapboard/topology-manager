@@ -440,7 +440,13 @@ BEGIN
       WHEN complete THEN NULL
       ELSE l.topology_error
     END
-  WHERE l.id = line.id;
+  WHERE l.id = line.id
+    -- A no-op update still rewrites the row's stored geometry: skip it.
+    AND (
+      complete
+      OR (l.topo).id IS DISTINCT FROM (_tg).id
+      OR (l.topo).layer_id IS DISTINCT FROM (_tg).layer_id
+    );
 
   PERFORM {topo_schema}.mark_faces(
     {topo_schema}.__adjacent_faces(_edges, _faces),

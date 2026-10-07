@@ -151,6 +151,36 @@ class TestFailingPiece:
         assert _row(db, row).equals_geometry
 
 
+def _toast_size(db) -> int:
+    return db.run_query(
+        """
+        SELECT pg_relation_size(reltoastrelid)
+        FROM pg_class
+        WHERE oid = CAST('map_bounds.map_area' AS regclass)
+        """
+    ).scalar()
+
+
+class TestPiecesLeaveRowStorage:
+    """Accumulating a piece does not rewrite the row's stored geometry.
+
+    Real boundaries are megabytes stored out of line; a copy per piece once
+    filled a disk noding a map of 13,000 pieces.
+    """
+
+    def test_pieces_do_not_grow_the_row(self, ctx):
+        db = ctx.database
+        # 16,000 vertices: large enough to be stored out of line
+        row = add_map(db, "ST_Buffer(ST_MakePoint(1, 1), 1.5, 4000)", "large")
+        assert update_boundary_piece(ctx, row, QUADRANTS[0]) is None
+        before = _toast_size(db)
+        assert before > 0
+        for piece in QUADRANTS[1:]:
+            assert update_boundary_piece(ctx, row, piece) is None
+        assert len(boundary_primitives(db, row)) == 4
+        assert _toast_size(db) == before
+
+
 class TestFailureCaptureAndRetry:
     """Whole-row noding records its failure on the row; the failed set is
     selectable and retried on request, and cleared on success."""
