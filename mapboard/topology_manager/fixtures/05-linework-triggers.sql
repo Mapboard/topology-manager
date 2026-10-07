@@ -107,6 +107,8 @@ RETURNS trigger AS $$
 DECLARE
   __edges integer[];
   __dest_topology integer;
+  -- Passing NEW itself to a function makes Postgres rewrite its stored geometry.
+  _new {boundary_table} := NEW;
 BEGIN
 
 IF (TG_OP = 'DELETE') THEN
@@ -117,7 +119,7 @@ IF (TG_OP = 'DELETE') THEN
   -- ON DELETE CASCADE should handle the `__edge_relation` table in this case
 END IF;
 
-__dest_topology := {topo_schema}.get_topological_map_layer(NEW);
+__dest_topology := {topo_schema}.get_topological_map_layer(_new);
 
 IF (NEW.topo IS null OR __dest_topology IS null ) THEN
   -- Delete stale relations, in case we are changing the topology
@@ -144,7 +146,7 @@ IF (TG_OP = 'INSERT') THEN
   NEW method: get map faces that cover this
   PERFORM {topo_schema}.join_surrounding_faces(NEW)
   */
-  PERFORM {topo_schema}.mark_surrounding_faces(NEW);
+  PERFORM {topo_schema}.mark_surrounding_faces(_new);
   RETURN NEW;
 END IF;
 
@@ -187,7 +189,7 @@ END IF;
 /* We are now working with only cases where the topogeometry was changed */
 
 PERFORM {topo_schema}.mark_surrounding_faces(OLD);
-PERFORM {topo_schema}.mark_surrounding_faces(NEW);
+PERFORM {topo_schema}.mark_surrounding_faces(_new);
 RETURN NEW;
 
 END;

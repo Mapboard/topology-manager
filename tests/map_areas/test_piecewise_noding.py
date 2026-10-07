@@ -161,8 +161,12 @@ def _toast_size(db) -> int:
     ).scalar()
 
 
+# 16,000 vertices: large enough to be stored out of line
+WIDE_BOUNDS = "ST_Buffer(ST_MakePoint(1, 1), 1.5, 4000)"
+
+
 class TestPiecesLeaveRowStorage:
-    """Accumulating a piece does not rewrite the row's stored geometry.
+    """Updating a boundary row does not rewrite its stored geometry.
 
     Real boundaries are megabytes stored out of line; a copy per piece once
     filled a disk noding a map of 13,000 pieces.
@@ -170,14 +174,26 @@ class TestPiecesLeaveRowStorage:
 
     def test_pieces_do_not_grow_the_row(self, ctx):
         db = ctx.database
-        # 16,000 vertices: large enough to be stored out of line
-        row = add_map(db, "ST_Buffer(ST_MakePoint(1, 1), 1.5, 4000)", "large")
+        row = add_map(db, WIDE_BOUNDS, "large")
         assert update_boundary_piece(ctx, row, QUADRANTS[0]) is None
         before = _toast_size(db)
         assert before > 0
         for piece in QUADRANTS[1:]:
             assert update_boundary_piece(ctx, row, piece) is None
         assert len(boundary_primitives(db, row)) == 4
+        assert _toast_size(db) == before
+
+    def test_other_edits_do_not_grow_the_row(self, ctx):
+        db = ctx.database
+        noded = add_map(db, WIDE_BOUNDS, "large")
+        assert update_boundary_piece(ctx, noded, QUADRANTS[0]) is None
+        unnoded = add_map(db, WIDE_BOUNDS, "large")
+        before = _toast_size(db)
+        for row in (noded, unnoded):
+            db.run_query(
+                "UPDATE map_bounds.map_area SET area_km = area_km + 1 WHERE id = :id",
+                dict(id=row),
+            )
         assert _toast_size(db) == before
 
 
