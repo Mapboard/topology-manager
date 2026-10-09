@@ -125,6 +125,8 @@ ALTER TABLE {topo_schema}.map_face
   ADD COLUMN IF NOT EXISTS unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
 ALTER TABLE {topo_schema}.face_identity
   ADD COLUMN IF NOT EXISTS unit_id text REFERENCES {data_schema}.polygon_type (id) ON DELETE CASCADE;
+-- Faces are looked up by their owner; created with the column, which a host may own.
+CREATE INDEX map_face_unit_id_idx ON {topo_schema}.map_face (unit_id);
 
 
 /** Get the topology for a line. Both the map layer and linework type must be topological.
