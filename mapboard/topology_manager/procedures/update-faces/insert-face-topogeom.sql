@@ -5,7 +5,7 @@ INSERT INTO {topo_schema}.map_face (
   geometry
 )
 SELECT
-    {topo_schema}.identity_for_area(geom, :map_layer),
+    {topo_schema}.__component_identity(:faces, :map_layer, geom, :use_identity_cache),
     topo,
     :map_layer,
     geom

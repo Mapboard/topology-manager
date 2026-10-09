@@ -52,7 +52,7 @@ BEGIN
   WHERE id = ANY(__map_layers);
 
   -- If all of the map layers are composite, set the composite flag
-  SELECT bool_and(composited_from IS NOT NULL)
+  SELECT bool_and({data_schema}.is_composite_layer(id))
   INTO __composite
   FROM {data_schema}.map_layer
   WHERE id = ANY(__map_layers);

@@ -22,11 +22,14 @@ def update(
     boundaries: bool = True,
     faces: bool = True,
     face_update_mode: Optional[FaceUpdateMode] = None,
+    tolerance: Optional[float] = None,
 ):
     """Update the topology
 
     `face_update_mode` overrides the context's setting for this run (see
     `FaceUpdateMode`: move primitives between faces, or replace faces).
+    `tolerance` is the snapping tolerance for noding boundaries (None: the
+    topology's precision).
     """
     if ctx is None:
         ctx = get_context()
@@ -38,7 +41,9 @@ def update(
 
     if boundaries:
         console.print("Updating boundaries", style="header")
-        n_contacts_updated = update_contacts(ctx, fix_failed=fix_failed)
+        n_contacts_updated = update_contacts(
+            ctx, fix_failed=fix_failed, tolerance=tolerance
+        )
         t1 = perf_counter()
         print_step("Update boundaries", t1 - t_start)
         t_start = t1

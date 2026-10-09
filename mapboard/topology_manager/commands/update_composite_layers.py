@@ -9,7 +9,7 @@ def update_composite_layers(ctx: TopologyContext):
     log.info("Updating composite layers")
     db = ctx.database
     layers = db.run_query(
-        "SELECT id FROM {data_schema}.map_layer WHERE composited_from IS NOT NULL"
+        "SELECT id FROM {data_schema}.map_layer WHERE {data_schema}.is_composite_layer(id)"
     ).scalars()
     for layer in layers:
         log.info("Updating composite layer %s", layer)
@@ -149,7 +149,7 @@ def add_composite_layer_types(db, map_layer: int, layers: list[int]):
 def get_composite_layers(db, map_layer: int) -> list[int]:
     """Get the list of composite layers that a given map layer is part of."""
     layers = db.run_query(
-        "SELECT composited_from FROM {data_schema}.map_layer WHERE id = :map_layer",
+        "SELECT {data_schema}.composite_layer_members(:map_layer)",
         dict(map_layer=map_layer),
     ).scalar()
     if layers is None:

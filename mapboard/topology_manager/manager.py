@@ -2,7 +2,11 @@
 
 from .config import TopologyContext
 from .commands.update_topology import update
-from .commands.update_contacts import update_contacts
+from .commands.update_contacts import (
+    failed_boundaries,
+    update_boundary_piece,
+    update_contacts,
+)
 from .commands.clean_topology import clean_topology
 from .commands.update_faces import update_faces
 from .commands.update_composite_layers import update_composite_layers
@@ -52,8 +56,17 @@ class TopologyManager:
         update(self._ctx, **kwargs)
 
     def update_contacts(self, **kwargs):
-        """Recalculate linework contacts."""
-        update_contacts(self._ctx, **kwargs)
+        """Node pending boundary rows whole (see `update_contacts`)."""
+        return update_contacts(self._ctx, **kwargs)
+
+    def update_boundary_piece(self, row_id: int, piece, tolerance=None):
+        """Node one piece of a boundary row's geometry into its topogeometry;
+        returns the error text or None (see `update_boundary_piece`)."""
+        return update_boundary_piece(self._ctx, row_id, piece, tolerance)
+
+    def failed_boundaries(self, row_filter=None, filter_params=None):
+        """Boundary rows whose whole-row noding failed, as (id, topology_error)."""
+        return failed_boundaries(self._ctx, row_filter, filter_params)
 
     def update_faces(self, **kwargs):
         """Recalculate map faces."""

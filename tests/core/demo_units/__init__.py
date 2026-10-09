@@ -13,8 +13,7 @@ def create_demo_units(db):
             db,
             root / "defs" / f"{type}-types.csv",
             f"tmp_{type}_type",
-            )
-
+        )
 
     db.run_sql(root / "procedures" / "03-add-to-map.sql")
 
@@ -42,5 +41,7 @@ def import_csv(db, csv_path: Path, tablename, schema=None, check=True):
 
     if check:
         # Verify that COPY inserted at least one row.
-        res = db.run_query("SELECT COUNT(*) FROM {tablename}", dict(tablename=tablename))
+        res = db.run_query(
+            "SELECT COUNT(*) FROM {tablename}", dict(tablename=tablename)
+        )
         assert res.scalar() > 0

@@ -59,7 +59,8 @@ class TopologyInspector:
         return orphaned_relations(self.db)
 
     def faces_match_topology(self, map_layer=None) -> bool:
-        """Whether every map face's cached geometry equals its resolved topogeometry."""
+        """Whether every map face's cached geometry matches its resolved
+        topogeometry to within the topology's precision."""
         return len(faces_mismatching_topology(self.db, map_layer=map_layer)) == 0
 
     def unfaced_primitives(self, map_layer) -> list[int]:
@@ -201,10 +202,9 @@ def create_composite_layer(
             "name",
             parent,
             topological,
-            editable,
-            composited_from
+            editable
         )
-        VALUES (:name, :parent, :topological, :editable, :composited_from)
+        VALUES (:name, :parent, :topological, :editable)
         RETURNING id
         """,
         {
@@ -212,9 +212,18 @@ def create_composite_layer(
             "topological": True,
             "editable": False,
             "parent": parent,
-            "composited_from": layers,
         },
     ).scalar()
+    # Members are bottom-to-top, matching the order the former `composited_from`
+    # array held; priority is the 1-based position, so the last member wins.
+    for priority, member in enumerate(layers, start=1):
+        db.run_query(
+            """
+            INSERT INTO {data_schema}.map_layer_composition (parent_id, member_id, priority)
+            VALUES (:parent_id, :member_id, :priority)
+            """,
+            {"parent_id": lyr, "member_id": member, "priority": priority},
+        )
     return lyr
 
 
@@ -272,12 +281,17 @@ def orphaned_relations(db) -> int:
 
 
 def faces_mismatching_topology(db, *, map_layer=None) -> list[int]:
-    """Ids of map faces whose cached geometry differs from their topogeometry."""
+    """Ids of map faces whose cached geometry differs from their topogeometry by
+    more than the topology's precision. Realized geometry is kept to that
+    precision, not bitwise: noding can insert a vertex a float-noise distance
+    off an existing edge where a new line ends on it."""
     sql = """
         SELECT id
         FROM {topo_schema}.map_face
         WHERE topo IS NOT NULL
-          AND NOT ST_Equals(geometry, ST_SetSRID(topo::geometry, :srid))
+          AND ST_HausdorffDistance(geometry, ST_SetSRID(topo::geometry, :srid)) > (
+            SELECT precision FROM topology.topology WHERE name = :topo_name
+          )
     """
     params = {}
     if map_layer is not None:

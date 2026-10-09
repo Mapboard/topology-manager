@@ -12,6 +12,8 @@ from typing import Iterable
 from macrostrat.database import Database
 from macrostrat.database.query import OutputMode
 
+from ...database import sql
+
 from .models import DirtyFace, FaceOverlap, FaceUpdateResult, MapFaceChange
 
 
@@ -48,6 +50,37 @@ class MapFaceStore:
             dict(faces=list(faces), map_layer=map_layer),
         ).scalar()
 
+    def delete_plain(self, map_faces: list[int]) -> int:
+        """Delete map faces the way the original pipeline did: a plain DELETE,
+        leaving their relation rows for `remove_empty_topogeometries`."""
+        if len(map_faces) == 0:
+            return 0
+        return self.db.run_query(
+            """
+            WITH gone AS (
+                DELETE FROM {topo_schema}.map_face WHERE id = ANY(:map_faces)
+                RETURNING id
+            )
+            SELECT count(*) FROM gone
+            """,
+            dict(map_faces=list(map_faces)),
+        ).scalar()
+
+    def create_plain(
+        self, faces: list[int], map_layer: int, *, use_identity_cache: bool = False
+    ):
+        """Create a map face exactly as the original pipeline did
+        (`procedures/update-faces/insert-face-topogeom.sql`)."""
+        self.db.run_query(
+            sql("procedures/update-faces/insert-face-topogeom"),
+            dict(
+                map_layer=map_layer,
+                faces=list(faces),
+                topo_element_array=[[face_id, 3] for face_id in faces],
+                use_identity_cache=use_identity_cache,
+            ),
+        )
+
     def delete(self, map_faces: list[int]) -> int:
         """Delete map faces, clearing their topogeometries first."""
         if len(map_faces) == 0:
@@ -59,11 +92,14 @@ class MapFaceStore:
 
     # -- moving primitives -----------------------------------------------------
 
-    def absorb(self, faces: list[int], map_layer: int) -> MapFaceChange:
-        """Settle a component onto one surviving map face (creating one if needed)."""
+    def absorb(
+        self, faces: list[int], map_layer: int, *, use_identity_cache: bool = False
+    ) -> MapFaceChange:
+        """Settle a component onto one surviving map face (creating one if needed).
+        `use_identity_cache` only once `_layer_identity` holds this layer."""
         return self._change(
-            "SELECT * FROM {topo_schema}.map_face_absorb(:faces, :map_layer)",
-            dict(faces=list(faces), map_layer=map_layer),
+            "SELECT * FROM {topo_schema}.map_face_absorb(:faces, :map_layer, :cached)",
+            dict(faces=list(faces), map_layer=map_layer, cached=use_identity_cache),
         )
 
     def release(self, faces: list[int], map_layer: int) -> MapFaceChange:
@@ -74,12 +110,23 @@ class MapFaceStore:
         )
 
     def replace(
-        self, faces: list[int], map_layer: int, *, create: bool = True
+        self,
+        faces: list[int],
+        map_layer: int,
+        *,
+        create: bool = True,
+        use_identity_cache: bool = False,
     ) -> MapFaceChange:
         """Delete every overlapping map face and (optionally) create a new one."""
         return self._change(
-            "SELECT * FROM {topo_schema}.map_face_replace(:faces, :map_layer, :create)",
-            dict(faces=list(faces), map_layer=map_layer, create=create),
+            "SELECT * FROM {topo_schema}.map_face_replace("
+            ":faces, :map_layer, :create, :cached)",
+            dict(
+                faces=list(faces),
+                map_layer=map_layer,
+                create=create,
+                cached=use_identity_cache,
+            ),
         )
 
     def _change(self, query: str, params: dict) -> MapFaceChange:
@@ -91,18 +138,6 @@ class MapFaceStore:
         return MapFaceChange(**data)
 
     # -- run bookkeeping -------------------------------------------------------
-
-    def set_reshaped_faces(self, map_layer: int, faces: Iterable[int]) -> int:
-        """Register the primitives of a layer whose shape may have changed."""
-        return self.db.run_query(
-            "SELECT {topo_schema}.set_reshaped_faces(:map_layer, :faces)",
-            dict(map_layer=map_layer, faces=sorted(set(faces))),
-        ).scalar()
-
-    def clear_reshaped_faces(self):
-        self.db.run_query(
-            "SELECT {topo_schema}.clear_reshaped_faces()", output_mode=OutputMode.NONE
-        )
 
     def unmark_dirty(self, map_layer: int, faces: list[int]):
         """Remove primitives (and the universal face) from `dirty_face` for a layer."""

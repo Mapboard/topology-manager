@@ -2,9 +2,13 @@
 
 Two strategies implement the same interface, selected by `FaceUpdateMode`:
 
-- `MoveFacesPersister` (``move``): primitives are moved between existing faces.
-- `ReplaceFacesPersister` (``replace``): overlapping faces are deleted and a new
-  one is created (the historical behaviour).
+- `MoveFacesPersister` (``move``): an existing overlapping face's topogeometry
+  is updated in place to hold the component (its geometry re-resolved from the
+  topology, as a new face's would be); a new topogeometry is created only when
+  no suitable face exists.
+- `ReplaceFacesPersister` (``replace``): the historical behaviour, unchanged —
+  overlapping faces are deleted in bulk and a new topogeometry is created per
+  component; nothing is re-marked.
 
 Both return the primitives that the operation *re-seeded* — the remainder of any
 face that lost primitives — so the loop can revisit them. That is what turns a
@@ -29,6 +33,9 @@ class FacePersister:
     """Persists components one at a time; subclasses decide how."""
 
     mode: FaceUpdateMode
+    #: Read component identity from `_layer_identity`. Set by a loop that fills
+    #: that cache for the layer before persisting its components.
+    use_identity_cache: bool = False
 
     def __init__(self, db: Database):
         self.db = db
@@ -78,36 +85,69 @@ class FacePersister:
 
 
 class MoveFacesPersister(FacePersister):
-    """Move primitives between existing map faces (`map_face_absorb`)."""
+    """Update an existing map face's topogeometry in place (`map_face_absorb`)
+    instead of deleting it and creating a new one."""
 
     mode = FaceUpdateMode.MOVE
-
-    def begin_run(self, seeds: Iterable[DirtyFace]):
-        by_layer: dict[int, set[int]] = defaultdict(set)
-        for seed in seeds:
-            by_layer[seed.map_layer].add(seed.id)
-        for layer, faces in by_layer.items():
-            self.store.set_reshaped_faces(layer, faces)
-
-    def end_run(self):
-        self.store.clear_reshaped_faces()
 
     def apply(self, component: FaceUpdateResult) -> MapFaceChange:
         if component.touches_universe:
             return self.store.release(component.dissolved_faces, component.map_layer)
-        return self.store.absorb(component.dissolved_faces, component.map_layer)
+        return self.store.absorb(
+            component.dissolved_faces,
+            component.map_layer,
+            use_identity_cache=self.use_identity_cache,
+        )
 
 
 class ReplaceFacesPersister(FacePersister):
-    """Delete overlapping map faces and create a new one (`map_face_replace`)."""
+    """The historical behaviour, unchanged: for a batch of components, delete every
+    map face they overlap in one plain DELETE (relation rows are reclaimed by the
+    clean step, as before), then create a fresh topogeometry per component.
+    Nothing is re-marked dirty."""
 
     mode = FaceUpdateMode.REPLACE
+
+    def persist(
+        self, components: list[FaceUpdateResult], *, unmark_dirty: bool = True
+    ) -> list[DirtyFace]:
+        to_delete: set[int] = set()
+        for component in components:
+            to_delete.update(component.existing_map_faces)
+        if to_delete:
+            log.info("Deleting %s existing map faces", len(to_delete))
+            self.store.delete_plain(sorted(to_delete))
+        else:
+            log.info("No existing map faces to delete")
+
+        created = defaultdict(int)
+        for component in components:
+            if not component.touches_universe:
+                self.store.create_plain(
+                    component.dissolved_faces,
+                    component.map_layer,
+                    use_identity_cache=self.use_identity_cache,
+                )
+                created[component.map_layer] += 1
+            self.stats.components += 1
+        self.stats.created += sum(created.values())
+        self.stats.deleted += len(to_delete)
+        log.info(
+            "Created %s new map faces in layers: %s",
+            sum(created.values()),
+            ", ".join(f"{lyr}: {count}" for lyr, count in created.items()),
+        )
+
+        if unmark_dirty:
+            self.store.unmark_dirty_components(components)
+        return []
 
     def apply(self, component: FaceUpdateResult) -> MapFaceChange:
         return self.store.replace(
             component.dissolved_faces,
             component.map_layer,
             create=not component.touches_universe,
+            use_identity_cache=self.use_identity_cache,
         )
 
 

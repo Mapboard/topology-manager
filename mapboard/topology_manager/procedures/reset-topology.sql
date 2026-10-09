@@ -1,6 +1,6 @@
 SET session_replication_role = replica;
 
-UPDATE {data_schema}.linework
+UPDATE {boundary_table}
 SET
   topo = null,
   geometry_hash = null,
