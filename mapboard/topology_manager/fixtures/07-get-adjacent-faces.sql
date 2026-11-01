@@ -175,34 +175,19 @@ CREATE OR REPLACE FUNCTION {topo_schema}.dissolve_component(
 RETURNS TABLE (faces integer[], existing_map_faces integer[], niter integer, map_layer integer)
 AS $$
 DECLARE
-  _added integer;
+  _component integer[] := ARRAY[_seed];
+  _frontier integer[] := ARRAY[_seed];
   _niter integer := 0;
   _constraining integer[];
   _face_layer_id integer;
 BEGIN
-  -- Session-scoped scratch sets, reused across calls (the caller commits per
-  -- component, so deliberately no ON COMMIT DROP).
-  CREATE TEMP TABLE IF NOT EXISTS _component     (face_id integer PRIMARY KEY);
-  CREATE TEMP TABLE IF NOT EXISTS _frontier      (face_id integer PRIMARY KEY);
-  CREATE TEMP TABLE IF NOT EXISTS _frontier_next (face_id integer PRIMARY KEY);
   -- Populated per layer by `dissolve_groups` / `update_dirty_faces`; created
   -- here so the frontier query plans whether or not the cache is in use.
   CREATE TEMP TABLE IF NOT EXISTS _layer_identity (
     face_id integer PRIMARY KEY,
     identity text
   );
-  TRUNCATE _component, _frontier, _frontier_next;
   _face_layer_id := {topo_schema}.__map_face_layer_id();
-
-  INSERT INTO _component VALUES (_seed);
-  INSERT INTO _frontier  VALUES (_seed);
-  -- Statistics before the first frontier query, for the same reason they are
-  -- taken after the loop: a temp table carries none, so the planner sizes it by
-  -- a default and hash-joins the whole of `edge_data` and `__edge_relation`
-  -- against a handful of rows. Measured on one frontier step of a real layer:
-  -- 430 ms unanalyzed (seq scans of 556k edges and 720k edge relations to find
-  -- 204 rows) against 5.8 ms analyzed, entirely on index scans.
-  ANALYZE _component, _frontier;
   _constraining := array(
     SELECT DISTINCT p.id
     FROM unnest(ARRAY[_map_layer]::integer[] || _barrier_layers) AS lyr(id)
@@ -211,10 +196,9 @@ BEGIN
 
   LOOP
     -- Newly-reached joinable neighbors of the current frontier. The joins to
-    -- _frontier drive index scans on edge_data.left_face/right_face; the
-    -- anti-join against _component (PK) keeps us from revisiting.
-    TRUNCATE _frontier_next;
-    INSERT INTO _frontier_next (face_id)
+    -- the frontier drive index scans on edge_data.left_face/right_face; the
+    -- anti-join against the component keeps us from revisiting.
+    _frontier := array(
     SELECT DISTINCT j.opp_face
     FROM (
       SELECT
@@ -225,15 +209,15 @@ BEGIN
       FROM (
         SELECT e.edge_id, e.left_face, e.right_face, e.right_face AS opp_face
         FROM {topo_schema}.edge_data e
-        JOIN _frontier f ON e.left_face = f.face_id
+        JOIN unnest(_frontier) f(face_id) ON e.left_face = f.face_id
         WHERE e.left_face <> e.right_face
         UNION ALL
         SELECT e.edge_id, e.left_face, e.right_face, e.left_face AS opp_face
         FROM {topo_schema}.edge_data e
-        JOIN _frontier f ON e.right_face = f.face_id
+        JOIN unnest(_frontier) f(face_id) ON e.right_face = f.face_id
         WHERE e.left_face <> e.right_face
       ) fe
-      LEFT JOIN _component c ON c.face_id = fe.opp_face
+      LEFT JOIN unnest(_component) c(face_id) ON c.face_id = fe.opp_face
       LEFT JOIN {topo_schema}.__edge_relation er ON er.edge_id = fe.edge_id
       WHERE c.face_id IS NULL
       GROUP BY fe.edge_id, fe.left_face, fe.right_face, fe.opp_face
@@ -250,39 +234,24 @@ BEGIN
               THEN il.identity IS NOT DISTINCT FROM ir.identity
             ELSE {topo_schema}.faces_are_joinable(
                    j.left_face, j.right_face, _map_layer)
-          END;
+          END
+    );
+    EXIT WHEN cardinality(_frontier) = 0;
 
-    GET DIAGNOSTICS _added = ROW_COUNT;
-    EXIT WHEN _added = 0;
-
-    INSERT INTO _component (face_id) SELECT face_id FROM _frontier_next;
-
-    TRUNCATE _frontier;
-    INSERT INTO _frontier (face_id) SELECT face_id FROM _frontier_next;
-
-    -- Both sides changed, and the plan for the next iteration is chosen from
-    -- their statistics. Analyzing two small temp tables costs a few ms against
-    -- the hundreds a mis-planned frontier step costs.
-    ANALYZE _component, _frontier;
-
+    _component := _component || _frontier;
     _niter := _niter + 1;
   END LOOP;
 
-  -- Re-analyzed after the final iteration, so the `map_face` lookup below is
-  -- planned from the component's real size rather than a default -- otherwise it
-  -- scans all of `map_face` to keep a handful of rows.
-  ANALYZE _component;
-
   RETURN QUERY
   SELECT
-    (SELECT array_agg(face_id) FROM _component) faces,
+    _component faces,
     coalesce((
       -- Driven from the component, with the map_face topogeometry layer pinned:
       -- a face's `relation` rows span every layer (its map areas, its parts, its
       -- map_face in each layer), and all but one layer's worth are probed for
       -- nothing.
       SELECT array_agg(DISTINCT f.id)
-      FROM _component c
+      FROM unnest(_component) c(face_id)
       JOIN {topo_schema}.relation r
         ON r.element_id = c.face_id
        AND r.element_type = 3
@@ -295,7 +264,10 @@ BEGIN
     _niter niter,
     _map_layer map_layer;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+-- Plan each step with the arrays' actual sizes. A cached generic plan guesses
+-- them, which seq-scans `edge_data` for a small frontier.
+SET plan_cache_mode = force_custom_plan;
 
 
 /** Dissolve every dirty face in a layer, one component at a time, server-side.
@@ -328,8 +300,7 @@ DECLARE
   _r record;
   _cached boolean := {bulk_identity};
 BEGIN
-  -- Faces already claimed by a component returned from *this* call. A separate
-  -- name from `dissolve_component`'s scratch sets, which it truncates per call.
+  -- Faces already claimed by a component returned from *this* call.
   CREATE TEMP TABLE IF NOT EXISTS _claimed (face_id integer PRIMARY KEY);
   TRUNCATE _claimed;
 
