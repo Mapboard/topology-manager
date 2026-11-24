@@ -17,8 +17,8 @@ from mapboard.topology_manager import (
     create_context,
     TopologyContext,
     IdentityStrategy,
-    TopologyInspector,
 )
+from mapboard.topology_manager.test_helpers import TopologyInspector
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
